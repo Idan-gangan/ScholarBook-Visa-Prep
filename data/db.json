@@ -1,110 +1,143 @@
 {
-  "users": [
-    {
-      "id": "u_efe",
-      "name": "Efe-Sam Agalivie",
-      "email": "efe.sam@scholarbook.net",
-      "role": "coach",
-      "passwordHash": "d3ad9315b7be5dd53b31a273b3b3aba5defe700808305aa16a3062b76658a791"
-    },
-    {
-      "id": "u_jackson",
-      "name": "Jackson Kiprono",
-      "email": "jackson@demo.scholarbook.net",
-      "role": "athlete",
-      "passwordHash": "d3ad9315b7be5dd53b31a273b3b3aba5defe700808305aa16a3062b76658a791"
-    },
-    {
-      "id": "u_manager",
-      "name": "Athlete Manager",
-      "email": "manager@demo.scholarbook.net",
-      "role": "manager",
-      "passwordHash": "d3ad9315b7be5dd53b31a273b3b3aba5defe700808305aa16a3062b76658a791"
-    },
-    {
-      "id": "u_supervisor",
-      "name": "Supervisor",
-      "email": "supervisor@demo.scholarbook.net",
-      "role": "supervisor",
-      "passwordHash": "d3ad9315b7be5dd53b31a273b3b3aba5defe700808305aa16a3062b76658a791"
-    }
-  ],
-  "athletes": [
-    {
-      "id": "a_jackson",
-      "userId": "u_jackson",
-      "name": "Jackson Kiprono",
-      "country": "Kenya",
-      "interviewLocation": "Nairobi, Kenya",
-      "university": "Park University",
-      "major": "Sports Management",
-      "sport": "Track & Field (Sprinter)",
-      "scholarship": "Athletic scholarship",
-      "interviewDate": "2026-08-25",
-      "sessions": 3,
-      "mocks": 4,
-      "initialScore": 48,
-      "currentScore": 78,
-      "mainConcern": "Major knowledge"
-    },
-    {
-      "id": "a_mercy",
-      "userId": null,
-      "name": "Mercy Adhiambo",
-      "country": "Kenya",
-      "interviewLocation": "Nairobi, Kenya",
-      "university": "Demo University",
-      "major": "Business Administration",
-      "sport": "Track & Field",
-      "scholarship": "Athletic scholarship",
-      "interviewDate": "2026-08-18",
-      "sessions": 2,
-      "mocks": 4,
-      "initialScore": 71,
-      "currentScore": 89,
-      "mainConcern": "None"
-    },
-    {
-      "id": "a_kelvin",
-      "userId": null,
-      "name": "Kelvin Ochieng",
-      "country": "Kenya",
-      "interviewLocation": "Nairobi, Kenya",
-      "university": "Demo College",
-      "major": "Exercise Science",
-      "sport": "Soccer",
-      "scholarship": "Partial athletic scholarship",
-      "interviewDate": "2026-08-27",
-      "sessions": 2,
-      "mocks": 3,
-      "initialScore": 45,
-      "currentScore": 61,
-      "mainConcern": "Post-graduation plans"
-    }
-  ],
-  "reports": [
-    {
-      "id": "rp_seed",
-      "athleteId": "a_jackson",
-      "mockNumber": 4,
-      "createdAt": "2026-08-11T18:00:00Z",
-      "scores": {
-        "purpose_of_study": 13,
-        "university_knowledge": 12,
-        "major_knowledge": 9,
-        "scholarship_finances": 14,
-        "post_graduation_plans": 10,
-        "application_knowledge": 9,
-        "communication": 7,
-        "consistency_honesty": 4
-      },
-      "overall": 78,
-      "readiness": "Almost Ready",
-      "biggestWeakness": "Major knowledge",
-      "feedback": "Jackson communicates the core purpose clearly but needs more depth when explaining his major and how it connects to his career plan.",
-      "nextStep": "Human preparation session with Efe-Sam focused on major knowledge and rephrased follow-up questions.",
-      "humanReview": null
-    }
-  ],
-  "transcripts": []
+    "users":  [
+                  {
+                      "id":  "u_efe",
+                      "name":  "Efe-Sam Agalivie",
+                      "email":  "efe.sam@scholarbook.net",
+                      "role":  "coach",
+                      "passwordHash":  "d3ad9315b7be5dd53b31a273b3b3aba5defe700808305aa16a3062b76658a791"
+                  },
+                  {
+                      "id":  "u_jackson",
+                      "name":  "Jackson Kiprono",
+                      "email":  "jackson@demo.scholarbook.net",
+                      "role":  "athlete",
+                      "passwordHash":  "d3ad9315b7be5dd53b31a273b3b3aba5defe700808305aa16a3062b76658a791"
+                  },
+                  {
+                      "id":  "u_manager",
+                      "name":  "Athlete Manager",
+                      "email":  "manager@demo.scholarbook.net",
+                      "role":  "manager",
+                      "passwordHash":  "d3ad9315b7be5dd53b31a273b3b3aba5defe700808305aa16a3062b76658a791"
+                  },
+                  {
+                      "id":  "u_supervisor",
+                      "name":  "Supervisor",
+                      "email":  "supervisor@demo.scholarbook.net",
+                      "role":  "supervisor",
+                      "passwordHash":  "d3ad9315b7be5dd53b31a273b3b3aba5defe700808305aa16a3062b76658a791"
+                  },
+                  {
+                      "id":  "u_naira_coach",
+                      "name":  "Naira",
+                      "email":  "naira.coach@scholarbook.net",
+                      "role":  "coach",
+                      "passwordHash":  "53333a4b45f3e57e1391741b07cd53ad6dc7b4eb5c03842d4c494317853126ee"
+                  },
+                  {
+                      "id":  "u_naira_athlete",
+                      "name":  "Naira",
+                      "email":  "naira.athlete@scholarbook.net",
+                      "role":  "athlete",
+                      "passwordHash":  "53333a4b45f3e57e1391741b07cd53ad6dc7b4eb5c03842d4c494317853126ee"
+                  }
+              ],
+    "athletes":  [
+                     {
+                         "id":  "a_jackson",
+                         "userId":  "u_jackson",
+                         "name":  "Jackson Kiprono",
+                         "country":  "Kenya",
+                         "interviewLocation":  "Nairobi, Kenya",
+                         "university":  "Park University",
+                         "major":  "Sports Management",
+                         "sport":  "Track \u0026 Field (Sprinter)",
+                         "scholarship":  "Athletic scholarship",
+                         "interviewDate":  "2026-08-25",
+                         "sessions":  3,
+                         "mocks":  4,
+                         "initialScore":  48,
+                         "currentScore":  78,
+                         "mainConcern":  "Major knowledge"
+                     },
+                     {
+                         "id":  "a_mercy",
+                         "userId":  null,
+                         "name":  "Mercy Adhiambo",
+                         "country":  "Kenya",
+                         "interviewLocation":  "Nairobi, Kenya",
+                         "university":  "Demo University",
+                         "major":  "Business Administration",
+                         "sport":  "Track \u0026 Field",
+                         "scholarship":  "Athletic scholarship",
+                         "interviewDate":  "2026-08-18",
+                         "sessions":  2,
+                         "mocks":  4,
+                         "initialScore":  71,
+                         "currentScore":  89,
+                         "mainConcern":  "None"
+                     },
+                     {
+                         "id":  "a_kelvin",
+                         "userId":  null,
+                         "name":  "Kelvin Ochieng",
+                         "country":  "Kenya",
+                         "interviewLocation":  "Nairobi, Kenya",
+                         "university":  "Demo College",
+                         "major":  "Exercise Science",
+                         "sport":  "Soccer",
+                         "scholarship":  "Partial athletic scholarship",
+                         "interviewDate":  "2026-08-27",
+                         "sessions":  2,
+                         "mocks":  3,
+                         "initialScore":  45,
+                         "currentScore":  61,
+                         "mainConcern":  "Post-graduation plans"
+                     },
+                     {
+                         "id":  "a_naira",
+                         "userId":  "u_naira_athlete",
+                         "name":  "Naira",
+                         "country":  "Kenya",
+                         "interviewLocation":  "Nairobi, Kenya",
+                         "university":  "Demo University",
+                         "major":  "Business Administration",
+                         "sport":  "Track \u0026 Field",
+                         "scholarship":  "Athletic scholarship",
+                         "interviewDate":  "2026-08-30",
+                         "sessions":  0,
+                         "mocks":  0,
+                         "initialScore":  0,
+                         "currentScore":  0,
+                         "mainConcern":  "Test account"
+                     }
+                 ],
+    "reports":  [
+                    {
+                        "id":  "rp_seed",
+                        "athleteId":  "a_jackson",
+                        "mockNumber":  4,
+                        "createdAt":  "2026-08-11T18:00:00Z",
+                        "scores":  {
+                                       "purpose_of_study":  13,
+                                       "university_knowledge":  12,
+                                       "major_knowledge":  9,
+                                       "scholarship_finances":  14,
+                                       "post_graduation_plans":  10,
+                                       "application_knowledge":  9,
+                                       "communication":  7,
+                                       "consistency_honesty":  4
+                                   },
+                        "overall":  78,
+                        "readiness":  "Almost Ready",
+                        "biggestWeakness":  "Major knowledge",
+                        "feedback":  "Jackson communicates the core purpose clearly but needs more depth when explaining his major and how it connects to his career plan.",
+                        "nextStep":  "Human preparation session with Efe-Sam focused on major knowledge and rephrased follow-up questions.",
+                        "humanReview":  null
+                    }
+                ],
+    "transcripts":  [
+
+                    ]
 }
