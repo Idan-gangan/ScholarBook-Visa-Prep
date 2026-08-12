@@ -1,0 +1,156 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ScholarBook Visa Prep — Working Demo</title>
+<style>
+:root{--navy:#0b1f4d;--blue:#2457ff;--purple:#6d45e6;--bg:#f5f7fb;--line:#dde4ef;--muted:#6d7891;--green:#15915a;--amber:#c77d00;--red:#c73737}
+*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:#14213d}
+button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{border:0;border-radius:10px;padding:11px 15px;font-weight:800;cursor:pointer}.primary{background:linear-gradient(135deg,var(--blue),var(--purple));color:white}.secondary{background:#edf1f7;color:#16233e}.danger{background:#fff0f0;color:var(--red)}
+.login{min-height:100vh;display:grid;place-items:center;background:linear-gradient(135deg,#08183e,#163979 60%,#6747dd)}.loginCard{width:min(430px,92vw);background:white;padding:28px;border-radius:18px;box-shadow:0 24px 70px #04102c55}.logo{width:46px;height:46px;border-radius:12px;background:linear-gradient(135deg,var(--navy),var(--blue));display:grid;place-items:center;color:white;font-weight:900}
+.field{margin:13px 0}.field label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}.field input,.field textarea{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px}.muted{color:var(--muted)}.small{font-size:13px}
+.top{height:66px;background:white;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0}.brand{display:flex;align-items:center;gap:10px;font-weight:900}.layout{display:grid;grid-template-columns:230px 1fr}.side{min-height:calc(100vh - 66px);background:var(--navy);padding:16px;color:white}.nav{padding:12px;border-radius:10px;color:#ced8ef;cursor:pointer;margin:4px 0}.nav:hover,.nav.on{background:#193873;color:white}.main{padding:24px;max-width:1400px;width:100%;margin:auto}.screen{display:none}.screen.on{display:block}.grid{display:grid;gap:16px}.g2{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}.g4{grid-template-columns:repeat(4,minmax(0,1fr))}.card{background:white;border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 8px 24px #081c4510}.kpi{font-size:34px;font-weight:900}.pill{display:inline-block;padding:6px 9px;border-radius:99px;font-size:12px;font-weight:800}.amber{background:#fff2d6;color:#8a5600}.green{background:#e4f7ed;color:#116d44}.red{background:#fde9e9;color:#9d2626}.blue{background:#eaf0ff;color:#2445ad}.progress{height:9px;background:#e9edf5;border-radius:99px;overflow:hidden}.bar{height:100%;background:linear-gradient(90deg,var(--blue),var(--purple))}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:11px;border-bottom:1px solid var(--line);text-align:left}th{background:#f8faff}.voiceBox{display:grid;grid-template-columns:1.4fr .8fr;gap:16px}.status{padding:12px;border-radius:10px;background:#edf3ff;color:#2349a5}.transcript{height:320px;overflow:auto;background:#fafbfe;border:1px solid var(--line);border-radius:12px;padding:12px}.msg{padding:10px 12px;border-radius:10px;margin:8px 0}.ai{background:#eef2ff}.user{background:#eaf8f0}.notice{background:#fff8e5;border:1px solid #eddca4;padding:12px;border-radius:10px;color:#6e5718;margin-bottom:16px}
+@media(max-width:900px){.layout{grid-template-columns:1fr}.side{display:none}.g4,.g3,.g2,.voiceBox{grid-template-columns:1fr}.main{padding:14px}}
+</style>
+</head>
+<body>
+<div id="login" class="login">
+  <div class="loginCard">
+    <div class="logo">SB</div>
+    <h1>ScholarBook Visa Prep</h1>
+    <p class="muted">Working demo: accounts, saved progress, AI voice interview, evaluation, human review.</p>
+    <div class="field"><label>Email</label><input id="email" value="efe.sam@scholarbook.net"></div>
+    <div class="field"><label>Password</label><input id="password" type="password" value="demo123"></div>
+    <button class="btn primary" style="width:100%" onclick="login()">Sign in</button>
+    <p class="small muted">Demo accounts are listed in the README. Change all demo passwords before any real use.</p>
+    <div id="loginErr" class="small" style="color:#b32626"></div>
+  </div>
+</div>
+
+<div id="app" class="hidden">
+  <div class="top"><div class="brand"><div class="logo">SB</div>ScholarBook Visa Prep</div><div><b id="who"></b> · <span id="role" class="muted"></span> <button class="btn secondary" onclick="logout()">Log out</button></div></div>
+  <div class="layout"><aside class="side" id="nav"></aside><main class="main">
+    <section id="dashboard" class="screen">
+      <h1>Dashboard</h1><div class="notice">Readiness scores measure preparation only. They are not visa-approval predictions or guarantees.</div>
+      <div id="dashCards" class="grid g4"></div>
+      <div class="card" style="margin-top:16px;overflow:auto"><h3>Athletes</h3><div id="athleteTable"></div></div>
+    </section>
+    <section id="interview" class="screen">
+      <h1>Live AI Mock Interview</h1>
+      <div class="notice">Use Chrome/Edge with microphone access. Your OpenAI API key stays on the server; it is not sent to the browser directly.</div>
+      <div class="field"><label>Athlete</label><select id="athleteSelect"></select></div>
+      <div class="voiceBox">
+        <div class="card">
+          <div id="voiceStatus" class="status">Not connected</div>
+          <h2 style="margin-bottom:4px">AI Consular Interviewer</h2>
+          <p class="muted">The interviewer asks one question at a time and follows up based on the athlete's spoken answer.</p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin:16px 0">
+            <button class="btn primary" id="startBtn" onclick="startVoice()">🎙 Start Voice Interview</button>
+            <button class="btn danger" id="stopBtn" onclick="stopVoice()" disabled>End Interview</button>
+            <button class="btn secondary" onclick="addManualLine()">Add typed transcript line</button>
+          </div>
+          <div id="transcript" class="transcript"></div>
+        </div>
+        <div class="card">
+          <h3>After the interview</h3>
+          <p class="muted">The transcript is sent to the evaluation model to create a readiness report.</p>
+          <button class="btn primary" style="width:100%" onclick="generateReport()">Generate Readiness Report</button>
+          <div id="evalStatus" class="small muted" style="margin-top:12px"></div>
+        </div>
+      </div>
+    </section>
+    <section id="reports" class="screen">
+      <h1>Readiness Reports</h1><div id="reportsList"></div>
+    </section>
+    <section id="manager" class="screen"><h1>Athlete Manager View</h1><div class="card" style="overflow:auto"><div id="managerTable"></div></div></section>
+  </main></div>
+</div>
+
+<script>
+let me=null, athletes=[], reports=[], pc=null, dc=null, stream=null, transcript=[];
+const $=id=>document.getElementById(id);
+async function api(url,opt={}){const r=await fetch(url,{...opt,headers:{...(opt.headers||{}),"Content-Type":opt.body&&typeof opt.body==="string"?"application/json":(opt.headers||{})["Content-Type"]}});let d;try{d=await r.json()}catch{d=await r.text()}if(!r.ok)throw new Error(d.error||d||"Request failed");return d}
+async function login(){try{await api("/api/login",{method:"POST",body:JSON.stringify({email:$("email").value,password:$("password").value})});await boot()}catch(e){$("loginErr").textContent=e.message}}
+async function logout(){await api("/api/logout",{method:"POST"});location.reload()}
+function navItems(){
+ const base=[["Dashboard","dashboard"],["Live Mock Interview","interview"],["Readiness Reports","reports"]];
+ if(["coach","manager","supervisor"].includes(me.role)) base.push(["Athlete Manager View","manager"]);
+ return base;
+}
+function show(id,el){document.querySelectorAll(".screen").forEach(x=>x.classList.remove("on"));$(id).classList.add("on");document.querySelectorAll(".nav").forEach(x=>x.classList.remove("on"));if(el)el.classList.add("on")}
+async function boot(){
+ me=await api("/api/me"); athletes=await api("/api/athletes"); reports=await api("/api/reports");
+ $("login").classList.add("hidden");$("app").classList.remove("hidden");$("who").textContent=me.name;$("role").textContent=me.role;
+ $("nav").innerHTML=navItems().map((x,i)=>`<div class="nav ${i===0?"on":""}" onclick="show('${x[1]}',this)">${x[0]}</div>`).join("");
+ $("athleteSelect").innerHTML=athletes.map(a=>`<option value="${a.id}">${a.name} — ${a.university}</option>`).join("");
+ renderAll();show("dashboard");
+}
+function readiness(score){return score>=85?"Ready":score>=70?"Almost Ready":score>=55?"Needs Significant Prep":"High Concern"}
+function pill(score){const c=score>=85?"green":score>=70?"amber":"red";return `<span class="pill ${c}">${readiness(score)}</span>`}
+function renderAll(){
+ const total=athletes.length, ready=athletes.filter(a=>(a.currentScore||0)>=85).length;
+ const avg=Math.round(athletes.reduce((s,a)=>s+(a.currentScore||0),0)/(total||1));
+ $("dashCards").innerHTML=[
+  ["Athletes",total],["Ready",ready],["Average Readiness",avg+"/100"],["Reports",reports.length]
+ ].map(x=>`<div class="card"><div class="muted small">${x[0]}</div><div class="kpi">${x[1]}</div></div>`).join("");
+ const rows=athletes.map(a=>`<tr><td><b>${a.name}</b></td><td>${a.interviewDate}</td><td>${a.sessions||0}</td><td>${a.mocks||0}</td><td>${a.initialScore}</td><td>${a.currentScore}</td><td>${pill(a.currentScore)}</td><td>${a.mainConcern||"—"}</td></tr>`).join("");
+ const table=`<table><thead><tr><th>Athlete</th><th>Interview</th><th>Human sessions</th><th>AI mocks</th><th>Initial</th><th>Current</th><th>Status</th><th>Main concern</th></tr></thead><tbody>${rows}</tbody></table>`;
+ $("athleteTable").innerHTML=table;$("managerTable").innerHTML=table;
+ renderReports();
+}
+function renderReports(){
+ $("reportsList").innerHTML=reports.slice().reverse().map(r=>{
+   const a=athletes.find(x=>x.id===r.athleteId)||{};
+   const h=r.humanReview?`<div class="card" style="margin-top:10px"><b>Human review — ${r.humanReview.reviewer}</b><p>Adjusted score: <b>${r.humanReview.score}/100</b></p><p>${r.humanReview.note}</p></div>`:"";
+   const reviewBtn=(me.role==="coach"||me.role==="supervisor")?`<button class="btn secondary" onclick="humanReview('${r.id}',${r.overall})">Add human review</button>`:"";
+   return `<div class="card" style="margin-bottom:16px"><div style="display:flex;justify-content:space-between;gap:10px;align-items:start"><div><h3>${a.name||"Athlete"} · Mock #${r.mockNumber}</h3><div class="muted small">${new Date(r.createdAt).toLocaleString()}</div></div><div><span class="kpi">${r.overall}/100</span> ${pill(r.overall)}</div></div><p><b>Biggest weakness:</b> ${r.biggestWeakness}</p><p>${r.feedback}</p><p><b>Next step:</b> ${r.nextStep}</p>${reviewBtn}${h}</div>`
+ }).join("")||'<div class="card">No reports yet.</div>';
+}
+async function humanReview(reportId,current){
+ const score=prompt("Coach-adjusted readiness score (0-100):",current);if(score===null)return;
+ const note=prompt("Reason for adjustment:","Answers were technically correct, but the athlete still needs more natural responses under rephrased follow-up questions.");if(note===null)return;
+ await api("/api/human-review",{method:"POST",body:JSON.stringify({reportId,score:Number(score),note})});reports=await api("/api/reports");renderAll();
+}
+function addLine(role,text){
+ transcript.push({role,text,at:new Date().toISOString()});
+ const div=document.createElement("div");div.className="msg "+(role==="athlete"?"user":"ai");div.innerHTML=`<b>${role==="athlete"?"Athlete":"AI Interviewer"}:</b> ${text}`;$("transcript").appendChild(div);$("transcript").scrollTop=$("transcript").scrollHeight;
+}
+function addManualLine(){const role=confirm("OK = athlete line, Cancel = AI interviewer line")?"athlete":"assistant";const text=prompt("Transcript line:");if(text)addLine(role,text)}
+async function startVoice(){
+ if(pc)return;
+ $("voiceStatus").textContent="Requesting microphone…";
+ try{
+   pc=new RTCPeerConnection(); const audio=document.createElement("audio");audio.autoplay=true;pc.ontrack=e=>audio.srcObject=e.streams[0];
+   stream=await navigator.mediaDevices.getUserMedia({audio:true});pc.addTrack(stream.getTracks()[0]);
+   dc=pc.createDataChannel("oai-events");
+   dc.addEventListener("open",()=>{$("voiceStatus").textContent="Connected — interview is live";$("startBtn").disabled=true;$("stopBtn").disabled=false;});
+   dc.addEventListener("message",e=>{
+     const ev=JSON.parse(e.data);
+     // Event names may evolve; handle several common transcript shapes defensively.
+     if(ev.type==="conversation.item.input_audio_transcription.completed" && ev.transcript) addLine("athlete",ev.transcript);
+     if((ev.type==="response.output_audio_transcript.done"||ev.type==="response.audio_transcript.done") && ev.transcript) addLine("assistant",ev.transcript);
+     if(ev.type==="error") $("voiceStatus").textContent="Realtime error: "+(ev.error?.message||"unknown");
+   });
+   const offer=await pc.createOffer();await pc.setLocalDescription(offer);
+   const athleteId=$("athleteSelect").value;
+   const r=await fetch("/api/realtime-session?athleteId="+encodeURIComponent(athleteId),{method:"POST",body:offer.sdp,headers:{"Content-Type":"application/sdp"}});
+   if(!r.ok){let t=await r.text();throw new Error(t)}
+   await pc.setRemoteDescription({type:"answer",sdp:await r.text()});
+ }catch(e){$("voiceStatus").textContent="Could not start: "+e.message;stopVoice()}
+}
+function stopVoice(){if(stream)stream.getTracks().forEach(t=>t.stop());if(dc)dc.close();if(pc)pc.close();pc=dc=stream=null;$("voiceStatus").textContent="Interview ended";$("startBtn").disabled=false;$("stopBtn").disabled=true}
+async function generateReport(){
+ if(transcript.length<2){$("evalStatus").textContent="Add or capture at least a short interview transcript first.";return}
+ $("evalStatus").textContent="Generating readiness report…";
+ try{
+   const athleteId=$("athleteSelect").value;
+   await api("/api/save-transcript",{method:"POST",body:JSON.stringify({athleteId,transcript})});
+   const r=await api("/api/evaluate",{method:"POST",body:JSON.stringify({athleteId,transcript})});
+   $("evalStatus").textContent=`Report created: ${r.overall}/100 — ${r.readiness}`;
+   athletes=await api("/api/athletes");reports=await api("/api/reports");renderAll();show("reports");
+ }catch(e){$("evalStatus").textContent=e.message}
+}
+boot().catch(()=>{});
+</script>
+</body></html>
