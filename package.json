@@ -1,8 +1,7 @@
 {
-  "name": "scholarbook-visa-prep-demo",
-  "version": "1.0.0",
+  "name": "scholarbook-visa-prep-v2",
+  "version": "2.0.0",
   "private": true,
-  "description": "ScholarBook Visa Prep working demo",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"

@@ -7,8 +7,8 @@
 :root{--navy:#0b1f4d;--blue:#2457ff;--purple:#6d45e6;--bg:#f5f7fb;--line:#dde4ef;--muted:#6d7891;--green:#15915a;--amber:#c77d00;--red:#c73737}
 *{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:#14213d}
 button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{border:0;border-radius:10px;padding:11px 15px;font-weight:800;cursor:pointer}.primary{background:linear-gradient(135deg,var(--blue),var(--purple));color:white}.secondary{background:#edf1f7;color:#16233e}.danger{background:#fff0f0;color:var(--red)}
-.login{min-height:100vh;display:grid;place-items:center;background:linear-gradient(135deg,#08183e,#163979 60%,#6747dd)}.loginCard{width:min(430px,92vw);background:white;padding:28px;border-radius:18px;box-shadow:0 24px 70px #04102c55}.logo{width:46px;height:46px;border-radius:12px;background:linear-gradient(135deg,var(--navy),var(--blue));display:grid;place-items:center;color:white;font-weight:900}
-.field{margin:13px 0}.field label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}.field input,.field textarea{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px}.muted{color:var(--muted)}.small{font-size:13px}
+.login{min-height:100vh;display:grid;place-items:center;background:linear-gradient(135deg,#08183e,#163979 60%,#6747dd)}.loginCard{width:min(560px,92vw);background:white;padding:28px;border-radius:18px;box-shadow:0 24px 70px #04102c55}.logo{width:46px;height:46px;border-radius:12px;background:linear-gradient(135deg,var(--navy),var(--blue));display:grid;place-items:center;color:white;font-weight:900}
+.field{margin:13px 0}.field label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}.field input,.field textarea,.field select{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;background:white}.formgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 14px}.formgrid .wide{grid-column:1/-1}.linkbtn{border:0;background:none;color:var(--blue);font-weight:800;cursor:pointer;padding:8px 0}.modalish{max-width:900px;margin:30px auto;background:white;border:1px solid var(--line);border-radius:18px;padding:24px}.stepnote{background:#f3f6ff;border:1px solid #d8e1ff;padding:12px;border-radius:10px;color:#324a8a}.field input,.field textarea{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px}.muted{color:var(--muted)}.small{font-size:13px}
 .top{height:66px;background:white;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0}.brand{display:flex;align-items:center;gap:10px;font-weight:900}.layout{display:grid;grid-template-columns:230px 1fr}.side{min-height:calc(100vh - 66px);background:var(--navy);padding:16px;color:white}.nav{padding:12px;border-radius:10px;color:#ced8ef;cursor:pointer;margin:4px 0}.nav:hover,.nav.on{background:#193873;color:white}.main{padding:24px;max-width:1400px;width:100%;margin:auto}.screen{display:none}.screen.on{display:block}.grid{display:grid;gap:16px}.g2{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}.g4{grid-template-columns:repeat(4,minmax(0,1fr))}.card{background:white;border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 8px 24px #081c4510}.kpi{font-size:34px;font-weight:900}.pill{display:inline-block;padding:6px 9px;border-radius:99px;font-size:12px;font-weight:800}.amber{background:#fff2d6;color:#8a5600}.green{background:#e4f7ed;color:#116d44}.red{background:#fde9e9;color:#9d2626}.blue{background:#eaf0ff;color:#2445ad}.progress{height:9px;background:#e9edf5;border-radius:99px;overflow:hidden}.bar{height:100%;background:linear-gradient(90deg,var(--blue),var(--purple))}
 table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:11px;border-bottom:1px solid var(--line);text-align:left}th{background:#f8faff}.voiceBox{display:grid;grid-template-columns:1.4fr .8fr;gap:16px}.status{padding:12px;border-radius:10px;background:#edf3ff;color:#2349a5}.transcript{height:320px;overflow:auto;background:#fafbfe;border:1px solid var(--line);border-radius:12px;padding:12px}.msg{padding:10px 12px;border-radius:10px;margin:8px 0}.ai{background:#eef2ff}.user{background:#eaf8f0}.notice{background:#fff8e5;border:1px solid #eddca4;padding:12px;border-radius:10px;color:#6e5718;margin-bottom:16px}
 @media(max-width:900px){.layout{grid-template-columns:1fr}.side{display:none}.g4,.g3,.g2,.voiceBox{grid-template-columns:1fr}.main{padding:14px}}
@@ -23,8 +23,39 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:11px;bord
     <div class="field"><label>Email</label><input id="email" value="efe.sam@scholarbook.net"></div>
     <div class="field"><label>Password</label><input id="password" type="password" value="demo123"></div>
     <button class="btn primary" style="width:100%" onclick="login()">Sign in</button>
-    <p class="small muted">Demo accounts are listed in the README. Change all demo passwords before any real use.</p>
+    <button class="linkbtn" style="width:100%;margin-top:10px" onclick="showRegistration()">New athlete? Create your account</button>
+    <p class="small muted">Athlete registration creates an athlete account only. Staff accounts are managed separately.</p>
     <div id="loginErr" class="small" style="color:#b32626"></div>
+  </div>
+</div>
+
+
+<div id="registration" class="hidden" style="min-height:100vh;background:var(--bg);padding:20px">
+  <div class="modalish">
+    <div style="display:flex;justify-content:space-between;gap:15px;align-items:start"><div><div class="logo">SB</div><h1>Create Athlete Account</h1><p class="muted">Complete your own profile so the visa-prep team can see the correct information from the start.</p></div><button class="btn secondary" onclick="backToLogin()">Back to Sign In</button></div>
+    <div class="notice">Prototype notice: Do not enter passport numbers, DS-160 details, financial-document images, Social Security numbers, or other highly sensitive information.</div>
+    <div class="formgrid">
+      <div class="field"><label>Full name *</label><input id="r_name"></div>
+      <div class="field"><label>Email *</label><input id="r_email" type="email"></div>
+      <div class="field"><label>Password *</label><input id="r_password" type="password" placeholder="At least 8 characters"></div>
+      <div class="field"><label>Phone</label><input id="r_phone"></div>
+      <div class="field"><label>Country *</label><input id="r_country"></div>
+      <div class="field"><label>Interview location / Embassy</label><input id="r_interviewLocation" placeholder="e.g. Nairobi, Kenya"></div>
+      <div class="field"><label>Sport *</label><input id="r_sport"></div>
+      <div class="field"><label>University *</label><input id="r_university"></div>
+      <div class="field"><label>Degree / Major *</label><input id="r_major"></div>
+      <div class="field"><label>Academic level</label><select id="r_academicLevel"><option value="">Select</option><option>Freshman / First year</option><option>Sophomore / Second year</option><option>Junior / Third year</option><option>Senior / Fourth year</option><option>Graduate</option><option>Other</option></select></div>
+      <div class="field"><label>Scholarship type</label><input id="r_scholarshipType" placeholder="e.g. Athletic scholarship"></div>
+      <div class="field"><label>What does the scholarship cover?</label><input id="r_scholarshipCoverage" placeholder="Use your actual award information"></div>
+      <div class="field"><label>Previous U.S. visa refusal?</label><select id="r_previousRefusal"><option>No</option><option>Yes</option></select></div>
+      <div class="field"><label>Number of previous attempts</label><input id="r_previousAttempts" type="number" min="0" value="0"></div>
+      <div class="field"><label>Previous U.S. travel?</label><select id="r_previousTravel"><option>No</option><option>Yes</option></select></div>
+      <div class="field"><label>Who covers costs not covered by scholarship?</label><input id="r_remainingSponsor"></div>
+      <div class="field wide"><label>What are your plans after graduation?</label><textarea id="r_postGradPlan" rows="4" placeholder="Briefly describe your genuine current plan."></textarea></div>
+    </div>
+    <div class="stepnote small">By creating an account, you confirm that the information you enter is your own and should be truthful. This prototype does not determine visa eligibility.</div>
+    <button class="btn primary" style="width:100%;margin-top:15px" onclick="registerAthlete()">Create Athlete Account</button>
+    <div id="registerErr" class="small" style="color:#b32626;margin-top:10px"></div>
   </div>
 </div>
 
@@ -60,6 +91,12 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:11px;bord
         </div>
       </div>
     </section>
+
+    <section id="profile" class="screen">
+      <h1>My Athlete Profile</h1>
+      <div class="notice">Keep this information accurate because the mock interviewer uses your profile as context. Do not enter passport numbers, DS-160 details, or upload sensitive financial documents in this prototype.</div>
+      <div class="card"><div id="profileForm" class="formgrid"></div><button class="btn primary" onclick="saveProfile()">Save Profile Changes</button><span id="profileStatus" class="small muted" style="margin-left:10px"></span></div>
+    </section>
     <section id="reports" class="screen">
       <h1>Readiness Reports</h1><div id="reportsList"></div>
     </section>
@@ -72,9 +109,18 @@ let me=null, athletes=[], reports=[], pc=null, dc=null, stream=null, transcript=
 const $=id=>document.getElementById(id);
 async function api(url,opt={}){const r=await fetch(url,{...opt,headers:{...(opt.headers||{}),"Content-Type":opt.body&&typeof opt.body==="string"?"application/json":(opt.headers||{})["Content-Type"]}});let d;try{d=await r.json()}catch{d=await r.text()}if(!r.ok)throw new Error(d.error||d||"Request failed");return d}
 async function login(){try{await api("/api/login",{method:"POST",body:JSON.stringify({email:$("email").value,password:$("password").value})});await boot()}catch(e){$("loginErr").textContent=e.message}}
+function showRegistration(){ $("login").classList.add("hidden"); $("registration").classList.remove("hidden"); }
+function backToLogin(){ $("registration").classList.add("hidden"); $("login").classList.remove("hidden"); }
+async function registerAthlete(){
+ const ids=["name","email","password","phone","country","interviewLocation","sport","university","major","academicLevel","scholarshipType","scholarshipCoverage","previousRefusal","previousAttempts","previousTravel","remainingSponsor","postGradPlan"];
+ const body={}; ids.forEach(k=>body[k]=$("r_"+k).value);
+ try{ $("registerErr").textContent="Creating account…"; await api("/api/register-athlete",{method:"POST",body:JSON.stringify(body)}); $("registration").classList.add("hidden"); await boot(); }
+ catch(e){ $("registerErr").textContent=e.message; }
+}
 async function logout(){await api("/api/logout",{method:"POST"});location.reload()}
 function navItems(){
  const base=[["Dashboard","dashboard"],["Live Mock Interview","interview"],["Readiness Reports","reports"]];
+ if(me.role==="athlete") base.splice(1,0,["My Profile","profile"]);
  if(["coach","manager","supervisor"].includes(me.role)) base.push(["Athlete Manager View","manager"]);
  return base;
 }
@@ -84,7 +130,24 @@ async function boot(){
  $("login").classList.add("hidden");$("app").classList.remove("hidden");$("who").textContent=me.name;$("role").textContent=me.role;
  $("nav").innerHTML=navItems().map((x,i)=>`<div class="nav ${i===0?"on":""}" onclick="show('${x[1]}',this)">${x[0]}</div>`).join("");
  $("athleteSelect").innerHTML=athletes.map(a=>`<option value="${a.id}">${a.name} — ${a.university}</option>`).join("");
- renderAll();show("dashboard");
+ renderAll(); if(me.role==="athlete") await renderProfile(); show("dashboard");
+}
+async function renderProfile(){
+ const p=await api("/api/my-profile");
+ const fields=[
+  ["phone","Phone","text"],["country","Country","text"],["interviewLocation","Interview location / Embassy","text"],
+  ["sport","Sport","text"],["university","University","text"],["major","Degree / Major","text"],["academicLevel","Academic level","text"],
+  ["scholarship","Scholarship type","text"],["scholarshipCoverage","Scholarship coverage","text"],["previousRefusal","Previous U.S. visa refusal?","text"],
+  ["previousAttempts","Previous attempts","number"],["previousTravel","Previous U.S. travel?","text"],["remainingSponsor","Who covers remaining costs?","text"],
+  ["postGradPlan","Plans after graduation","textarea"]
+ ];
+ $("profileForm").innerHTML=fields.map(([k,label,t])=>`<div class="field ${k==="postGradPlan"?"wide":""}"><label>${label}</label>${t==="textarea"?`<textarea id="p_${k}" rows="4">${p[k]||""}</textarea>`:`<input id="p_${k}" type="${t}" value="${String(p[k]??"").replace(/"/g,"&quot;")}">`}</div>`).join("");
+}
+async function saveProfile(){
+ const keys=["phone","country","interviewLocation","sport","university","major","academicLevel","scholarship","scholarshipCoverage","previousRefusal","previousAttempts","previousTravel","remainingSponsor","postGradPlan"];
+ const body={}; keys.forEach(k=>body[k]=$("p_"+k).value);
+ try{ $("profileStatus").textContent="Saving…"; await api("/api/my-profile",{method:"PUT",body:JSON.stringify(body)}); athletes=await api("/api/athletes"); renderAll(); $("profileStatus").textContent="Saved"; }
+ catch(e){ $("profileStatus").textContent=e.message; }
 }
 function readiness(score){return score>=85?"Ready":score>=70?"Almost Ready":score>=55?"Needs Significant Prep":"High Concern"}
 function pill(score){const c=score>=85?"green":score>=70?"amber":"red";return `<span class="pill ${c}">${readiness(score)}</span>`}

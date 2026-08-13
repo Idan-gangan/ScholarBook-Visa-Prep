@@ -51,6 +51,9 @@ function serveStatic(req,res){
   }
   res.writeHead(200,{"Content-Type":contentType(file)}); fs.createReadStream(file).pipe(res);
 }
+function makeId(prefix){ return prefix+"_"+crypto.randomBytes(6).toString("hex"); }
+function clean(v,max=200){ return String(v??"").trim().slice(0,max); }
+
 function outputText(resp){
   if(typeof resp.output_text==="string") return resp.output_text;
   const chunks=[];
@@ -65,6 +68,36 @@ function outputText(resp){
 const server=http.createServer(async (req,res)=>{
   try{
     const url=new URL(req.url, `http://${req.headers.host}`);
+
+
+    if(req.method==="POST" && url.pathname==="/api/register-athlete"){
+      const body=JSON.parse((await readBody(req)).toString()||"{}");
+      const required=["name","email","password","country","sport","university","major"];
+      const missing=required.filter(k=>!clean(body[k]));
+      if(missing.length) return json(res,400,{error:"Please complete: "+missing.join(", ")});
+      if(clean(body.password).length<8) return json(res,400,{error:"Password must be at least 8 characters."});
+      const email=clean(body.email,160).toLowerCase();
+      if(!/^\S+@\S+\.\S+$/.test(email)) return json(res,400,{error:"Enter a valid email address."});
+      const db=loadDb();
+      if(db.users.some(u=>u.email.toLowerCase()===email)) return json(res,409,{error:"An account with this email already exists."});
+      const userId=makeId("u"); const athleteId=makeId("a");
+      db.users.push({id:userId,name:clean(body.name,120),email,role:"athlete",passwordHash:sha(body.password)});
+      db.athletes.push({
+        id:athleteId,userId,name:clean(body.name,120),email,
+        phone:clean(body.phone,40),country:clean(body.country,80),
+        interviewLocation:clean(body.interviewLocation,120),university:clean(body.university,160),
+        major:clean(body.major,160),academicLevel:clean(body.academicLevel,80),sport:clean(body.sport,120),
+        scholarship:clean(body.scholarshipType,120),scholarshipCoverage:clean(body.scholarshipCoverage,240),
+        previousRefusal:clean(body.previousRefusal,20),previousAttempts:Number(body.previousAttempts||0),
+        previousTravel:clean(body.previousTravel,20),remainingSponsor:clean(body.remainingSponsor,160),
+        postGradPlan:clean(body.postGradPlan,500),profileStatus:"Complete",createdAt:new Date().toISOString(),
+        sessions:0,mocks:0,initialScore:0,currentScore:0,mainConcern:"New athlete — not yet assessed"
+      });
+      saveDb(db);
+      const token=crypto.randomBytes(24).toString("hex"); sessions.set(token,userId);
+      res.writeHead(201,{"Content-Type":"application/json","Set-Cookie":`sb_session=${token}; HttpOnly; SameSite=Lax; Path=/`});
+      return res.end(JSON.stringify({ok:true,user:{id:userId,name:clean(body.name,120),role:"athlete",email}}));
+    }
 
     if(req.method==="POST" && url.pathname==="/api/login"){
       const body=JSON.parse((await readBody(req)).toString()||"{}");
@@ -85,6 +118,27 @@ const server=http.createServer(async (req,res)=>{
     if(req.method==="GET" && url.pathname==="/api/me"){
       const u=requireUser(req,res); if(!u) return;
       return json(res,200,{id:u.id,name:u.name,role:u.role,email:u.email});
+    }
+
+
+    if(req.method==="GET" && url.pathname==="/api/my-profile"){
+      const u=requireUser(req,res); if(!u) return;
+      if(u.role!=="athlete") return json(res,403,{error:"Athlete access required"});
+      const db=loadDb(); const athlete=db.athletes.find(a=>a.userId===u.id);
+      if(!athlete) return json(res,404,{error:"Athlete profile not found"});
+      return json(res,200,athlete);
+    }
+
+    if(req.method==="PUT" && url.pathname==="/api/my-profile"){
+      const u=requireUser(req,res); if(!u) return;
+      if(u.role!=="athlete") return json(res,403,{error:"Athlete access required"});
+      const body=JSON.parse((await readBody(req)).toString()||"{}");
+      const db=loadDb(); const athlete=db.athletes.find(a=>a.userId===u.id);
+      if(!athlete) return json(res,404,{error:"Athlete profile not found"});
+      const fields={phone:40,country:80,interviewLocation:120,university:160,major:160,academicLevel:80,sport:120,scholarship:120,scholarshipCoverage:240,previousRefusal:20,previousTravel:20,remainingSponsor:160,postGradPlan:500};
+      for(const [k,max] of Object.entries(fields)) if(k in body) athlete[k]=clean(body[k],max);
+      if("previousAttempts" in body) athlete.previousAttempts=Math.max(0,Number(body.previousAttempts||0));
+      athlete.updatedAt=new Date().toISOString(); saveDb(db); return json(res,200,athlete);
     }
 
     if(req.method==="GET" && url.pathname==="/api/athletes"){
