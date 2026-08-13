@@ -48,7 +48,7 @@ const result = await pool.query("SELECT data FROM app_state WHERE id = 1");
 }
 async function saveDb(db){
   await pool.query("UPDATE app_state SET data = $1 WHERE id = 1", [db]);
-}|
+}
 function parseCookies(req){
   return Object.fromEntries((req.headers.cookie||"").split(";").filter(Boolean).map(x=>{
     const i=x.indexOf("="); return [x.slice(0,i).trim(), decodeURIComponent(x.slice(i+1))];
