@@ -12,12 +12,12 @@ const PORT = process.env.PORT || 3000;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 const EVALUATION_MODEL = process.env.EVALUATION_MODEL || "gpt-5.6";
 const PUBLIC = path.join(__dirname, "public");
-const DATA_FILE = path.join(__dirname, "data", "db.json");
+
 const sessions = new Map();
 
 function sha(v){ return crypto.createHash("sha256").update(v).digest("hex"); }
-function loadDb(){ return JSON.parse(fs.readFileSync(DATA_FILE, "utf8")); }
-function saveDb(db){ fs.writeFileSync(DATA_FILE, JSON.stringify(db, null, 2)); }
+
+
 function json(res, code, obj){
   res.writeHead(code, {"Content-Type":"application/json","Cache-Control":"no-store"});
   res.end(JSON.stringify(obj));
