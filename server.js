@@ -326,5 +326,10 @@ Start by greeting the athlete and asking why they are going to the United States
     return json(res,500,{error:"Server error",detail:String(err.message||err)});
   }
 });
-await initDb();
-server.listen(PORT,()=>console.log(`ScholarBook Visa Prep demo running on http://localhost:${PORT}`));
+initDb().then(() => {
+  server.listen(PORT, () => console.log(`ScholarBook Visa Prep demo running on http://localhost:${PORT}`));
+}).catch(err => {
+  console.error("Database initialization failed:", err);
+  process.exit(1);
+});
+
