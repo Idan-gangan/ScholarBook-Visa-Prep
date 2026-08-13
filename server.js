@@ -12,7 +12,7 @@ const PORT = process.env.PORT || 3000;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 const EVALUATION_MODEL = process.env.EVALUATION_MODEL || "gpt-5.6";
 const PUBLIC = path.join(__dirname, "public");
-
+const DATA_FILE = path.join(__dirname, "data", "db.json");
 const sessions = new Map();
 
 function sha(v){ return crypto.createHash("sha256").update(v).digest("hex"); }
@@ -27,20 +27,41 @@ function readBody(req){
     let chunks=[]; req.on("data",c=>chunks.push(c)); req.on("end",()=>resolve(Buffer.concat(chunks)));
     req.on("error",reject);
   });
+}async function initDb(){
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS app_state (
+      id INTEGER PRIMARY KEY,
+      data JSONB NOT NULL
+    )
+  `);
+
+  await pool.query(
+    `INSERT INTO app_state (id, data)
+     VALUES (1, $1::jsonb)
+     ON CONFLICT (id) DO NOTHING`,
+    [JSON.stringify({ users: [], athletes: [], reports: [], transcripts: [] })]
+  );
 }
+async function loadDb(){
+const result = await pool.query("SELECT data FROM app_state WHERE id = 1");
+ return result.rows[0]?.data || { users: [], athletes: [], reports: [], transcripts: [] };
+}
+async function saveDb(db){
+  await pool.query("UPDATE app_state SET data = $1 WHERE id = 1", [db]);
+}|
 function parseCookies(req){
   return Object.fromEntries((req.headers.cookie||"").split(";").filter(Boolean).map(x=>{
     const i=x.indexOf("="); return [x.slice(0,i).trim(), decodeURIComponent(x.slice(i+1))];
   }));
 }
-function getUser(req){
+async function getUser(req){
   const token=parseCookies(req).sb_session;
   if(!token || !sessions.has(token)) return null;
-  const db=loadDb();
+  const db= await loadDb();
   return db.users.find(u=>u.id===sessions.get(token)) || null;
 }
-function requireUser(req,res){
-  const u=getUser(req); if(!u){json(res,401,{error:"Unauthorized"}); return null;} return u;
+async function requireUser(req,res){
+  const u=await getUser(req); if(!u){json(res,401,{error:"Unauthorized"}); return null;} return u;
 }
 function contentType(file){
   const ext=path.extname(file);
@@ -82,7 +103,7 @@ const server=http.createServer(async (req,res)=>{
       if(clean(body.password).length<8) return json(res,400,{error:"Password must be at least 8 characters."});
       const email=clean(body.email,160).toLowerCase();
       if(!/^\S+@\S+\.\S+$/.test(email)) return json(res,400,{error:"Enter a valid email address."});
-      const db=loadDb();
+      const db=await loadDb();
       if(db.users.some(u=>u.email.toLowerCase()===email)) return json(res,409,{error:"An account with this email already exists."});
       const userId=makeId("u"); const athleteId=makeId("a");
       db.users.push({id:userId,name:clean(body.name,120),email,role:"athlete",passwordHash:sha(body.password)});
@@ -97,7 +118,7 @@ const server=http.createServer(async (req,res)=>{
         postGradPlan:clean(body.postGradPlan,500),profileStatus:"Complete",createdAt:new Date().toISOString(),
         sessions:0,mocks:0,initialScore:0,currentScore:0,mainConcern:"New athlete — not yet assessed"
       });
-      saveDb(db);
+      await saveDb(db);
       const token=crypto.randomBytes(24).toString("hex"); sessions.set(token,userId);
       res.writeHead(201,{"Content-Type":"application/json","Set-Cookie":`sb_session=${token}; HttpOnly; SameSite=Lax; Path=/`});
       return res.end(JSON.stringify({ok:true,user:{id:userId,name:clean(body.name,120),role:"athlete",email}}));
@@ -105,7 +126,7 @@ const server=http.createServer(async (req,res)=>{
 
     if(req.method==="POST" && url.pathname==="/api/login"){
       const body=JSON.parse((await readBody(req)).toString()||"{}");
-      const db=loadDb();
+      const db=await loadDb();
       const user=db.users.find(u=>u.email.toLowerCase()===(body.email||"").toLowerCase());
       if(!user || user.passwordHash!==sha(body.password||"")) return json(res,401,{error:"Invalid email or password"});
       const token=crypto.randomBytes(24).toString("hex"); sessions.set(token,user.id);
@@ -120,42 +141,42 @@ const server=http.createServer(async (req,res)=>{
     }
 
     if(req.method==="GET" && url.pathname==="/api/me"){
-      const u=requireUser(req,res); if(!u) return;
+      const u=await requireUser(req,res); if(!u) return;
       return json(res,200,{id:u.id,name:u.name,role:u.role,email:u.email});
     }
 
 
     if(req.method==="GET" && url.pathname==="/api/my-profile"){
-      const u=requireUser(req,res); if(!u) return;
+      const u=await requireUser(req,res); if(!u) return;
       if(u.role!=="athlete") return json(res,403,{error:"Athlete access required"});
-      const db=loadDb(); const athlete=db.athletes.find(a=>a.userId===u.id);
+      const db=await loadDb(); const athlete=db.athletes.find(a=>a.userId===u.id);
       if(!athlete) return json(res,404,{error:"Athlete profile not found"});
       return json(res,200,athlete);
     }
 
     if(req.method==="PUT" && url.pathname==="/api/my-profile"){
-      const u=requireUser(req,res); if(!u) return;
+      const u=await requireUser(req,res); if(!u) return;
       if(u.role!=="athlete") return json(res,403,{error:"Athlete access required"});
       const body=JSON.parse((await readBody(req)).toString()||"{}");
-      const db=loadDb(); const athlete=db.athletes.find(a=>a.userId===u.id);
+      const db=await loadDb(); const athlete=db.athletes.find(a=>a.userId===u.id);
       if(!athlete) return json(res,404,{error:"Athlete profile not found"});
       const fields={phone:40,country:80,interviewLocation:120,university:160,major:160,academicLevel:80,sport:120,scholarship:120,scholarshipCoverage:240,previousRefusal:20,previousTravel:20,remainingSponsor:160,postGradPlan:500};
       for(const [k,max] of Object.entries(fields)) if(k in body) athlete[k]=clean(body[k],max);
       if("previousAttempts" in body) athlete.previousAttempts=Math.max(0,Number(body.previousAttempts||0));
-      athlete.updatedAt=new Date().toISOString(); saveDb(db); return json(res,200,athlete);
+      athlete.updatedAt=new Date().toISOString(); await saveDb(db); return json(res,200,athlete);
     }
 
     if(req.method==="GET" && url.pathname==="/api/athletes"){
-      const u=requireUser(req,res); if(!u) return;
-      const db=loadDb();
+      const u=await requireUser(req,res); if(!u) return;
+      const db=await loadDb();
       let athletes=db.athletes;
       if(u.role==="athlete") athletes=athletes.filter(a=>a.userId===u.id);
       return json(res,200,athletes);
     }
 
     if(req.method==="GET" && url.pathname==="/api/reports"){
-      const u=requireUser(req,res); if(!u) return;
-      const db=loadDb();
+      const u=await requireUser(req,res); if(!u) return;
+      const db=await loadDb();
       let reports=db.reports;
       if(u.role==="athlete"){
         const athlete=db.athletes.find(a=>a.userId===u.id);
@@ -165,20 +186,20 @@ const server=http.createServer(async (req,res)=>{
     }
 
     if(req.method==="POST" && url.pathname==="/api/human-review"){
-      const u=requireUser(req,res); if(!u) return;
+      const u=await requireUser(req,res); if(!u) return;
       if(!["coach","supervisor"].includes(u.role)) return json(res,403,{error:"Coach or supervisor access required"});
       const body=JSON.parse((await readBody(req)).toString()||"{}");
-      const db=loadDb();
+      const db=await  loadDb();
       const report=db.reports.find(r=>r.id===body.reportId);
       if(!report) return json(res,404,{error:"Report not found"});
       report.humanReview={score:Number(body.score),note:String(body.note||""),reviewer:u.name,reviewedAt:new Date().toISOString()};
-      saveDb(db); return json(res,200,report);
+      await saveDb(db); return json(res,200,report);
     }
 
     if(req.method==="POST" && url.pathname==="/api/save-transcript"){
-      const u=requireUser(req,res); if(!u) return;
+      const u=await requireUser(req,res); if(!u) return;
       const body=JSON.parse((await readBody(req)).toString()||"{}");
-      const db=loadDb();
+      const db=await loadDb();
       db.transcripts.push({
         id:"tr_"+crypto.randomBytes(6).toString("hex"),
         athleteId:body.athleteId,
@@ -186,14 +207,14 @@ const server=http.createServer(async (req,res)=>{
         transcript:Array.isArray(body.transcript)?body.transcript:[],
         createdAt:new Date().toISOString()
       });
-      saveDb(db); return json(res,200,{ok:true});
+      await saveDb(db); return json(res,200,{ok:true});
     }
 
     if(req.method==="POST" && url.pathname==="/api/evaluate"){
-      const u=requireUser(req,res); if(!u) return;
+      const u=await requireUser(req,res); if(!u) return;
       if(!OPENAI_API_KEY) return json(res,503,{error:"OPENAI_API_KEY is not configured on the server."});
       const body=JSON.parse((await readBody(req)).toString()||"{}");
-      const db=loadDb();
+      const db=await loadDb();
       const athlete=db.athletes.find(a=>a.id===body.athleteId);
       if(!athlete) return json(res,404,{error:"Athlete not found"});
 
@@ -250,15 +271,15 @@ Use only information in the supplied profile and transcript. Do not reward inven
       db.reports.push(report);
       athlete.currentScore=Number(result.overall||0);
       athlete.mocks=(athlete.mocks||0)+1;
-      saveDb(db);
+      await saveDb(db);
       return json(res,200,report);
     }
 
     if(req.method==="POST" && url.pathname==="/api/realtime-session"){
-      const u=requireUser(req,res); if(!u) return;
+      const u=await requireUser(req,res); if(!u) return;
       if(!OPENAI_API_KEY) return json(res,503,{error:"OPENAI_API_KEY is not configured on the server."});
       const athleteId=url.searchParams.get("athleteId");
-      const db=loadDb();
+      const db=await loadDb();
       const athlete=db.athletes.find(a=>a.id===athleteId);
       if(!athlete) return json(res,404,{error:"Athlete not found"});
       const sdp=(await readBody(req)).toString();
@@ -305,4 +326,5 @@ Start by greeting the athlete and asking why they are going to the United States
     return json(res,500,{error:"Server error",detail:String(err.message||err)});
   }
 });
+await initDb();
 server.listen(PORT,()=>console.log(`ScholarBook Visa Prep demo running on http://localhost:${PORT}`));
