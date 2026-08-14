@@ -41,6 +41,32 @@ function readBody(req){
      ON CONFLICT (id) DO NOTHING`,
     [JSON.stringify(JSON.parse(fs.readFileSync(DATA_FILE, "utf8")))]
   );
+  const coachEmail = (process.env.COACH_EMAIL || "").trim().toLowerCase();
+const coachPassword = process.env.COACH_PASSWORD || "";
+
+if (coachEmail && coachPassword) {
+  const db = await loadDb();
+  db.users = Array.isArray(db.users) ? db.users : [];
+
+  let coach = db.users.find(
+    u => (u.email || "").toLowerCase() === coachEmail
+  );
+
+  if (!coach) {
+    coach = {
+      id: "u_" + crypto.randomBytes(6).toString("hex"),
+      name: "Efe-Sam Agalivie",
+      email: coachEmail
+    };
+    db.users.push(coach);
+  }
+
+  coach.name = "Efe-Sam Agalivie";
+  coach.role = "coach";
+  coach.passwordHash = sha(coachPassword);
+
+  await saveDb(db);
+}
 }
 async function loadDb(){
 const result = await pool.query("SELECT data FROM app_state WHERE id = 1");
