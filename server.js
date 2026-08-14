@@ -39,7 +39,7 @@ function readBody(req){
     `INSERT INTO app_state (id, data)
      VALUES (1, $1::jsonb)
      ON CONFLICT (id) DO NOTHING`,
-    [JSON.stringify({ users: [], athletes: [], reports: [], transcripts: [] })]
+    [JSON.stringify(JSON.parse(fs.readFileSync(DATA_FILE, "utf8")))]
   );
 }
 async function loadDb(){
