@@ -1,0 +1,280 @@
+{
+  "location": {
+    "country": "Kenya",
+    "city": "Nairobi",
+    "post": "U.S. Embassy Nairobi",
+    "visa_type": "F-1"
+  },
+
+  "purpose": "Provide Nairobi-specific context for realistic F-1 student-athlete mock visa interviews.",
+
+  "core_interview_areas": [
+    "Why are you going to the United States?",
+    "Why did you choose this university?",
+    "Why did you choose this major or course?",
+    "How did you get your scholarship?",
+    "How many schools recruited you?",
+    "How many schools admitted you?",
+    "Why did you choose this school over the other schools?",
+    "Who is your sponsor?",
+    "What does your scholarship cover?",
+    "How will expenses not covered by the scholarship be paid?",
+    "What are your plans after graduation?",
+    "What sport or event do you compete in?",
+    "How were you recruited by the university?",
+    "When did you finish high school or your previous degree?",
+    "What have you been doing since finishing school?",
+    "What grades did you receive in high school or your previous studies?",
+    "How does your previous education connect to your new program?",
+    "What are your long-term academic, athletic and career goals?",
+    "Have you previously been refused a U.S. visa?",
+    "What has changed since your previous refusal?",
+    "What international travel have you completed before?",
+    "When do your classes start?",
+    "How will you catch up if your visa interview is close to or after your original class start date?",
+    "Has your university approved a late arrival or provided an extension letter?"
+  ],
+
+  "academic_history": {
+    "high_school_applicant": {
+      "questions": [
+        "When did you finish high school?",
+        "What grade did you receive in high school?",
+        "What subjects did you study?",
+        "What have you been doing since completing high school?",
+        "Why did you choose this program?",
+        "How does your academic background prepare you for this course?"
+      ]
+    },
+
+    "undergraduate_to_masters": {
+      "questions": [
+        "What did you study during your undergraduate degree?",
+        "When did you graduate?",
+        "What was your academic performance?",
+        "What have you been doing since graduation?",
+        "Why are you pursuing a master's degree now?",
+        "Why did you choose this master's program?",
+        "How does this master's program connect to your undergraduate degree?",
+        "If the new program is different from your previous degree, why are you changing fields?",
+        "How will this master's degree help your career after graduation?"
+      ]
+    },
+
+    "education_gap": {
+      "questions": [
+        "How long has it been since you last attended school?",
+        "What have you been doing during that period?",
+        "Have you been working, training, competing or studying?",
+        "Why are you returning to school now?"
+      ]
+    }
+  },
+
+  "school_start_date_intelligence": {
+    "purpose": "Test whether the athlete understands their university start date and any approved late-arrival arrangements.",
+
+    "interview_before_start_date": [
+      "When do your classes begin?",
+      "When do you plan to travel to the United States?",
+      "How soon after receiving your visa will you travel?"
+    ],
+
+    "interview_very_close_to_start_date": [
+      "Your classes begin very soon. How do you plan to arrive on time?",
+      "Have you communicated with your university about your visa interview date?",
+      "What arrangements have you made in case you arrive after classes begin?"
+    ],
+
+    "interview_after_original_start_date": [
+      "Your original class start date has already passed. Why are you still able to attend?",
+      "Has your university authorized you to arrive late?",
+      "What is your new approved arrival deadline?",
+      "How will you catch up with classes you may have missed?",
+      "Have your professors or university officials explained how you will catch up?"
+    ],
+
+    "extension_letter_present": [
+      "Who issued your late-arrival or extension letter?",
+      "What is the latest date your university has authorized you to arrive?",
+      "How will you catch up academically after arriving?"
+    ],
+
+    "rules": [
+      "Do not assume an extension letter exists unless it is recorded in the athlete profile.",
+      "Do not invent a new arrival date.",
+      "If an extension letter exists, use the actual approved date provided by the athlete.",
+      "Flag inconsistencies between the athlete's stated dates and their profile."
+    ]
+  },
+
+  "student_athlete_focus": [
+    "Understand the relationship between athletics and academics.",
+    "Ask how the athlete earned or received the scholarship.",
+    "Ask how the university discovered or recruited the athlete.",
+    "Ask how many universities recruited the athlete.",
+    "Ask why the athlete selected this university over other opportunities.",
+    "Ask what the athletic scholarship covers.",
+    "Ask why this university is a good fit for the athlete's specific sport or event.",
+    "Check whether the athlete can clearly explain the chosen academic major.",
+    "Ask how the athlete plans to balance training, competition and academics.",
+    "Do not allow athletics to completely replace the academic purpose of the F-1 visa.",
+    "Ask about long-term athletic goals.",
+    "Ask about long-term academic and career goals.",
+    "Ask what the athlete plans to do after completing the degree."
+  ],
+
+  "adaptive_followups": {
+    "university_choice": [
+      "Why this university?",
+      "What other universities recruited or admitted you?",
+      "Why did you choose this university instead?",
+      "What specifically attracted you to this school's academic and athletic program?"
+    ],
+
+    "scholarship": [
+      "How did you get this scholarship?",
+      "Why did the university offer you the scholarship?",
+      "What exactly does your scholarship cover?",
+      "Is it an athletic scholarship, academic scholarship or a combination?",
+      "Who will pay for expenses not covered by the scholarship?"
+    ],
+
+    "sponsor": [
+      "Who is sponsoring your education?",
+      "What does your sponsor do?",
+      "How will your sponsor afford the remaining costs?",
+      "How much of your education is already covered by your scholarship?"
+    ],
+
+    "major": [
+      "Why did you choose this major?",
+      "What will you study in this program?",
+      "How does this course connect to your previous education?",
+      "How will this degree help you after graduation?"
+    ],
+
+    "athletics": [
+      "What event or sport do you compete in?",
+      "What are your personal best performances?",
+      "How did the university discover or recruit you?",
+      "Why is this university a good fit for your sport?",
+      "How will you balance athletics with your studies?",
+      "What are your long-term athletic goals?"
+    ],
+
+    "high_school": [
+      "When did you finish high school?",
+      "What grade did you receive?",
+      "What have you been doing since you graduated?",
+      "How did you become eligible for admission to this university?"
+    ],
+
+    "education_gap": [
+      "What have you been doing since you finished school?",
+      "Why did you wait before continuing your education?",
+      "How has what you have been doing prepared you for university?"
+    ],
+
+    "masters_applicant": [
+      "What did you study during your undergraduate degree?",
+      "Why are you pursuing a master's degree?",
+      "Why this particular master's program?",
+      "What have you been doing since completing your undergraduate degree?",
+      "How will this master's degree contribute to your future career?"
+    ],
+
+    "previous_refusal": [
+      "When were you previously refused?",
+      "Where were you interviewed?",
+      "What were you asked during that interview?",
+      "What has changed since your previous interview?",
+      "Why are you applying again?"
+    ],
+
+    "post_graduation": [
+      "What do you plan to do after graduation?",
+      "Where do you plan to use this degree?",
+      "How will this degree be useful when you return home?",
+      "How do your academic and athletic goals fit into your long-term plans?"
+    ],
+
+    "late_arrival": [
+      "When were your classes originally scheduled to begin?",
+      "Why has your university allowed you to arrive later?",
+      "What is your approved arrival deadline?",
+      "How will you catch up academically?",
+      "Have you received an extension or late-arrival letter from the university?"
+    ]
+  },
+
+  "interview_selection_logic": {
+    "rules": [
+      "Do not ask every question in every interview.",
+      "Select questions based on the athlete's actual profile.",
+      "Ask high-school questions primarily to undergraduate applicants.",
+      "Ask undergraduate-history questions to master's applicants.",
+      "Ask education-gap questions when there is a meaningful gap in the athlete's education history.",
+      "Ask late-arrival questions when the interview date is close to or after the original university start date.",
+      "Ask refusal questions when the athlete has a previous refusal.",
+      "Ask funding follow-ups when the scholarship does not cover the full cost.",
+      "Use previous answers to generate natural follow-up questions.",
+      "Increase questioning when an answer is unclear, inconsistent or incomplete.",
+      "Avoid repeating questions the athlete has already answered clearly."
+    ]
+  },
+
+  "readiness_checks": [
+    "Answer is direct and concise.",
+    "Answer matches the athlete profile.",
+    "University, major and scholarship information are consistent.",
+    "Student can clearly explain why they are going to the United States.",
+    "Student can explain why they selected the university.",
+    "Student can explain how they earned the scholarship.",
+    "Student understands their academic program.",
+    "Student can explain their previous education.",
+    "Student can explain any education gap.",
+    "Student can explain funding clearly.",
+    "Student can explain athletics without making athletics the only purpose of studying.",
+    "Student can explain their long-term academic, athletic and career goals.",
+    "Student understands their class start date.",
+    "If late arrival applies, the student can clearly explain the approved arrangement.",
+    "Previous refusal answers are consistent with the athlete's history.",
+    "Post-graduation plans are understandable and consistent."
+  ],
+
+  "observed_nairobi_patterns": {
+    "status": "Reviewed interview observations and preparation intelligence. These are not guaranteed embassy rules.",
+
+    "use_as_probability_not_fact": true,
+
+    "areas_seen_in_reports": [
+      "Reason for traveling to the United States",
+      "University choice",
+      "Academic major",
+      "High school grades",
+      "Activities since high school or graduation",
+      "Athletic background",
+      "Recruitment process",
+      "Number of universities recruiting the athlete",
+      "Scholarship and funding",
+      "Sponsor information",
+      "Previous visa history",
+      "Graduation plans",
+      "Education gaps",
+      "University start date",
+      "Late arrival and extension arrangements"
+    ]
+  },
+
+  "safety_rules": [
+    "Never promise visa approval.",
+    "Never present interview patterns as official embassy rules.",
+    "Never coach the athlete to provide false information.",
+    "Never invent grades, scholarship amounts, sponsors, dates or university information.",
+    "Flag contradictions instead of inventing explanations.",
+    "Do not use officer race, ethnicity, gender or appearance to predict visa outcomes.",
+    "Readiness scores measure preparation only, not probability of visa approval.",
+    "A university extension or late-arrival letter should be treated as supporting information, not a guarantee of visa issuance."
+  ]
+}
