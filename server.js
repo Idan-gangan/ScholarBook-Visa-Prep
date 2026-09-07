@@ -14,7 +14,23 @@ const EVALUATION_MODEL = process.env.EVALUATION_MODEL || "gpt-5.6";
 const PUBLIC = path.join(__dirname, "public");
 const DATA_FILE = path.join(__dirname, "data", "db.json");
 const sessions = new Map();
+const KNOWLEDGE_DIR = path.join(__dirname, "knowledge");
 
+function loadEmbassyKnowledge(interviewLocation = "") {
+  try {
+    const location = String(interviewLocation || "").toLowerCase();
+
+    if (location.includes("nairobi") || location.includes("kenya")) {
+      const file = path.join(KNOWLEDGE_DIR, "nairobi.json");
+      return JSON.parse(fs.readFileSync(file, "utf8"));
+    }
+
+    return null;
+  } catch (err) {
+    console.error("Could not load embassy knowledge:", err);
+    return null;
+  }
+}
 function sha(v){ return crypto.createHash("sha256").update(v).digest("hex"); }
 
 
@@ -309,10 +325,14 @@ Use only information in the supplied profile and transcript. Do not reward inven
       const athlete=db.athletes.find(a=>a.id===athleteId);
       if(!athlete) return json(res,404,{error:"Athlete not found"});
       const sdp=(await readBody(req)).toString();
-
+const embassyKnowledge = loadEmbassyKnowledge(athlete.interviewLocation);
       const instructions=`You are a realistic but fair F-1 student visa mock interviewer for ScholarBook Visa Prep.
 You are speaking with ${athlete.name}.
 Known profile: university=${athlete.university}; major=${athlete.major}; sport=${athlete.sport}; scholarship=${athlete.scholarship}; interview location=${athlete.interviewLocation}.
+Embassy-specific preparation context:
+${embassyKnowledge ? JSON.stringify(embassyKnowledge) : "No location-specific knowledge available. Use general F-1 preparation guidance only."}
+
+Use this context to guide the mock interview, not as official embassy policy. Ask natural follow-up questions based on the athlete's profile and answers. Adapt questions to the athlete's academic level and interview timing. Do not invent location-specific facts or treat reported interview patterns as guarantees.
 Conduct a natural spoken mock interview. Ask ONE question at a time. Listen to the answer, then ask a relevant follow-up based on what was actually said.
 Cover purpose of study, university choice, major knowledge, scholarship/finances, post-graduation plans, and application knowledge.
 Do not coach during the interview. Do not tell the athlete what answer to give.
