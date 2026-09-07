@@ -267,6 +267,11 @@ const server=http.createServer(async (req,res)=>{
 
       const prompt = `You are evaluating an F-1 student visa MOCK INTERVIEW for preparation quality only.
 Never predict visa approval and never state an approval probability. Score only interview readiness.
+
+Embassy-specific preparation context:
+${JSON.stringify(loadEmbassyKnowledge(athlete.interviewLocation))}
+
+Use the rubric above to evaluate the athlete's interview readiness. Give specific feedback based on the athlete's actual answers, academic background, scholarship and funding, and post-graduation plans. Use the embassy-specific context when relevant, but do not treat reported interview patterns as official embassy rules. Do not invent current embassy trends, applicant facts, or visa approval probabilities. If no location-specific knowledge is available, use general F-1 preparation guidance only.
 Athlete profile:
 ${JSON.stringify(athlete,null,2)}
 
