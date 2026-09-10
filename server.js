@@ -30,6 +30,7 @@ if (
   location.includes("abuja")
 ) {
   const file = path.join(KNOWLEDGE_DIR, "nigeria.json");
+  console.log("Nigeria intelligence loaded for:", interviewLocation);
   return JSON.parse(fs.readFileSync(file, "utf8"));
 }
     return null;
