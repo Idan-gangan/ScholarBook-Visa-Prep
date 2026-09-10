@@ -1,0 +1,121 @@
+{
+  "country": "Nigeria",
+  "primary_current_post": "Lagos",
+  "visa_category": "F-1",
+  "last_reviewed": "2026-09-10",
+  "scope": "VisaAtlas mock interview preparation for Nigerian F-1 student-athletes",
+
+  "official_context": {
+    "current_nonimmigrant_processing_post": "Lagos",
+    "abuja_note": "Routine visa services in Abuja were realigned effective August 1, 2026.",
+    "important_rule": "Treat official information as policy. Treat applicant interview experiences only as observed patterns, never as official embassy rules."
+  },
+"question_logic": {
+  "core_questions": [
+    "Why are you going to the United States?",
+    "Why did you choose this university?",
+    "Why did you choose this major or program?",
+    "Who is paying for your education?",
+    "What are your plans after graduation?"
+  ],
+
+  "undergraduate_questions": [
+    "When did you finish high school?",
+    "What have you been doing since you finished high school?",
+    "What were your academic results in high school?"
+  ],
+
+  "graduate_questions": [
+    "What did you study for your bachelor's degree?",
+    "When did you graduate?",
+    "What have you been doing since graduation?",
+    "Why did you choose this graduate program?",
+    "How does this program relate to your bachelor's degree?",
+    "If this program is different from your bachelor's degree, why are you changing fields?"
+  ],
+
+  "student_athlete_questions": [
+    "When did you start your sport?",
+    "What sport do you compete in?",
+    "What is your event?",
+    "What is your personal best?",
+    "How were you recruited?",
+    "How many U.S. schools recruited you?",
+    "Which schools recruited you?",
+    "Why did you choose this university over the other schools?"
+  ],
+
+  "funding_logic": {
+    "full_scholarship": [
+      "How did you get your scholarship?",
+      "What exactly does your scholarship cover?",
+      "Are there any expenses that are not covered?"
+    ],
+
+    "partial_scholarship": [
+      "How did you get your scholarship?",
+      "What exactly does your scholarship cover?",
+      "How much of your total cost is not covered?",
+      "Who will pay the remaining amount?",
+      "What does your sponsor do?",
+      "How will your living expenses be covered?"
+    ],
+
+    "no_scholarship": [
+      "Who is paying for your education?",
+      "What does your sponsor do?",
+      "Why is your sponsor paying for your education?",
+      "How will your tuition and living expenses be covered?",
+      "What is the source of the funds?"
+    ]
+  },
+
+  "previous_refusal_logic": [
+    "Have you applied for a U.S. visa before?",
+    "How many times have you been refused?",
+    "What has changed since your previous refusal?",
+    "Is your university the same as during your previous application?",
+    "Has your scholarship or funding changed since your previous application?",
+    "Has anything changed academically, athletically, financially, or in your study plan?",
+    "Do not invent improvements for the applicant. Probe only changes that are actually supported by the applicant's profile or answers."
+  ],
+
+  "school_change_logic": [
+    "Why did you change universities?",
+    "What happened with the university from your previous visa application?",
+    "Did your scholarship, admission, recruitment, program, or enrollment timing affect the school change?",
+    "Do you think changing universities changes the visa decision?",
+    "If the applicant says the school changed because of a previous refusal, ask what specifically happened after the refusal.",
+    "Do not assume changing schools was an attempt to obtain visa approval. Ask for the applicant's actual reason."
+  ],
+
+  "non_athlete_rule": [
+    "Do not ask sports, event, personal best, or athletic recruitment questions to a non-athlete.",
+    "For non-athletes, focus on academics, university choice, major, funding, education history, and post-graduation plans."
+  ],
+
+  "consistency_followups": [
+    "Revisit important topics later using different wording when appropriate.",
+    "For example, after asking what the applicant plans to do after graduation, later ask what they plan to do in the United States after school.",
+    "Compare later answers with earlier answers for consistency.",
+    "If answers appear inconsistent, ask a natural follow-up instead of assuming dishonesty."
+  ]
+},
+  "routing_rules": [
+  "Do not ask every question in this file and do not follow the questions in a fixed order.",
+  "Ask one question at a time and use the applicant's answer to decide the most relevant follow-up.",
+  "Use core_questions for all applicants when relevant.",
+  "Use undergraduate_questions only for undergraduate applicants.",
+  "Use graduate_questions only for graduate or master's applicants.",
+  "Use student_athlete_questions only when the applicant is a student-athlete.",
+  "For a full scholarship, use the full_scholarship funding branch.",
+  "For a partial scholarship, use the partial_scholarship funding branch and probe how the remaining cost will be paid.",
+  "For an applicant with no scholarship, use the no_scholarship funding branch.",
+  "If the applicant has previous visa refusals, use previous_refusal_logic and ask what has genuinely changed since the previous application.",
+  "If the applicant changed universities since a previous application, use school_change_logic.",
+  "The interviewer may generate natural follow-up questions that are not written verbatim in this file when they logically follow from the applicant's profile or answers.",
+  "Never invent applicant facts, scholarship amounts, athletic performances, sponsors, or changes since a previous refusal.",
+  "Do not coach the applicant during the mock interview. Probe vague or inconsistent answers naturally."
+]
+}
+}
