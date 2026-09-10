@@ -24,7 +24,14 @@ function loadEmbassyKnowledge(interviewLocation = "") {
       const file = path.join(KNOWLEDGE_DIR, "nairobi.json");
       return JSON.parse(fs.readFileSync(file, "utf8"));
     }
-
+if (
+  location.includes("nigeria") ||
+  location.includes("lagos") ||
+  location.includes("abuja")
+) {
+  const file = path.join(KNOWLEDGE_DIR, "nigeria.json");
+  return JSON.parse(fs.readFileSync(file, "utf8"));
+}
     return null;
   } catch (err) {
     console.error("Could not load embassy knowledge:", err);
