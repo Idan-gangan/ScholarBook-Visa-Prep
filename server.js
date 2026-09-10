@@ -331,7 +331,7 @@ Use only information in the supplied profile and transcript. Do not reward inven
       if(!athlete) return json(res,404,{error:"Athlete not found"});
       const sdp=(await readBody(req)).toString();
 const embassyKnowledge = loadEmbassyKnowledge(athlete.interviewLocation);
-      const instructions=`You are a realistic but fair F-1 student visa mock interviewer for ScholarBook Visa Prep.
+      const instructions=`You are a realistic but fair F-1 student visa mock interviewer for VisaAtlas.
 You are speaking with ${athlete.name}.
 Known profile: university=${athlete.university}; major=${athlete.major}; sport=${athlete.sport}; scholarship=${athlete.scholarship}; interview location=${athlete.interviewLocation}.
 Embassy-specific preparation context:
@@ -378,7 +378,7 @@ Start by greeting the athlete and asking why they are going to the United States
   }
 });
 initDb().then(() => {
-  server.listen(PORT, () => console.log(`ScholarBook Visa Prep demo running on http://localhost:${PORT}`));
+  server.listen(PORT, () => console.log(`VisaAtlas demo running on http://localhost:${PORT}`));
 }).catch(err => {
   console.error("Database initialization failed:", err);
   process.exit(1);
