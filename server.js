@@ -361,7 +361,14 @@ Start by greeting the athlete and asking why they are going to the United States
         model:"gpt-realtime-2.1",
         instructions,
         audio:{
-          input:{transcription:{model:"gpt-transcribe"}},
+          input:{
+  transcription:{model:"gpt-transcribe"},
+  turn_detection:{
+    type:"server_vad",
+    create_response:true,
+    interrupt_response:false
+  }
+},
           output:{voice:"marin"}
         }
       }));
