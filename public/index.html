@@ -92,8 +92,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
       <h1>Live AI Mock Interview</h1>
       <div class="notice">Use Chrome/Edge with microphone access. Your OpenAI API key stays on the server; it is not sent to the browser directly.</div>
       <div class="field"><label>Athlete</label><select id="athleteSelect"></select></div>
-      <div class="field"><label for="voiceMode">Microphone mode</label><select id="voiceMode"><option value="manual">Tap to answer — recommended for noisy rooms</option><option value="hands-free">Hands-free — quiet rooms</option></select></div>
-<div class="voiceBox">
+      <div class="voiceBox">
         <div class="card">
           <div id="voiceStatus" class="status">Not connected</div>
           <h2 style="margin-bottom:4px">AI Consular Interviewer</h2>
@@ -103,7 +102,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
             <button class="btn danger" id="stopBtn" onclick="stopVoice()" disabled>End Interview</button>
             <button class="btn secondary" onclick="addManualLine()">Add typed transcript line</button>
           </div>
-          <button class="btn primary" id="answerBtn" onclick="toggleAnswer()" disabled>Tap to answer</button><p class="muted" id="answerHint">Wait for the question, tap to answer, then tap Finish answer. The microphone stays off between answers.</p><div id="transcript" class="transcript"></div>
+          <p class="muted">Answer naturally after each question. Pause when you finish; the interviewer will respond automatically.</p><div id="transcript" class="transcript"></div>
         </div>
         <div class="card">
           <h3>After the interview</h3>
@@ -205,42 +204,53 @@ function addManualLine(){const role=confirm("OK = athlete line, Cancel = AI inte
 // Voice lifecycle: the client alone requests responses. Keep input muted until
 // both response generation and WebRTC output playback have finished.
 let voice=null;
-function voiceSend(v,type){if(voice===v && dc?.readyState==="open")dc.send(JSON.stringify({type}))}
+function voiceSend(v,type,details={}){if(voice===v && dc?.readyState==="open")dc.send(JSON.stringify({type,...details}))}
 function voiceMic(v,on){if(voice===v)stream?.getAudioTracks().forEach(t=>t.enabled=on)}
 function voiceReady(v){
   if(voice!==v || v.busy || v.playing || v.waiting || !v.connected)return;
-  voiceMic(v,v.mode==="hands-free");
-  $("answerBtn").disabled=v.mode!=="manual";
-  $("answerBtn").textContent="Tap to answer";
-  $("voiceStatus").textContent=v.mode==="manual"?"Your turn — tap to answer":"Your turn — listening";
+  voiceSend(v,"input_audio_buffer.clear");voiceMic(v,true);
+  $("voiceStatus").textContent="Your turn — listening";
 }
 function voiceRespond(v){
   if(voice!==v || v.busy || v.playing)return;
   v.busy=true;v.audioSeen=false;v.playbackEnded=false;v.waiting=false;
-  voiceMic(v,false);$("answerBtn").disabled=true;
+  voiceMic(v,false);
   $("voiceStatus").textContent="Interviewer is responding…";
   voiceSend(v,"response.create");
 }
-function toggleAnswer(){
-  const v=voice;if(!v || !v.connected || v.mode!=="manual" || v.busy || v.playing || v.waiting)return;
-  if(!v.recording){
-    voiceSend(v,"input_audio_buffer.clear");v.recording=true;voiceMic(v,true);
-    $("answerBtn").textContent="Finish answer";$("voiceStatus").textContent="Listening — tap Finish answer when done";
-  }else{
-    v.recording=false;v.waiting=true;voiceMic(v,false);$("answerBtn").disabled=true;
-    $("voiceStatus").textContent="Sending your answer…";
-    voiceSend(v,"input_audio_buffer.commit");
+function voiceInputDone(v,itemId,text){
+  if(voice!==v || v.pendingItem!==itemId)return;
+  clearTimeout(v.inputTimer);v.pendingItem=null;v.waiting=false;
+  // Empty/non-speech transcriptions must not advance the interview. Short real
+  // answers ("yes", "no", numbers) remain valid in every supported language.
+  if(!/[\p{L}\p{N}]/u.test(text)){
+    voiceSend(v,"conversation.item.delete",{item_id:itemId});voiceReady(v);return;
   }
+  addLine("athlete",text);voiceRespond(v);
 }
 function voiceEvent(v,ev){
   if(voice!==v)return;
-  if(ev.type==="conversation.item.input_audio_transcription.completed" && ev.transcript)addLine("athlete",ev.transcript);
-  if((ev.type==="response.output_audio_transcript.done"||ev.type==="response.audio_transcript.done") && ev.transcript)addLine("assistant",ev.transcript);
-  if(ev.type==="input_audio_buffer.committed"){
-    // Ignore late VAD commits while a question is being generated or played.
-    if(!v.busy && !v.playing && (v.mode==="hands-free" || v.waiting))voiceRespond(v);
+  if(ev.type==="conversation.item.input_audio_transcription.completed")voiceInputDone(v,ev.item_id,ev.transcript||"");
+  if(ev.type==="conversation.item.input_audio_transcription.failed" && v.pendingItem===ev.item_id){
+    voiceInputDone(v,ev.item_id,"");$("voiceStatus").textContent="I couldn’t hear that clearly — please say your answer again.";
   }
-  if(ev.type==="response.created"){v.busy=true;voiceMic(v,false);$("answerBtn").disabled=true}
+  if((ev.type==="response.output_audio_transcript.done"||ev.type==="response.audio_transcript.done") && ev.transcript)addLine("assistant",ev.transcript);
+  if(ev.type==="input_audio_buffer.committed" && ev.item_id){
+    v.seenItems??=new Set();
+    if(v.seenItems.has(ev.item_id))return;
+    v.seenItems.add(ev.item_id);
+    // Discard input captured during the question, including late VAD events.
+    if(v.busy || v.playing || v.waiting){voiceSend(v,"conversation.item.delete",{item_id:ev.item_id});return}
+    v.pendingItem=ev.item_id;v.waiting=true;voiceMic(v,false);
+    $("voiceStatus").textContent="Processing your answer…";
+    // Transcription is asynchronous. Recover automatically if it never arrives.
+    v.inputTimer=setTimeout(()=>{
+      if(voice===v && v.pendingItem===ev.item_id){
+        voiceInputDone(v,ev.item_id,"");$("voiceStatus").textContent="I couldn’t hear that clearly — please say your answer again.";
+      }
+    },15000);
+  }
+  if(ev.type==="response.created"){v.busy=true;voiceMic(v,false)}
   if(ev.type==="output_audio_buffer.started"){v.audioSeen=true;v.playing=true;voiceMic(v,false)}
   if(ev.type==="output_audio_buffer.stopped" || ev.type==="output_audio_buffer.cleared"){
     v.playbackEnded=true;v.playing=false;voiceReady(v);
@@ -254,20 +264,19 @@ function voiceEvent(v,ev){
   }
   if(ev.type==="error"){
     if(ev.error?.code==="input_audio_buffer_commit_empty"){
-      v.waiting=false;voiceReady(v);$("voiceStatus").textContent="No audio captured — tap to answer and try again.";
+      v.waiting=false;voiceReady(v);$("voiceStatus").textContent="No speech captured — listening for your answer.";
     }else stopVoice("Interview stopped: "+(ev.error?.message||"connection error. Please restart."));
   }
 }
 async function startVoice(){
   if(voice)return;
-  const v={mode:$("voiceMode").value,athleteId:$("athleteSelect").value,busy:false,playing:false,waiting:false,recording:false,connected:false};voice=v;
+  const v={athleteId:$("athleteSelect").value,busy:false,playing:false,waiting:false,pendingItem:null,connected:false};voice=v;
   transcript=[];$("transcript").replaceChildren();$("evalStatus").textContent="";
   $("startBtn").disabled=true;$("stopBtn").disabled=false;
-  $("voiceMode").disabled=true;$("athleteSelect").disabled=true;
-  $("answerHint").textContent=v.mode==="manual"?"Wait for the question, tap to answer, then tap Finish answer. The microphone stays off between answers.":"Speak after the interviewer finishes. For background voices, end the interview and select Tap to answer.";
+  $("athleteSelect").disabled=true;
   $("voiceStatus").textContent="Requesting microphone…";
   try{
-    const mic=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+    const mic=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:false}});
     if(voice!==v){mic.getTracks().forEach(t=>t.stop());return}
     stream=mic;voiceMic(v,false);
     pc=new RTCPeerConnection();const peer=pc;
@@ -282,19 +291,19 @@ async function startVoice(){
     const offer=await peer.createOffer();if(voice!==v)return;
     await peer.setLocalDescription(offer);if(voice!==v)return;
     v.abort=new AbortController();
-    const r=await fetch("/api/realtime-session?athleteId="+encodeURIComponent(v.athleteId)+"&voiceMode="+encodeURIComponent(v.mode),{method:"POST",body:offer.sdp,headers:{"Content-Type":"application/sdp"},signal:v.abort.signal});
+    const r=await fetch("/api/realtime-session?athleteId="+encodeURIComponent(v.athleteId),{method:"POST",body:offer.sdp,headers:{"Content-Type":"application/sdp"},signal:v.abort.signal});
     const answer=await r.text();if(voice!==v)return;
     if(!r.ok)throw new Error(answer);
     await peer.setRemoteDescription({type:"answer",sdp:answer});
   }catch(e){if(voice===v)stopVoice("Could not start: "+e.message)}
 }
 function stopVoice(message="Interview ended"){
-  const v=voice;voice=null;v?.abort?.abort();
+  const v=voice;voice=null;clearTimeout(v?.inputTimer);v?.abort?.abort();
   if(stream)stream.getTracks().forEach(t=>t.stop());if(dc)dc.close();if(pc)pc.close();
   if(v?.audio){v.audio.pause();v.audio.srcObject=null}
   pc=dc=stream=null;$("voiceStatus").textContent=message;
-  $("startBtn").disabled=false;$("stopBtn").disabled=true;$("answerBtn").disabled=true;
-  $("answerBtn").textContent="Tap to answer";$("voiceMode").disabled=false;$("athleteSelect").disabled=false;
+  $("startBtn").disabled=false;$("stopBtn").disabled=true;
+  $("athleteSelect").disabled=false;
 }
 async function generateReport(){
  if(transcript.length<2){$("evalStatus").textContent="Add or capture at least a short interview transcript first.";return}
