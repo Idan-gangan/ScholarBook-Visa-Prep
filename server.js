@@ -4,6 +4,7 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const { Pool } = require("pg");
+const { LESSON_ID, canAccessStudent, normalizeProgress, tutorInstructions } = require("./learning");
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
@@ -52,6 +53,13 @@ function readBody(req){
     req.on("error",reject);
   });
 }async function initDb(){
+  await pool.query(`CREATE TABLE IF NOT EXISTS learning_progress (
+    student_id TEXT NOT NULL,
+    lesson_id TEXT NOT NULL,
+    data JSONB NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (student_id, lesson_id)
+  )`);
   await pool.query(`
     CREATE TABLE IF NOT EXISTS app_state (
       id INTEGER PRIMARY KEY,
@@ -330,6 +338,24 @@ Use only information in the supplied profile and transcript. Do not reward inven
       return json(res,200,report);
     }
 
+    if(url.pathname === "/api/learning/study-purpose" && ["GET", "PUT"].includes(req.method)){
+      const u=await requireUser(req,res); if(!u) return;
+      const db=await loadDb();
+      const student=db.athletes.find(a=>a.id===url.searchParams.get("athleteId"));
+      if(!canAccessStudent(u,student)) return json(res,403,{error:"You cannot access this student's learning."});
+      if(req.method === "GET"){
+        const result=await pool.query("SELECT data FROM learning_progress WHERE student_id=$1 AND lesson_id=$2",[student.id,LESSON_ID]);
+        return json(res,200,{progress:result.rows[0]?.data || {}});
+      }
+      let progress;
+      try{progress=normalizeProgress(JSON.parse((await readBody(req)).toString()||"{}"))}
+      catch(error){return json(res,400,{error:error.message})}
+      progress.updatedAt=new Date().toISOString();
+      await pool.query(`INSERT INTO learning_progress (student_id,lesson_id,data) VALUES ($1,$2,$3::jsonb)
+        ON CONFLICT (student_id,lesson_id) DO UPDATE SET data=EXCLUDED.data,updated_at=NOW()`,[student.id,LESSON_ID,JSON.stringify(progress)]);
+      return json(res,200,{progress});
+    }
+
     if(req.method==="POST" && url.pathname==="/api/realtime-session"){
       const u=await requireUser(req,res); if(!u) return;
       if(!OPENAI_API_KEY) return json(res,503,{error:"OPENAI_API_KEY is not configured on the server."});
@@ -337,9 +363,13 @@ Use only information in the supplied profile and transcript. Do not reward inven
       const db=await loadDb();
       const athlete=db.athletes.find(a=>a.id===athleteId);
       if(!athlete) return json(res,404,{error:"Athlete not found"});
+      if(!canAccessStudent(u,athlete)) return json(res,403,{error:"You cannot start a session for this student."});
+      const mode=url.searchParams.get("mode") || "mock";
+      if(!["mock","learn"].includes(mode)) return json(res,400,{error:"Unknown session mode"});
+      if(mode==="learn" && url.searchParams.get("lesson")!==LESSON_ID) return json(res,400,{error:"Unknown lesson"});
       const sdp=(await readBody(req)).toString();
 const embassyKnowledge = loadEmbassyKnowledge(athlete.interviewLocation);
-      const instructions=`You are a realistic but fair F-1 student visa mock interviewer for VisaAtlas.
+      let instructions=`You are a realistic but fair F-1 student visa mock interviewer for VisaAtlas.
 You are speaking with ${athlete.name}.
 Known profile: university=${athlete.university}; major=${athlete.major}; sport=${athlete.sport}; scholarship=${athlete.scholarship}; interview location=${athlete.interviewLocation}.
 Embassy-specific preparation context:
@@ -354,6 +384,10 @@ If an answer sounds memorized, vague, inconsistent, or unsupported, probe natura
 Keep each interviewer turn concise, usually one question.
 Start by greeting the athlete and asking why they are going to the United States.`;
 
+      if(mode==="learn"){
+        const saved=await pool.query("SELECT data FROM learning_progress WHERE student_id=$1 AND lesson_id=$2",[athlete.id,LESSON_ID]);
+        instructions=tutorInstructions(athlete,saved.rows[0]?.data || {});
+      }
       const fd=new FormData();
       fd.set("sdp",sdp);
       fd.set("session",JSON.stringify({
