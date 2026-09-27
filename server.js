@@ -364,14 +364,14 @@ Start by greeting the athlete and asking why they are going to the United States
           input:{
   transcription:{model:"gpt-transcribe"},
   noise_reduction:{type:"far_field"},
-  turn_detection:url.searchParams.get("voiceMode")==="hands-free" ? {
+  turn_detection:{
     type:"server_vad",
     threshold:0.75,
     prefix_padding_ms:300,
-    silence_duration_ms:1000,
+    silence_duration_ms:1400,
     create_response:false,
     interrupt_response:false
-  } : null
+  }
 },
           output:{voice:"marin"}
         }
