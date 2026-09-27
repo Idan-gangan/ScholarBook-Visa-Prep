@@ -111,15 +111,15 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
         </div>
       </div>
       <div class="card lesson-block">
-        <h2>3. Talk it through with your tutor</h2>
-        <p>The tutor explains first, then helps you develop and practise your answer. Ask questions, request a simpler explanation, or try again. Speak naturally after the tutor finishes.</p>
+        <h2>3. Practise one short answer</h2>
+        <p>A short lesson: one explanation, one practice answer, and one useful takeaway. Speak naturally after the tutor finishes. You can ask for more help if you want.</p>
         <div id="learn_voiceStatus" role="status" aria-live="polite">Not connected</div>
         <div class="lesson-actions"><button class="btn primary" id="learn_startBtn" onclick="startLearningTutor()">Start voice lesson</button><button class="btn danger" id="learn_stopBtn" onclick="stopVoice()" disabled>End lesson conversation</button></div>
         <div id="learn_transcript" class="lesson-transcript" aria-label="Tutor conversation"></div>
         <p class="small muted">Your conversation is for learning, with no readiness score. Save the points you want to keep in your notes below; the conversation itself is not saved.</p>
       </div>
       <div class="card lesson-block">
-        <h2>4. Reflect and practise again</h2>
+        <h2>4. Save your takeaway</h2>
         <div class="field"><label for="learn_draftAnswer">Your answer in your own words</label><textarea id="learn_draftAnswer" rows="4" maxlength="2000" placeholder="Write a short version using your own facts. You can revise it after speaking with the tutor."></textarea></div>
         <label class="lesson-check"><input id="learn_reflected" type="checkbox"> I have reviewed my reasons, identified anything I still need to verify, and tried explaining them in my own words.</label>
         <div class="lesson-actions"><button class="btn primary" id="completeLessonBtn" onclick="saveLesson(true)">Mark lesson complete</button><button class="btn secondary" onclick="show('interview')">Go to mock interview</button></div>
