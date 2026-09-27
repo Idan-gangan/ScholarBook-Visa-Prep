@@ -55,3 +55,36 @@ test('staff can coach a student while unrelated roles cannot access their learni
  assert.equal((await harness({id:'staff',role:'coach'}).request('GET','/api/learning/study-purpose?athleteId=s1')).status,200);
  assert.equal(learning.canAccessStudent({id:'other',role:'unknown'},student),false);
 });
+
+test('learning routes athletes, graduate students and previous refusals using saved facts',()=>{
+ const plan=learning.learningPlan({sport:'Track',academicLevel:'Graduate',previousRefusal:'Yes',scholarship:'Partial athletic scholarship'});
+ const ids=plan.map(t=>t.id);
+ assert.ok(ids.includes('athletics'));assert.ok(ids.includes('refusal'));
+ assert.ok(plan.find(t=>t.id==='education').questions.some(q=>q.includes("bachelor")));
+ assert.ok(plan.find(t=>t.id==='funding').questions.some(q=>q.includes('remaining amount')));
+ assert.ok(plan.every(t=>t.questions.every(q=>q.endsWith('?'))));
+});
+test('non-athletes without refusals get undergraduate topics without irrelevant branches',()=>{
+ const plan=learning.learningPlan({role:'athlete',sport:'None',academicLevel:'Undergraduate',previousRefusal:'No',previousAttempts:2,scholarship:'No scholarship'});
+ assert.ok(!plan.some(t=>['athletics','refusal'].includes(t.id)));
+ assert.ok(plan.find(t=>t.id==='education').questions.some(q=>q.includes('high school')));
+ assert.ok(!plan.find(t=>t.id==='funding').questions.some(q=>q.includes('your scholarship')));
+});
+test('unknown values do not fabricate a category and graduate labels avoid undergraduate collision',()=>{
+ for(const academicLevel of [undefined,'Other']){
+   const plan=learning.learningPlan({academicLevel,previousAttempts:7,sport:'N/A'});
+   assert.ok(!plan.some(t=>['athletics','refusal'].includes(t.id)));
+   assert.equal(plan.find(t=>t.id==='education').title,'Academic background');
+ }
+ for(const academicLevel of ["Master's degree",'Masters','PhD']){
+   assert.equal(learning.learningPlan({academicLevel}).find(t=>t.id==='education').title,'Previous degree and graduate study');
+ }
+ assert.ok(!learning.learningPlan({sport:'No sports',scholarship:'Non-athletic scholarship'}).some(t=>t.id==='athletics'));
+});
+test('tutor context retains refusal facts and omits regional policy and mock routing',()=>{
+ const prompt=learning.tutorInstructions({previousRefusal:'No',previousAttempts:0,academicLevel:'Freshman / First year'});
+ const data=JSON.parse(prompt.slice(prompt.lastIndexOf('\n')+1));
+ assert.equal(data.profile.previousRefusal,'No');
+ assert.equal(data.profile.previousAttempts,0);
+ assert.doesNotMatch(prompt,/Routine visa services|Do not coach the applicant during/);
+});
