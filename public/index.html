@@ -101,7 +101,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
         </div>
         <div class="card">
           <h2>2. Find your own reasons</h2>
-          <p class="muted">Save your notes to continue on another device. They help the tutor understand what you want to work on.</p>
+          <p class="muted">These study-purpose notes are optional before speaking. Your tutor also uses your saved student profile.</p>
           <div class="field"><label for="learn_subjectReason">What do you want to study, and why does it interest you?</label><textarea id="learn_subjectReason" rows="3" maxlength="2000" placeholder="Use your own experience and interests."></textarea></div>
           <div class="field"><label for="learn_studyOpportunity">What specific learning opportunity have you checked?</label><textarea id="learn_studyOpportunity" rows="3" maxlength="2000" placeholder="Name what you found, why it matters, and what still needs checking."></textarea></div>
           <div class="field"><label for="learn_futureUse">How could this learning support your plans?</label><textarea id="learn_futureUse" rows="3" maxlength="2000" placeholder="Describe your actual goals; it is okay if they are still developing."></textarea></div>
@@ -111,8 +111,8 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
         </div>
       </div>
       <div class="card lesson-block">
-        <h2>3. Practise one short answer</h2>
-        <p>A short lesson: one explanation, one practice answer, and one useful takeaway. Speak naturally after the tutor finishes. You can ask for more help if you want.</p>
+        <h2>3. Learn with your tutor</h2>
+        <p>Get short explanations tailored to your profile: study purpose, school choice, funding, and future plans. Ask a question, practise if you want, or say “next” to move on.</p>
         <div id="learn_voiceStatus" role="status" aria-live="polite">Not connected</div>
         <div class="lesson-actions"><button class="btn primary" id="learn_startBtn" onclick="startLearningTutor()">Start voice lesson</button><button class="btn danger" id="learn_stopBtn" onclick="stopVoice()" disabled>End lesson conversation</button></div>
         <div id="learn_transcript" class="lesson-transcript" aria-label="Tutor conversation"></div>
@@ -120,7 +120,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
       </div>
       <div class="card lesson-block">
         <h2>4. Save your takeaway</h2>
-        <div class="field"><label for="learn_draftAnswer">Your answer in your own words</label><textarea id="learn_draftAnswer" rows="4" maxlength="2000" placeholder="Write a short version using your own facts. You can revise it after speaking with the tutor."></textarea></div>
+        <div class="field"><label for="learn_draftAnswer">Your answer in your own words</label><textarea id="learn_draftAnswer" rows="4" maxlength="2000" placeholder="Save your study-purpose answer here using your own facts. You can revise it after speaking with the tutor."></textarea></div>
         <label class="lesson-check"><input id="learn_reflected" type="checkbox"> I have reviewed my reasons, identified anything I still need to verify, and tried explaining them in my own words.</label>
         <div class="lesson-actions"><button class="btn primary" id="completeLessonBtn" onclick="saveLesson(true)">Mark lesson complete</button><button class="btn secondary" onclick="show('interview')">Go to mock interview</button></div>
         <div id="lessonCompletionStatus" role="status" aria-live="polite" class="small lesson-status"></div>
