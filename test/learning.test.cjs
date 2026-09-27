@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const {Readable}=require('node:stream');
 const learning=require('../learning');
-const student={id:'s1',userId:'u1',name:'Test student',major:'Biology',university:'Example University'};
+const student={id:'s1',userId:'u1',name:'Test student',major:'Biology',university:'Example University',scholarship:'Merit award',scholarshipCoverage:'Tuition only',remainingSponsor:'Parent',postGradPlan:'Environmental research',email:'private@example.test'};
 function harness(user={id:'u1',role:'athlete'}){
  let handler;const progress=new Map(),calls=[];
  const db={users:[user],athletes:[student,{id:'s2',userId:'u2'}],reports:[],transcripts:[]};
@@ -38,7 +38,14 @@ test('completion requires all notes and reflection; oversized or malformed notes
 test('tutor gets teaching instructions and saved context, never mock-only instructions',async()=>{
  const h=harness();await h.request('PUT','/api/learning/study-purpose?athleteId=s1',{subjectReason:'I enjoy ecology'});
  assert.equal((await h.request('POST','/api/realtime-session?athleteId=s1&mode=learn&lesson=study-purpose','offer')).status,200);
- const session=h.calls[0].session;assert.match(session.instructions,/learning tutor/);assert.match(session.instructions,/I enjoy ecology/);assert.doesNotMatch(session.instructions,/Do not coach during the interview/);assert.equal(session.audio.input.turn_detection.create_response,false);assert.equal(session.audio.input.turn_detection.interrupt_response,false);
+ const session=h.calls[0].session;
+ const context=JSON.parse(session.instructions.slice(session.instructions.lastIndexOf('\n')+1));
+ assert.equal(context.profile.scholarshipCoverage,'Tuition only');
+ assert.equal(context.profile.remainingSponsor,'Parent');
+ assert.equal(context.profile.postGradPlan,'Environmental research');
+ assert.equal(context.notes.subjectReason,'I enjoy ecology');
+ assert.equal(context.profile.email,undefined);
+ assert.match(session.instructions,/learning tutor/);assert.match(session.instructions,/I enjoy ecology/);assert.doesNotMatch(session.instructions,/Do not coach during the interview/);assert.equal(session.audio.input.turn_detection.create_response,false);assert.equal(session.audio.input.turn_detection.interrupt_response,false);
 });
 test('mock role stays separate and unknown lesson/mode makes no API call',async()=>{
  const h=harness();for(const query of ['mode=other','mode=learn&lesson=missing'])assert.equal((await h.request('POST','/api/realtime-session?athleteId=s1&'+query,'offer')).status,400);
