@@ -33,6 +33,9 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
   .main{padding:14px;min-width:0}
   .formgrid{grid-template-columns:1fr}
 }
+
+.lesson-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}.lesson-heading h1{margin:6px 0;max-width:780px}.lesson-grid{margin-top:16px;align-items:start}.lesson-content{line-height:1.6}.lesson-content li{margin-bottom:12px}.lesson-content ol{padding-left:22px}.lesson-block{margin-top:18px}.lesson-actions{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0}.lesson-check{display:flex;gap:10px;align-items:flex-start;line-height:1.5}.lesson-check input{width:20px;height:20px;flex-shrink:0}.lesson-status{margin-top:12px;min-height:20px}.lesson-transcript{max-height:340px;overflow:auto;overflow-wrap:anywhere}.msg{padding:10px 0;white-space:pre-wrap;overflow-wrap:anywhere}.btn:disabled{opacity:.55;cursor:not-allowed}.top{z-index:2}
+@media(max-width:900px){.lesson-grid{grid-template-columns:1fr}.field textarea,.field select{font-size:16px}}
 </style>
 </head>
 <body>
@@ -83,6 +86,47 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
 <div id="app" class="hidden">
   <div class="top"><div class="brand"><div class="logo">VA</div>VisaAtlas</div><div><b id="who"></b> · <span id="role" class="muted"></span> <button class="btn secondary" onclick="logout()">Log out</button></div></div>
   <div class="layout"><aside class="side" id="nav"></aside><main class="main">
+    <section id="learning" class="screen">
+      <div class="lesson-heading"><div><p class="small muted">MY LEARNING · LESSON 1</p><h1>Why do you want to study in the United States?</h1><p>Build an answer from your own academic interests and plans.</p></div><span id="lessonBadge" class="pill blue">Not completed</span></div>
+      <div class="field"><label for="learn_athleteSelect">Student</label><select id="learn_athleteSelect" onchange="changeLearningStudent()"></select></div>
+      <div class="grid g2 lesson-grid">
+        <div class="card lesson-content">
+          <h2>1. Understand the question</h2>
+          <p>Use this question to explain your purpose for studying abroad. Begin with what you want to learn and why it matters to you. You do not need a dramatic story or a memorized speech.</p>
+          <p>Think about three connections:</p>
+          <ol><li><b>Your subject:</b> What interests you, and what do you want to understand or be able to do?</li><li><b>Your study opportunity:</b> What specific part of your chosen U.S. program supports that interest? Check the university's own information before making a claim.</li><li><b>Your plans:</b> How could that learning help with your genuine goals? If your plans are still developing, say so.</li></ol>
+          <div class="stepnote"><b>Make a broad reason specific</b><p>“The education is good” does not explain your own choice. Ask yourself: which learning opportunity matters to me, and why?</p><p>These are thinking prompts, not a script. Use only details you know are true.</p></div>
+          <h3>Before you practise</h3><p>You may need to research your course first. It is fine to write “I still need to check” in your notes. The tutor can help you identify what is missing.</p>
+          <p class="small muted">This lesson teaches clear communication. Completing it does not indicate visa eligibility or guarantee an outcome.</p>
+        </div>
+        <div class="card">
+          <h2>2. Find your own reasons</h2>
+          <p class="muted">Save your notes to continue on another device. They help the tutor understand what you want to work on.</p>
+          <div class="field"><label for="learn_subjectReason">What do you want to study, and why does it interest you?</label><textarea id="learn_subjectReason" rows="3" maxlength="2000" placeholder="Use your own experience and interests."></textarea></div>
+          <div class="field"><label for="learn_studyOpportunity">What specific learning opportunity have you checked?</label><textarea id="learn_studyOpportunity" rows="3" maxlength="2000" placeholder="Name what you found, why it matters, and what still needs checking."></textarea></div>
+          <div class="field"><label for="learn_futureUse">How could this learning support your plans?</label><textarea id="learn_futureUse" rows="3" maxlength="2000" placeholder="Describe your actual goals; it is okay if they are still developing."></textarea></div>
+          <button class="btn secondary" id="saveLessonBtn" onclick="saveLesson()">Save notes</button>
+          <button class="btn secondary hidden" id="retryLessonBtn" onclick="loadLesson()">Retry loading notes</button>
+          <div id="lessonStatus" role="status" aria-live="polite" class="small lesson-status"></div>
+        </div>
+      </div>
+      <div class="card lesson-block">
+        <h2>3. Talk it through with your tutor</h2>
+        <p>The tutor explains first, then helps you develop and practise your answer. Ask questions, request a simpler explanation, or try again. Speak naturally after the tutor finishes.</p>
+        <div id="learn_voiceStatus" role="status" aria-live="polite">Not connected</div>
+        <div class="lesson-actions"><button class="btn primary" id="learn_startBtn" onclick="startLearningTutor()">Start voice lesson</button><button class="btn danger" id="learn_stopBtn" onclick="stopVoice()" disabled>End lesson conversation</button></div>
+        <div id="learn_transcript" class="lesson-transcript" aria-label="Tutor conversation"></div>
+        <p class="small muted">Your conversation is for learning, with no readiness score. Save the points you want to keep in your notes below; the conversation itself is not saved.</p>
+      </div>
+      <div class="card lesson-block">
+        <h2>4. Reflect and practise again</h2>
+        <div class="field"><label for="learn_draftAnswer">Your answer in your own words</label><textarea id="learn_draftAnswer" rows="4" maxlength="2000" placeholder="Write a short version using your own facts. You can revise it after speaking with the tutor."></textarea></div>
+        <label class="lesson-check"><input id="learn_reflected" type="checkbox"> I have reviewed my reasons, identified anything I still need to verify, and tried explaining them in my own words.</label>
+        <div class="lesson-actions"><button class="btn primary" id="completeLessonBtn" onclick="saveLesson(true)">Mark lesson complete</button><button class="btn secondary" onclick="show('interview')">Go to mock interview</button></div>
+        <div id="lessonCompletionStatus" role="status" aria-live="polite" class="small lesson-status"></div>
+        <p class="small muted">Completion records your progress through this lesson, not an assessment of readiness. You can revisit it any time.</p>
+      </div>
+    </section>
     <section id="dashboard" class="screen">
       <h1>Dashboard</h1><div class="notice">Readiness scores measure preparation only. They are not visa-approval predictions or guarantees.</div>
       <div id="dashCards" class="grid g4"></div>
@@ -138,20 +182,24 @@ async function registerAthlete(){
  try{ $("registerErr").textContent="Creating account…"; await api("/api/register-athlete",{method:"POST",body:JSON.stringify(body)}); $("registration").classList.add("hidden"); await boot(); }
  catch(e){ $("registerErr").textContent=e.message; }
 }
-async function logout(){await api("/api/logout",{method:"POST"});location.reload()}
+async function logout(){if(voice)stopVoice();await api("/api/logout",{method:"POST"});location.reload()}
 function navItems(){
- const base=[["Dashboard","dashboard"],["Live Mock Interview","interview"],["Readiness Reports","reports"]];
+ const base=[["My Learning","learning"],["Dashboard","dashboard"],["Live Mock Interview","interview"],["Readiness Reports","reports"]];
  if(me.role==="athlete") base.splice(1,0,["My Profile","profile"]);
  if(["coach","manager","supervisor"].includes(me.role)) base.push(["Athlete Manager View","manager"]);
  return base;
 }
-function show(id,el){document.querySelectorAll(".screen").forEach(x=>x.classList.remove("on"));$(id).classList.add("on");document.querySelectorAll(".nav").forEach(x=>x.classList.remove("on"));if(el)el.classList.add("on")}
+function show(id,el){
+ if(voice && id!==(voice.mode==="learn"?"learning":"interview"))stopVoice("Conversation ended when you left this page.");
+document.querySelectorAll(".screen").forEach(x=>x.classList.remove("on"));$(id).classList.add("on");document.querySelectorAll(".nav").forEach(x=>x.classList.remove("on"));document.querySelectorAll(".nav").forEach(x=>x.classList.toggle("on",x.dataset.screen===id))}
 async function boot(){
  me=await api("/api/me"); athletes=await api("/api/athletes"); reports=await api("/api/reports");
  $("login").classList.add("hidden");$("app").classList.remove("hidden");$("who").textContent=me.name;$("role").textContent=me.role;
- $("nav").innerHTML=navItems().map((x,i)=>`<div class="nav ${i===0?"on":""}" onclick="show('${x[1]}',this)">${x[0]}</div>`).join("");
+ $("nav").innerHTML=navItems().map((x,i)=>`<div data-screen="${x[1]}" class="nav ${i===0?"on":""}" onclick="show('${x[1]}',this)">${x[0]}</div>`).join("");
  $("athleteSelect").innerHTML=athletes.map(a=>`<option value="${a.id}">${a.name} — ${a.university}</option>`).join("");
- renderAll(); if(me.role==="athlete") await renderProfile(); show("dashboard");
+ $("learn_athleteSelect").replaceChildren(...athletes.map(a=>new Option(a.name+" — "+(a.university||""),a.id)));
+ renderAll(); if(me.role==="athlete") await renderProfile(); show(me.role==="athlete"?"learning":"dashboard");
+ await loadLesson();
 }
 async function renderProfile(){
  const p=await api("/api/my-profile");
@@ -196,26 +244,31 @@ async function humanReview(reportId,current){
  const note=prompt("Reason for adjustment:","Answers were technically correct, but the athlete still needs more natural responses under rephrased follow-up questions.");if(note===null)return;
  await api("/api/human-review",{method:"POST",body:JSON.stringify({reportId,score:Number(score),note})});reports=await api("/api/reports");renderAll();
 }
-function addLine(role,text){
- transcript.push({role,text,at:new Date().toISOString()});
- const div=document.createElement("div");div.className="msg "+(role==="athlete"?"user":"ai");div.innerHTML=`<b>${role==="athlete"?"Athlete":"AI Interviewer"}:</b> ${text}`;$("transcript").appendChild(div);$("transcript").scrollTop=$("transcript").scrollHeight;
+function addLine(role,text,mode=voiceScreen){
+ const lines=mode==="learn"?learningTranscript:transcript;
+ lines.push({role,text,at:new Date().toISOString()});
+ const div=document.createElement("div");div.className="msg "+(role==="athlete"?"user":"ai");
+ const label=document.createElement("b");label.textContent=role==="athlete"?"Student: ":mode==="learn"?"Learning tutor: ":"AI Interviewer: ";
+ div.append(label,document.createTextNode(text));
+ const box=$(mode==="learn"?"learn_transcript":"transcript");box.appendChild(div);box.scrollTop=box.scrollHeight;
 }
-function addManualLine(){const role=confirm("OK = athlete line, Cancel = AI interviewer line")?"athlete":"assistant";const text=prompt("Transcript line:");if(text)addLine(role,text)}
+function addManualLine(){const role=confirm("OK = student line, Cancel = AI interviewer line")?"athlete":"assistant";const text=prompt("Transcript line:");if(text){mockStudentId ||= $("athleteSelect").value;addLine(role,text,"mock")}}
 // Voice lifecycle: the client alone requests responses. Keep input muted until
 // both response generation and WebRTC output playback have finished.
-let voice=null;
+let voice=null, voiceScreen="mock", learningTranscript=[], mockStudentId=null;
+function voiceEl(id){return $(voiceScreen==="learn"?"learn_"+id:id)}
 function voiceSend(v,type,details={}){if(voice===v && dc?.readyState==="open")dc.send(JSON.stringify({type,...details}))}
 function voiceMic(v,on){if(voice===v)stream?.getAudioTracks().forEach(t=>t.enabled=on)}
 function voiceReady(v){
   if(voice!==v || v.busy || v.playing || v.waiting || !v.connected)return;
   voiceSend(v,"input_audio_buffer.clear");voiceMic(v,true);
-  $("voiceStatus").textContent="Your turn — listening";
+  voiceEl("voiceStatus").textContent="Your turn — listening";
 }
 function voiceRespond(v){
   if(voice!==v || v.busy || v.playing)return;
   v.busy=true;v.audioSeen=false;v.playbackEnded=false;v.waiting=false;
   voiceMic(v,false);
-  $("voiceStatus").textContent="Interviewer is responding…";
+  voiceEl("voiceStatus").textContent=voiceScreen==="learn"?"Your tutor is responding…":"Interviewer is responding…";
   voiceSend(v,"response.create");
 }
 function voiceInputDone(v,itemId,text){
@@ -232,7 +285,7 @@ function voiceEvent(v,ev){
   if(voice!==v)return;
   if(ev.type==="conversation.item.input_audio_transcription.completed")voiceInputDone(v,ev.item_id,ev.transcript||"");
   if(ev.type==="conversation.item.input_audio_transcription.failed" && v.pendingItem===ev.item_id){
-    voiceInputDone(v,ev.item_id,"");$("voiceStatus").textContent="I couldn’t hear that clearly — please say your answer again.";
+    voiceInputDone(v,ev.item_id,"");voiceEl("voiceStatus").textContent="I couldn’t hear that clearly — please say your answer again.";
   }
   if((ev.type==="response.output_audio_transcript.done"||ev.type==="response.audio_transcript.done") && ev.transcript)addLine("assistant",ev.transcript);
   if(ev.type==="input_audio_buffer.committed" && ev.item_id){
@@ -242,11 +295,11 @@ function voiceEvent(v,ev){
     // Discard input captured during the question, including late VAD events.
     if(v.busy || v.playing || v.waiting){voiceSend(v,"conversation.item.delete",{item_id:ev.item_id});return}
     v.pendingItem=ev.item_id;v.waiting=true;voiceMic(v,false);
-    $("voiceStatus").textContent="Processing your answer…";
+    voiceEl("voiceStatus").textContent="Processing your answer…";
     // Transcription is asynchronous. Recover automatically if it never arrives.
     v.inputTimer=setTimeout(()=>{
       if(voice===v && v.pendingItem===ev.item_id){
-        voiceInputDone(v,ev.item_id,"");$("voiceStatus").textContent="I couldn’t hear that clearly — please say your answer again.";
+        voiceInputDone(v,ev.item_id,"");voiceEl("voiceStatus").textContent="I couldn’t hear that clearly — please say your answer again.";
       }
     },15000);
   }
@@ -264,17 +317,21 @@ function voiceEvent(v,ev){
   }
   if(ev.type==="error"){
     if(ev.error?.code==="input_audio_buffer_commit_empty"){
-      v.waiting=false;voiceReady(v);$("voiceStatus").textContent="No speech captured — listening for your answer.";
+      v.waiting=false;voiceReady(v);voiceEl("voiceStatus").textContent="No speech captured — listening for your answer.";
     }else stopVoice("Interview stopped: "+(ev.error?.message||"connection error. Please restart."));
   }
 }
-async function startVoice(){
+async function startVoice(mode="mock"){
   if(voice)return;
-  const v={athleteId:$("athleteSelect").value,busy:false,playing:false,waiting:false,pendingItem:null,connected:false};voice=v;
-  transcript=[];$("transcript").replaceChildren();$("evalStatus").textContent="";
-  $("startBtn").disabled=true;$("stopBtn").disabled=false;
-  $("athleteSelect").disabled=true;
-  $("voiceStatus").textContent="Requesting microphone…";
+  voiceScreen=mode;
+  if(!voiceEl("athleteSelect").value){voiceEl("voiceStatus").textContent="Select a student first.";return}
+  const v={mode,athleteId:voiceEl("athleteSelect").value,busy:false,playing:false,waiting:false,pendingItem:null,connected:false};voice=v;
+  if(mode==="learn")learningTranscript=[];
+  else {transcript=[];mockStudentId=v.athleteId;$("evalStatus").textContent=""}
+  voiceEl("transcript").replaceChildren();
+  voiceEl("startBtn").disabled=true;voiceEl("stopBtn").disabled=false;
+  voiceEl("athleteSelect").disabled=true;
+  voiceEl("voiceStatus").textContent="Requesting microphone…";
   try{
     const mic=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:false}});
     if(voice!==v){mic.getTracks().forEach(t=>t.stop());return}
@@ -291,30 +348,88 @@ async function startVoice(){
     const offer=await peer.createOffer();if(voice!==v)return;
     await peer.setLocalDescription(offer);if(voice!==v)return;
     v.abort=new AbortController();
-    const r=await fetch("/api/realtime-session?athleteId="+encodeURIComponent(v.athleteId),{method:"POST",body:offer.sdp,headers:{"Content-Type":"application/sdp"},signal:v.abort.signal});
+    const r=await fetch("/api/realtime-session?athleteId="+encodeURIComponent(v.athleteId)+"&mode="+mode+(mode==="learn"?"&lesson=study-purpose":""),{method:"POST",body:offer.sdp,headers:{"Content-Type":"application/sdp"},signal:v.abort.signal});
     const answer=await r.text();if(voice!==v)return;
     if(!r.ok)throw new Error(answer);
     await peer.setRemoteDescription({type:"answer",sdp:answer});
   }catch(e){if(voice===v)stopVoice("Could not start: "+e.message)}
 }
-function stopVoice(message="Interview ended"){
+function stopVoice(message=voiceScreen==="learn"?"Lesson conversation ended":"Interview ended"){
   const v=voice;voice=null;clearTimeout(v?.inputTimer);v?.abort?.abort();
   if(stream)stream.getTracks().forEach(t=>t.stop());if(dc)dc.close();if(pc)pc.close();
   if(v?.audio){v.audio.pause();v.audio.srcObject=null}
-  pc=dc=stream=null;$("voiceStatus").textContent=message;
-  $("startBtn").disabled=false;$("stopBtn").disabled=true;
-  $("athleteSelect").disabled=false;
+  pc=dc=stream=null;voiceEl("voiceStatus").textContent=message;
+  voiceEl("startBtn").disabled=false;voiceEl("stopBtn").disabled=true;
+  voiceEl("athleteSelect").disabled=false;
 }
 async function generateReport(){
+ if(voice){$("evalStatus").textContent="End the conversation before generating a report.";return}
  if(transcript.length<2){$("evalStatus").textContent="Add or capture at least a short interview transcript first.";return}
  $("evalStatus").textContent="Generating readiness report…";
  try{
-   const athleteId=$("athleteSelect").value;
+   const athleteId=mockStudentId || $("athleteSelect").value;
    await api("/api/save-transcript",{method:"POST",body:JSON.stringify({athleteId,transcript})});
    const r=await api("/api/evaluate",{method:"POST",body:JSON.stringify({athleteId,transcript})});
    $("evalStatus").textContent=`Report created: ${r.overall}/100 — ${r.readiness}`;
    athletes=await api("/api/athletes");reports=await api("/api/reports");renderAll();show("reports");
  }catch(e){$("evalStatus").textContent=e.message}
+}
+
+const lessonFields=["subjectReason","studyOpportunity","futureUse","draftAnswer"];
+let lessonStudentId=null, lessonVersion=0, lessonDirty=false, lessonCompleted=false, lessonSaving=false, lessonLoading=false;
+function setLessonStatus(message){$("lessonStatus").textContent=message;$("lessonCompletionStatus").textContent=message}
+function lessonControls(disabled){
+ ["saveLessonBtn","completeLessonBtn","learn_startBtn"].forEach(id=>$(id).disabled=disabled || (id==="learn_startBtn" && !!voice));
+}
+function lessonEdited(){lessonDirty=true;lessonCompleted=false;$("lessonBadge").textContent="In progress";setLessonStatus("Unsaved changes")}
+for(const field of lessonFields)$("learn_"+field).addEventListener("input",lessonEdited);
+$("learn_reflected").addEventListener("change",lessonEdited);
+window.addEventListener("beforeunload",e=>{if(lessonDirty){e.preventDefault();e.returnValue=""}});
+async function changeLearningStudent(){
+ if(lessonDirty && !confirm("Switch students without saving these notes?")){$("learn_athleteSelect").value=lessonStudentId;return}
+ if(voice)stopVoice();await loadLesson();
+}
+async function loadLesson(){
+ const version=++lessonVersion;lessonStudentId=$("learn_athleteSelect").value;lessonDirty=false;lessonCompleted=false;lessonLoading=true;
+ lessonFields.forEach(field=>$("learn_"+field).value="");$("learn_reflected").checked=false;
+ $("learn_transcript").replaceChildren();learningTranscript=[];
+ lessonControls(true);$("retryLessonBtn").classList.add("hidden");lessonFields.forEach(field=>$("learn_"+field).disabled=true);$("learn_reflected").disabled=true;setLessonStatus("Loading your notes…");
+ if(!lessonStudentId){lessonLoading=false;setLessonStatus("A student profile is needed to save notes or start a lesson.");return}
+ try{
+   const data=await api("/api/learning/study-purpose?athleteId="+encodeURIComponent(lessonStudentId));
+   if(version!==lessonVersion)return;
+   lessonFields.forEach(field=>$("learn_"+field).value=data.progress[field]||"");
+   $("learn_reflected").checked=data.progress.reflected===true;lessonCompleted=data.progress.completed===true;
+   $("lessonBadge").textContent=lessonCompleted?"Completed":data.progress.updatedAt?"In progress":"Not completed";
+   setLessonStatus(data.progress.updatedAt?"Your saved notes are ready.":"Start with the explanation, then jot down your own reasons.");
+   lessonControls(false);lessonFields.forEach(field=>$("learn_"+field).disabled=false);$("learn_reflected").disabled=false;
+ }catch(e){if(version===lessonVersion){setLessonStatus("Could not load notes: "+e.message);$("retryLessonBtn").classList.remove("hidden")}}
+ finally{if(version===lessonVersion)lessonLoading=false}
+}
+async function saveLesson(complete=false){
+ if(lessonSaving || lessonLoading || !lessonStudentId)return false;
+ const studentId=lessonStudentId, version=lessonVersion;
+ const body=Object.fromEntries(lessonFields.map(field=>[field,$("learn_"+field).value]));
+ body.reflected=$("learn_reflected").checked;body.completed=complete || lessonCompleted;
+ lessonSaving=true;lessonControls(true);$("learn_athleteSelect").disabled=true;setLessonStatus("Saving…");
+ try{
+   const result=await api("/api/learning/study-purpose?athleteId="+encodeURIComponent(studentId),{method:"PUT",body:JSON.stringify(body)});
+   if(version!==lessonVersion)return false;
+   // Do not claim later keystrokes were saved with an earlier request.
+   const unchanged=lessonFields.every(field=>$("learn_"+field).value===body[field]) && $("learn_reflected").checked===body.reflected;
+   lessonDirty=!unchanged;lessonCompleted=unchanged && result.progress.completed;
+   $("lessonBadge").textContent=lessonCompleted?"Completed":"In progress";
+   setLessonStatus(!unchanged?"Earlier notes saved. You have new unsaved changes.":lessonCompleted?"Lesson complete. You can keep practising or try a mock interview.":"Notes saved. You can return to them later.");
+   return unchanged;
+ }catch(e){setLessonStatus(e.message);return false}
+ finally{lessonSaving=false;lessonControls(false);$("learn_athleteSelect").disabled=!!voice}
+}
+async function startLearningTutor(){
+ if(voice || lessonSaving || lessonLoading)return;
+ const studentId=lessonStudentId;
+ if(await saveLesson()){
+   if($("learning").classList.contains("on") && lessonStudentId===studentId)await startVoice("learn");
+ }
 }
 boot().catch(()=>{});
 </script>
