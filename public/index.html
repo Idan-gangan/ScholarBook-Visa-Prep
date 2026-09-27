@@ -92,7 +92,8 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
       <h1>Live AI Mock Interview</h1>
       <div class="notice">Use Chrome/Edge with microphone access. Your OpenAI API key stays on the server; it is not sent to the browser directly.</div>
       <div class="field"><label>Athlete</label><select id="athleteSelect"></select></div>
-      <div class="voiceBox">
+      <div class="field"><label for="voiceMode">Microphone mode</label><select id="voiceMode"><option value="manual">Tap to answer — recommended for noisy rooms</option><option value="hands-free">Hands-free — quiet rooms</option></select></div>
+<div class="voiceBox">
         <div class="card">
           <div id="voiceStatus" class="status">Not connected</div>
           <h2 style="margin-bottom:4px">AI Consular Interviewer</h2>
@@ -102,7 +103,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
             <button class="btn danger" id="stopBtn" onclick="stopVoice()" disabled>End Interview</button>
             <button class="btn secondary" onclick="addManualLine()">Add typed transcript line</button>
           </div>
-          <div id="transcript" class="transcript"></div>
+          <button class="btn primary" id="answerBtn" onclick="toggleAnswer()" disabled>Tap to answer</button><p class="muted" id="answerHint">Wait for the question, tap to answer, then tap Finish answer. The microphone stays off between answers.</p><div id="transcript" class="transcript"></div>
         </div>
         <div class="card">
           <h3>After the interview</h3>
@@ -201,29 +202,100 @@ function addLine(role,text){
  const div=document.createElement("div");div.className="msg "+(role==="athlete"?"user":"ai");div.innerHTML=`<b>${role==="athlete"?"Athlete":"AI Interviewer"}:</b> ${text}`;$("transcript").appendChild(div);$("transcript").scrollTop=$("transcript").scrollHeight;
 }
 function addManualLine(){const role=confirm("OK = athlete line, Cancel = AI interviewer line")?"athlete":"assistant";const text=prompt("Transcript line:");if(text)addLine(role,text)}
-async function startVoice(){
- if(pc)return;
- $("voiceStatus").textContent="Requesting microphone…";
- try{
-   pc=new RTCPeerConnection(); const audio=document.createElement("audio");audio.autoplay=true;pc.ontrack=e=>audio.srcObject=e.streams[0];
-   stream=await navigator.mediaDevices.getUserMedia({audio:true});pc.addTrack(stream.getTracks()[0]);
-   dc=pc.createDataChannel("oai-events");
-   dc.addEventListener("open",()=>{$("voiceStatus").textContent="Connected — interview is live";$("startBtn").disabled=true;$("stopBtn").disabled=false;});
-   dc.addEventListener("message",e=>{
-     const ev=JSON.parse(e.data);
-     // Event names may evolve; handle several common transcript shapes defensively.
-     if(ev.type==="conversation.item.input_audio_transcription.completed" && ev.transcript) addLine("athlete",ev.transcript);
-     if((ev.type==="response.output_audio_transcript.done"||ev.type==="response.audio_transcript.done") && ev.transcript) addLine("assistant",ev.transcript);
-     if(ev.type==="error") $("voiceStatus").textContent="Realtime error: "+(ev.error?.message||"unknown");
-   });
-   const offer=await pc.createOffer();await pc.setLocalDescription(offer);
-   const athleteId=$("athleteSelect").value;
-   const r=await fetch("/api/realtime-session?athleteId="+encodeURIComponent(athleteId),{method:"POST",body:offer.sdp,headers:{"Content-Type":"application/sdp"}});
-   if(!r.ok){let t=await r.text();throw new Error(t)}
-   await pc.setRemoteDescription({type:"answer",sdp:await r.text()});
- }catch(e){$("voiceStatus").textContent="Could not start: "+e.message;stopVoice()}
+// Voice lifecycle: the client alone requests responses. Keep input muted until
+// both response generation and WebRTC output playback have finished.
+let voice=null;
+function voiceSend(v,type){if(voice===v && dc?.readyState==="open")dc.send(JSON.stringify({type}))}
+function voiceMic(v,on){if(voice===v)stream?.getAudioTracks().forEach(t=>t.enabled=on)}
+function voiceReady(v){
+  if(voice!==v || v.busy || v.playing || v.waiting || !v.connected)return;
+  voiceMic(v,v.mode==="hands-free");
+  $("answerBtn").disabled=v.mode!=="manual";
+  $("answerBtn").textContent="Tap to answer";
+  $("voiceStatus").textContent=v.mode==="manual"?"Your turn — tap to answer":"Your turn — listening";
 }
-function stopVoice(){if(stream)stream.getTracks().forEach(t=>t.stop());if(dc)dc.close();if(pc)pc.close();pc=dc=stream=null;$("voiceStatus").textContent="Interview ended";$("startBtn").disabled=false;$("stopBtn").disabled=true}
+function voiceRespond(v){
+  if(voice!==v || v.busy || v.playing)return;
+  v.busy=true;v.audioSeen=false;v.playbackEnded=false;v.waiting=false;
+  voiceMic(v,false);$("answerBtn").disabled=true;
+  $("voiceStatus").textContent="Interviewer is responding…";
+  voiceSend(v,"response.create");
+}
+function toggleAnswer(){
+  const v=voice;if(!v || !v.connected || v.mode!=="manual" || v.busy || v.playing || v.waiting)return;
+  if(!v.recording){
+    voiceSend(v,"input_audio_buffer.clear");v.recording=true;voiceMic(v,true);
+    $("answerBtn").textContent="Finish answer";$("voiceStatus").textContent="Listening — tap Finish answer when done";
+  }else{
+    v.recording=false;v.waiting=true;voiceMic(v,false);$("answerBtn").disabled=true;
+    $("voiceStatus").textContent="Sending your answer…";
+    voiceSend(v,"input_audio_buffer.commit");
+  }
+}
+function voiceEvent(v,ev){
+  if(voice!==v)return;
+  if(ev.type==="conversation.item.input_audio_transcription.completed" && ev.transcript)addLine("athlete",ev.transcript);
+  if((ev.type==="response.output_audio_transcript.done"||ev.type==="response.audio_transcript.done") && ev.transcript)addLine("assistant",ev.transcript);
+  if(ev.type==="input_audio_buffer.committed"){
+    // Ignore late VAD commits while a question is being generated or played.
+    if(!v.busy && !v.playing && (v.mode==="hands-free" || v.waiting))voiceRespond(v);
+  }
+  if(ev.type==="response.created"){v.busy=true;voiceMic(v,false);$("answerBtn").disabled=true}
+  if(ev.type==="output_audio_buffer.started"){v.audioSeen=true;v.playing=true;voiceMic(v,false)}
+  if(ev.type==="output_audio_buffer.stopped" || ev.type==="output_audio_buffer.cleared"){
+    v.playbackEnded=true;v.playing=false;voiceReady(v);
+  }
+  if(ev.type==="response.done"){
+    v.busy=false;
+    const hasAudio=ev.response?.output?.some(item=>item.content?.some(c=>c.type==="audio"||c.type==="output_audio"));
+    if(hasAudio && !v.playbackEnded)v.playing=true;
+    voiceReady(v);
+    if(ev.response?.status==="failed")stopVoice("Interview stopped: "+(ev.response.status_details?.error?.message||"response failed. Please restart."));
+  }
+  if(ev.type==="error"){
+    if(ev.error?.code==="input_audio_buffer_commit_empty"){
+      v.waiting=false;voiceReady(v);$("voiceStatus").textContent="No audio captured — tap to answer and try again.";
+    }else stopVoice("Interview stopped: "+(ev.error?.message||"connection error. Please restart."));
+  }
+}
+async function startVoice(){
+  if(voice)return;
+  const v={mode:$("voiceMode").value,athleteId:$("athleteSelect").value,busy:false,playing:false,waiting:false,recording:false,connected:false};voice=v;
+  transcript=[];$("transcript").replaceChildren();$("evalStatus").textContent="";
+  $("startBtn").disabled=true;$("stopBtn").disabled=false;
+  $("voiceMode").disabled=true;$("athleteSelect").disabled=true;
+  $("answerHint").textContent=v.mode==="manual"?"Wait for the question, tap to answer, then tap Finish answer. The microphone stays off between answers.":"Speak after the interviewer finishes. For background voices, end the interview and select Tap to answer.";
+  $("voiceStatus").textContent="Requesting microphone…";
+  try{
+    const mic=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+    if(voice!==v){mic.getTracks().forEach(t=>t.stop());return}
+    stream=mic;voiceMic(v,false);
+    pc=new RTCPeerConnection();const peer=pc;
+    v.audio=document.createElement("audio");v.audio.autoplay=true;
+    peer.ontrack=e=>{if(voice===v)v.audio.srcObject=e.streams[0]};
+    peer.onconnectionstatechange=()=>{if(voice===v && ["failed","disconnected"].includes(peer.connectionState))stopVoice("Connection lost — restart the interview.")};
+    peer.addTrack(stream.getAudioTracks()[0],stream);
+    dc=peer.createDataChannel("oai-events");
+    dc.addEventListener("open",()=>{if(voice===v){v.connected=true;voiceRespond(v)}});
+    dc.addEventListener("close",()=>{if(voice===v)stopVoice("Connection closed — restart the interview.")});
+    dc.addEventListener("message",e=>{if(voice===v){try{voiceEvent(v,JSON.parse(e.data))}catch{stopVoice("Interview stopped: invalid voice event. Please restart.")}}});
+    const offer=await peer.createOffer();if(voice!==v)return;
+    await peer.setLocalDescription(offer);if(voice!==v)return;
+    v.abort=new AbortController();
+    const r=await fetch("/api/realtime-session?athleteId="+encodeURIComponent(v.athleteId)+"&voiceMode="+encodeURIComponent(v.mode),{method:"POST",body:offer.sdp,headers:{"Content-Type":"application/sdp"},signal:v.abort.signal});
+    const answer=await r.text();if(voice!==v)return;
+    if(!r.ok)throw new Error(answer);
+    await peer.setRemoteDescription({type:"answer",sdp:answer});
+  }catch(e){if(voice===v)stopVoice("Could not start: "+e.message)}
+}
+function stopVoice(message="Interview ended"){
+  const v=voice;voice=null;v?.abort?.abort();
+  if(stream)stream.getTracks().forEach(t=>t.stop());if(dc)dc.close();if(pc)pc.close();
+  if(v?.audio){v.audio.pause();v.audio.srcObject=null}
+  pc=dc=stream=null;$("voiceStatus").textContent=message;
+  $("startBtn").disabled=false;$("stopBtn").disabled=true;$("answerBtn").disabled=true;
+  $("answerBtn").textContent="Tap to answer";$("voiceMode").disabled=false;$("athleteSelect").disabled=false;
+}
 async function generateReport(){
  if(transcript.length<2){$("evalStatus").textContent="Add or capture at least a short interview transcript first.";return}
  $("evalStatus").textContent="Generating readiness report…";
@@ -238,3 +310,4 @@ async function generateReport(){
 boot().catch(()=>{});
 </script>
 </body></html>
+
