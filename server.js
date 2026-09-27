@@ -363,11 +363,15 @@ Start by greeting the athlete and asking why they are going to the United States
         audio:{
           input:{
   transcription:{model:"gpt-transcribe"},
-  turn_detection:{
+  noise_reduction:{type:"far_field"},
+  turn_detection:url.searchParams.get("voiceMode")==="hands-free" ? {
     type:"server_vad",
-    create_response:true,
+    threshold:0.75,
+    prefix_padding_ms:300,
+    silence_duration_ms:1000,
+    create_response:false,
     interrupt_response:false
-  }
+  } : null
 },
           output:{voice:"marin"}
         }
@@ -398,4 +402,5 @@ initDb().then(() => {
   console.error("Database initialization failed:", err);
   process.exit(1);
 });
+
 
