@@ -258,9 +258,11 @@ const server=http.createServer(async (req,res)=>{
       const u=await requireUser(req,res); if(!u) return;
       const body=JSON.parse((await readBody(req)).toString()||"{}");
       const db=await loadDb();
+      const athlete=db.athletes.find(a=>a.id===body.athleteId);
+      if(!canAccessStudent(u,athlete)) return json(res,403,{error:"You cannot save a transcript for this student."});
       db.transcripts.push({
         id:"tr_"+crypto.randomBytes(6).toString("hex"),
-        athleteId:body.athleteId,
+        athleteId:athlete.id,
         userId:u.id,
         transcript:Array.isArray(body.transcript)?body.transcript:[],
         createdAt:new Date().toISOString()
@@ -270,11 +272,11 @@ const server=http.createServer(async (req,res)=>{
 
     if(req.method==="POST" && url.pathname==="/api/evaluate"){
       const u=await requireUser(req,res); if(!u) return;
-      if(!OPENAI_API_KEY) return json(res,503,{error:"OPENAI_API_KEY is not configured on the server."});
       const body=JSON.parse((await readBody(req)).toString()||"{}");
       const db=await loadDb();
       const athlete=db.athletes.find(a=>a.id===body.athleteId);
-      if(!athlete) return json(res,404,{error:"Athlete not found"});
+      if(!canAccessStudent(u,athlete)) return json(res,403,{error:"You cannot generate a report for this student."});
+      if(!OPENAI_API_KEY) return json(res,503,{error:"OPENAI_API_KEY is not configured on the server."});
 
       const rubric = {
         purpose_of_study:15, university_knowledge:15, major_knowledge:15, scholarship_finances:15,
@@ -436,4 +438,3 @@ initDb().then(() => {
   console.error("Database initialization failed:", err);
   process.exit(1);
 });
-
