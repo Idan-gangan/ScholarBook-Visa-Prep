@@ -18,6 +18,7 @@ const sessions = new Map();
 // Fixed diagnostic codes only: never log emails, submitted passwords, hashes or tokens.
 // Emit each failure category once per process to avoid flooding logs on repeated attempts.
 const authDiagnostics = new Set();
+let loginTraceCount = 0;
 function authDiagnostic(code){
   if(authDiagnostics.has(code)) return;
   authDiagnostics.add(code);
@@ -86,6 +87,10 @@ function readBody(req){
 const coachPassword = process.env.COACH_PASSWORD || "";
 authDiagnostic(coachEmail ? "COACH_EMAIL_PRESENT" : "COACH_EMAIL_MISSING");
 authDiagnostic(coachPassword ? "COACH_PASSWORD_PRESENT" : "COACH_PASSWORD_MISSING");
+if(coachPassword){
+  authDiagnostic(/[\r\n]/.test(coachPassword) ? "COACH_PASSWORD_HAS_LINE_BREAK" : "COACH_PASSWORD_NO_LINE_BREAK");
+  authDiagnostic(coachPassword !== coachPassword.trim() ? "COACH_PASSWORD_HAS_EDGE_WHITESPACE" : "COACH_PASSWORD_NO_EDGE_WHITESPACE");
+}
 
 if (coachEmail && coachPassword) {
   const db = await loadDb();
@@ -204,6 +209,9 @@ const server=http.createServer(async (req,res)=>{
       const email=normalizeEmail(body.email);
       const user=email ? db.users.find(u=>normalizeEmail(u.email)===email) : null;
       if(!user || typeof body.password!=="string" || user.passwordHash!==sha(body.password)){
+        const reference="auth2-"+crypto.randomBytes(6).toString("hex");
+        // Bounded, non-secret correlation: no credential values or fingerprints.
+        if(loginTraceCount++ < 100) console.warn("[auth] LOGIN_REJECTED reference="+reference);
         authDiagnostic(user ? "LOGIN_PASSWORD_MISMATCH" : "LOGIN_ACCOUNT_NOT_FOUND");
         if(email && email===normalizeEmail(process.env.COACH_EMAIL)){
           authDiagnostic("LOGIN_TARGETS_CONFIGURED_COACH");
@@ -212,7 +220,7 @@ const server=http.createServer(async (req,res)=>{
               ? "COACH_STORED_PASSWORD_MATCHES_RUNTIME" : "COACH_STORED_PASSWORD_DIFFERS_FROM_RUNTIME");
           }
         }
-        return json(res,401,{error:"Invalid email or password"});
+        return json(res,401,{error:"Invalid email or password",reference});
       }
       const token=crypto.randomBytes(24).toString("hex"); sessions.set(token,user.id);
       res.writeHead(200,{"Content-Type":"application/json","Set-Cookie":`sb_session=${token}; HttpOnly; SameSite=Lax; Path=/`});
