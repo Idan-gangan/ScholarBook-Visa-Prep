@@ -15,6 +15,15 @@ const EVALUATION_MODEL = process.env.EVALUATION_MODEL || "gpt-5.6";
 const PUBLIC = path.join(__dirname, "public");
 const DATA_FILE = path.join(__dirname, "data", "db.json");
 const sessions = new Map();
+// Fixed diagnostic codes only: never log emails, submitted passwords, hashes or tokens.
+// Emit each failure category once per process to avoid flooding logs on repeated attempts.
+const authDiagnostics = new Set();
+function authDiagnostic(code){
+  if(authDiagnostics.has(code)) return;
+  authDiagnostics.add(code);
+  console.warn("[auth] " + code);
+}
+function normalizeEmail(value){ return typeof value === "string" ? value.trim().toLowerCase() : ""; }
 const KNOWLEDGE_DIR = path.join(__dirname, "knowledge");
 
 function loadEmbassyKnowledge(interviewLocation = "") {
@@ -73,15 +82,17 @@ function readBody(req){
      ON CONFLICT (id) DO NOTHING`,
     [JSON.stringify(JSON.parse(fs.readFileSync(DATA_FILE, "utf8")))]
   );
-  const coachEmail = (process.env.COACH_EMAIL || "").trim().toLowerCase();
+  const coachEmail = normalizeEmail(process.env.COACH_EMAIL);
 const coachPassword = process.env.COACH_PASSWORD || "";
+authDiagnostic(coachEmail ? "COACH_EMAIL_PRESENT" : "COACH_EMAIL_MISSING");
+authDiagnostic(coachPassword ? "COACH_PASSWORD_PRESENT" : "COACH_PASSWORD_MISSING");
 
 if (coachEmail && coachPassword) {
   const db = await loadDb();
   db.users = Array.isArray(db.users) ? db.users : [];
 
   let coach = db.users.find(
-    u => (u.email || "").toLowerCase() === coachEmail
+    u => normalizeEmail(u.email) === coachEmail
   );
 
   if (!coach) {
@@ -98,6 +109,11 @@ if (coachEmail && coachPassword) {
   coach.passwordHash = sha(coachPassword);
 
   await saveDb(db);
+  const saved = await loadDb();
+  const matches = saved.users.filter(u => normalizeEmail(u.email) === coachEmail);
+  if(matches.length > 1) authDiagnostic("COACH_DUPLICATE_EMAIL");
+  authDiagnostic(matches[0]?.passwordHash === sha(coachPassword)
+    ? "COACH_PASSWORD_WRITE_VERIFIED" : "COACH_PASSWORD_WRITE_NOT_VERIFIED");
 }
 }
 async function loadDb(){
@@ -185,8 +201,19 @@ const server=http.createServer(async (req,res)=>{
     if(req.method==="POST" && url.pathname==="/api/login"){
       const body=JSON.parse((await readBody(req)).toString()||"{}");
       const db=await loadDb();
-      const user=db.users.find(u=>u.email.toLowerCase()===(body.email||"").toLowerCase());
-      if(!user || user.passwordHash!==sha(body.password||"")) return json(res,401,{error:"Invalid email or password"});
+      const email=normalizeEmail(body.email);
+      const user=email ? db.users.find(u=>normalizeEmail(u.email)===email) : null;
+      if(!user || typeof body.password!=="string" || user.passwordHash!==sha(body.password)){
+        authDiagnostic(user ? "LOGIN_PASSWORD_MISMATCH" : "LOGIN_ACCOUNT_NOT_FOUND");
+        if(email && email===normalizeEmail(process.env.COACH_EMAIL)){
+          authDiagnostic("LOGIN_TARGETS_CONFIGURED_COACH");
+          if(user && process.env.COACH_PASSWORD){
+            authDiagnostic(user.passwordHash===sha(process.env.COACH_PASSWORD)
+              ? "COACH_STORED_PASSWORD_MATCHES_RUNTIME" : "COACH_STORED_PASSWORD_DIFFERS_FROM_RUNTIME");
+          }
+        }
+        return json(res,401,{error:"Invalid email or password"});
+      }
       const token=crypto.randomBytes(24).toString("hex"); sessions.set(token,user.id);
       res.writeHead(200,{"Content-Type":"application/json","Set-Cookie":`sb_session=${token}; HttpOnly; SameSite=Lax; Path=/`});
       return res.end(JSON.stringify({ok:true,user:{id:user.id,name:user.name,role:user.role,email:user.email}}));

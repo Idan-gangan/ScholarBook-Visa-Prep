@@ -4,24 +4,57 @@ const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const {Readable}=require('node:stream');
 const learning=require('../learning');
 const student={id:'s1',userId:'u1',name:'Test student',major:'Biology',university:'Example University',scholarship:'Merit award',scholarshipCoverage:'Tuition only',remainingSponsor:'Parent',postGradPlan:'Environmental research',email:'private@example.test'};
-function harness(user={id:'u1',role:'athlete'}){
- let handler;const progress=new Map(),calls=[];
+function harness(user={id:'u1',role:'athlete'},env={}){
+ let handler;const progress=new Map(),calls=[],logs=[];
  const db={users:[user],athletes:[student,{id:'s2',userId:'u2'}],reports:[],transcripts:[]};
  const pool={query:async(sql,args)=>{
+   if(sql.trim().startsWith('CREATE TABLE') || sql.trim().startsWith('INSERT INTO app_state'))return {rows:[]};
    if(sql.includes('FROM app_state'))return {rows:[{data:structuredClone(db)}]};
    if(sql.startsWith('UPDATE app_state')){Object.assign(db,structuredClone(args[0]));return {rows:[]}}
    if(sql.startsWith('SELECT data FROM learning_progress'))return {rows:progress.has(args[0])?[{data:progress.get(args[0])}]:[]};
    if(sql.startsWith('INSERT INTO learning_progress')){progress.set(args[0],JSON.parse(args[2]));return {rows:[]}}
    throw new Error('Unexpected query: '+sql);
  }};
- const context=vm.createContext({require:id=>id==='http'?{createServer:fn=>{handler=fn;return {}}}:id==='pg'?{Pool:function(){return pool}}:id==='./learning'?learning:require(id),__dirname:path.resolve(__dirname,'..'),process:{env:{OPENAI_API_KEY:'test-only'}},console,Buffer,URL,FormData,fetch:async(url,options)=>{if(url.endsWith('/responses')){calls.push({url,request:JSON.parse(options.body)});return {ok:true,json:async()=>({output_text:JSON.stringify({scores:{},overall:45,readiness:'High Concern',biggestWeakness:'Test',feedback:'Test feedback',nextStep:'Practice'})})};}calls.push({url,session:JSON.parse(options.body.get('session'))});return {status:200,text:async()=> 'test-sdp-answer'}}});
+ const context=vm.createContext({require:id=>id==='http'?{createServer:fn=>{handler=fn;return {}}}:id==='pg'?{Pool:function(){return pool}}:id==='fs'?{...fs,readFileSync:(file,...args)=>file===path.resolve(__dirname,'../data/db.json')?'{}':fs.readFileSync(file,...args)}:id==='./learning'?learning:require(id),__dirname:path.resolve(__dirname,'..'),process:{env:{OPENAI_API_KEY:'test-only',...env}},console:{log:(...args)=>logs.push(args.join(' ')),warn:(...args)=>logs.push(args.join(' ')),error:(...args)=>logs.push(args.join(' '))},Buffer,URL,FormData,fetch:async(url,options)=>{if(url.endsWith('/responses')){calls.push({url,request:JSON.parse(options.body)});return {ok:true,json:async()=>({output_text:JSON.stringify({scores:{},overall:45,readiness:'High Concern',biggestWeakness:'Test',feedback:'Test feedback',nextStep:'Practice'})})};}calls.push({url,session:JSON.parse(options.body.get('session'))});return {status:200,text:async()=> 'test-sdp-answer'}}});
  let source=fs.readFileSync(path.join(__dirname,'../server.js'),'utf8');source=source.slice(0,source.indexOf('initDb().then('));vm.runInContext(source,context);vm.runInContext(`sessions.set('test-token',${JSON.stringify(user.id)})`,context);
  async function request(method,url,body,authenticated=true){
    const req=Readable.from(body===undefined?[]:[Buffer.from(typeof body==='string'?body:JSON.stringify(body))]);req.method=method;req.url=url;req.headers={host:'localhost',cookie:authenticated?'sb_session=test-token':''};
    const result={};await handler(req,{writeHead:status=>result.status=status,end:text=>{result.text=text;try{result.body=JSON.parse(text)}catch{}}});return result;
  }
- return {request,progress,calls,db};
+ return {request,progress,calls,db,logs,init:()=>vm.runInContext('initDb()',context)};
 }
+test('coach startup applies configured password and login tolerates email whitespace without changing password bytes',async()=>{
+ const h=harness({id:'coach1',role:'coach',email:'Coach@Example.test',passwordHash:'old'},
+   {COACH_EMAIL:' coach@example.test ',COACH_PASSWORD:'new-password-for-test '});
+ const students=structuredClone(h.db.athletes);
+ await h.init();
+ assert.equal(h.db.users.length,1);assert.equal(h.db.users[0].id,'coach1');
+ assert.deepEqual(h.db.athletes,students);
+ assert.ok(h.logs.includes('[auth] COACH_PASSWORD_WRITE_VERIFIED'));
+ assert.equal((await h.request('POST','/api/login',{email:' COACH@example.test ',password:'new-password-for-test '},false)).status,200);
+ for(const password of ['old','new-password-for-test',{},null]){
+   const r=await h.request('POST','/api/login',{email:'coach@example.test',password},false);
+   assert.equal(r.status,401);assert.equal(r.body.error,'Invalid email or password');
+ }
+ assert.equal(h.logs.filter(s=>s==='[auth] LOGIN_PASSWORD_MISMATCH').length,1);
+ assert.ok(h.logs.includes('[auth] COACH_STORED_PASSWORD_MATCHES_RUNTIME'));
+ h.db.users[0].passwordHash='changed-after-startup';
+ await h.request('POST','/api/login',{email:'coach@example.test',password:'new-password-for-test '},false);
+ assert.ok(h.logs.includes('[auth] COACH_STORED_PASSWORD_DIFFERS_FROM_RUNTIME'));
+ assert.doesNotMatch(h.logs.join('\n'),/new-password|coach@example|changed-after-startup|test-token/i);
+});
+test('missing coach config and unknown login have private, bounded diagnostics',async()=>{
+ const h=harness({id:'u1',role:'athlete',email:'student@example.test'});
+ const before=structuredClone(h.db);await h.init();assert.deepEqual(h.db,before);
+ assert.ok(h.logs.includes('[auth] COACH_EMAIL_MISSING'));
+ assert.ok(h.logs.includes('[auth] COACH_PASSWORD_MISSING'));
+ for(const email of ['unknown@example.test','',{},null]){
+   const r=await h.request('POST','/api/login',{email,password:'secret-attempt'},false);
+   assert.equal(r.status,401);assert.equal(r.body.error,'Invalid email or password');
+ }
+ assert.equal(h.logs.filter(s=>s==='[auth] LOGIN_ACCOUNT_NOT_FOUND').length,1);
+ assert.doesNotMatch(h.logs.join('\n'),/example.test|secret-attempt/);
+});
 test('report and transcript writes reject anonymous, cross-student and missing targets without side effects',async()=>{
  for(const route of ['/api/save-transcript','/api/evaluate']){
    const h=harness();const before=structuredClone(h.db);
