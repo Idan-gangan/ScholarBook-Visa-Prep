@@ -14,7 +14,7 @@ function harness(user={id:'u1',role:'athlete'}){
    if(sql.startsWith('INSERT INTO learning_progress')){progress.set(args[0],JSON.parse(args[2]));return {rows:[]}}
    throw new Error('Unexpected query: '+sql);
  }};
- const context=vm.createContext({require:id=>id==='http'?{createServer:fn=>{handler=fn;return {}}}:id==='pg'?{Pool:function(){return pool}}:id==='./learning'?learning:require(id),__dirname:path.resolve(__dirname,'..'),process:{env:{OPENAI_API_KEY:'test-only'}},console,Buffer,URL,FormData,fetch:async(url,options)=>{calls.push({url,session:JSON.parse(options.body.get('session'))});return {status:200,text:async()=> 'test-sdp-answer'}}});
+ const context=vm.createContext({require:id=>id==='http'?{createServer:fn=>{handler=fn;return {}}}:id==='pg'?{Pool:function(){return pool}}:id==='./learning'?learning:require(id),__dirname:path.resolve(__dirname,'..'),process:{env:{OPENAI_API_KEY:'test-only'}},console,Buffer,URL,FormData,fetch:async(url,options)=>{if(url.endsWith('/responses')){calls.push({url,request:JSON.parse(options.body)});return {ok:true,json:async()=>({output_text:JSON.stringify({scores:{},overall:45,readiness:'High Concern',biggestWeakness:'Test',feedback:'Test feedback',nextStep:'Practice'})})};}calls.push({url,session:JSON.parse(options.body.get('session'))});return {status:200,text:async()=> 'test-sdp-answer'}}});
  let source=fs.readFileSync(path.join(__dirname,'../server.js'),'utf8');source=source.slice(0,source.indexOf('initDb().then('));vm.runInContext(source,context);vm.runInContext(`sessions.set('test-token',${JSON.stringify(user.id)})`,context);
  async function request(method,url,body,authenticated=true){
    const req=Readable.from(body===undefined?[]:[Buffer.from(typeof body==='string'?body:JSON.stringify(body))]);req.method=method;req.url=url;req.headers={host:'localhost',cookie:authenticated?'sb_session=test-token':''};
@@ -22,6 +22,33 @@ function harness(user={id:'u1',role:'athlete'}){
  }
  return {request,progress,calls,db};
 }
+test('report and transcript writes reject anonymous, cross-student and missing targets without side effects',async()=>{
+ for(const route of ['/api/save-transcript','/api/evaluate']){
+   const h=harness();const before=structuredClone(h.db);
+   assert.equal((await h.request('POST',route,{athleteId:'s1'},false)).status,401);
+   for(const athleteId of ['s2','missing',undefined]){
+     assert.equal((await h.request('POST',route,{athleteId,transcript:[{role:'athlete',text:'Test'}],role:'coach',userId:'u2'})).status,403);
+   }
+   assert.deepEqual(h.db,before);assert.equal(h.calls.length,0);
+ }
+});
+test('students can save their own transcript and generate their own report',async()=>{
+ const h=harness();const transcript=[{role:'athlete',text:'My study plans'}];
+ assert.equal((await h.request('POST','/api/save-transcript',{athleteId:'s1',userId:'forged',transcript})).status,200);
+ assert.equal(h.db.transcripts[0].userId,'u1');assert.equal(h.db.transcripts[0].athleteId,'s1');
+ assert.equal((await h.request('POST','/api/evaluate',{athleteId:'s1',transcript})).status,200);
+ assert.equal(h.calls.length,1);assert.equal(h.db.reports[0].athleteId,'s1');
+ assert.equal(h.db.athletes.find(a=>a.id==='s2').currentScore,undefined);
+});
+test('existing staff access is preserved while unrelated roles cannot write another student',async()=>{
+ for(const role of ['coach','supervisor','manager']){
+   const h=harness({id:'staff',role});
+   for(const route of ['/api/save-transcript','/api/evaluate'])assert.equal((await h.request('POST',route,{athleteId:'s2',transcript:[]})).status,200);
+ }
+ const h=harness({id:'other',role:'unknown'});
+ for(const route of ['/api/save-transcript','/api/evaluate'])assert.equal((await h.request('POST',route,{athleteId:'s1'})).status,403);
+ assert.equal(h.calls.length,0);assert.equal(h.db.transcripts.length,0);assert.equal(h.db.reports.length,0);
+});
 test('student registration permits no sport and retains student-only privileges',async()=>{
  const h=harness({id:'u1',role:'athlete',email:'existing@example.test'});
  const result=await h.request('POST','/api/register-athlete',{name:'New Student',email:'new@example.test',password:'example-password',country:'Nigeria',university:'Example University',major:'Biology',role:'coach'},false);
