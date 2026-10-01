@@ -82,7 +82,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
     <div class="formgrid">
       <div class="field"><label>Full name *</label><input id="r_name"></div>
       <div class="field"><label>Email *</label><input id="r_email" type="email"></div>
-      <div class="field"><label>Password *</label><input id="r_password" type="password" placeholder="At least 8 characters"></div>
+      <div class="field"><label>Password *</label><input id="r_password" type="password" autocomplete="new-password" minlength="15" maxlength="128" placeholder="At least 15 characters"></div>
       <div class="field"><label>Phone</label><input id="r_phone"></div>
       <div class="field"><label>Country *</label><input id="r_country"></div>
       <div class="field"><label>Interview location / Embassy</label><input id="r_interviewLocation" placeholder="e.g. Nairobi, Kenya"></div>
@@ -188,6 +188,16 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
       <h1>Readiness Reports</h1><div id="reportsList"></div>
     </section>
     <section id="manager" class="screen"><h1>Athlete Manager View</h1><div class="card" style="overflow:auto"><div id="managerTable"></div></div></section>
+    <section id="account" class="screen"><h1>Account security</h1>
+      <form class="card" style="max-width:560px" onsubmit="event.preventDefault();changePassword()">
+        <h2>Change password</h2><p class="muted">Use 15–128 characters. A long, unique passphrase works well. You will sign in again after saving.</p>
+        <div class="field"><label for="currentPassword">Current password</label><input id="currentPassword" type="password" autocomplete="current-password" required></div>
+        <div class="field"><label for="newPassword">New password</label><input id="newPassword" type="password" autocomplete="new-password" minlength="15" maxlength="128" required></div>
+        <div class="field"><label for="confirmPassword">Confirm new password</label><input id="confirmPassword" type="password" autocomplete="new-password" minlength="15" maxlength="128" required></div>
+        <button id="changePasswordBtn" class="btn primary" type="submit">Save new password</button>
+        <p id="passwordMessage" role="status" aria-live="polite"></p>
+      </form>
+    </section>
   </main></div>
 </div>
 
@@ -207,13 +217,28 @@ async function registerAthlete(){
  catch(e){ $("registerErr").textContent=e.message; }
 }
 async function logout(){if(voice)stopVoice();await api("/api/logout",{method:"POST"});location.reload()}
+function clearPasswordForm(){for(const id of ['currentPassword','newPassword','confirmPassword'])$(id).value='';}
+async function changePassword(){
+ const button=$('changePasswordBtn');if(button.disabled)return;
+ const body={currentPassword:$('currentPassword').value,newPassword:$('newPassword').value,confirmPassword:$('confirmPassword').value};
+ if(body.newPassword!==body.confirmPassword){$('passwordMessage').textContent='New passwords do not match.';return;}
+ button.disabled=true;$('passwordMessage').textContent='Saving…';
+ try{
+   await api('/api/change-password',{method:'POST',body:JSON.stringify(body)});
+   clearPasswordForm();if(voice)stopVoice();me=null;athletes=[];reports=[];
+   $('app').classList.add('hidden');backToLogin();
+   $('loginErr').textContent='Password changed. Sign in with your new password.';
+ }catch(error){$('passwordMessage').textContent=error.message;}
+ finally{button.disabled=false;}
+}
 function navItems(){
  const base=[["My Learning","learning"],["Dashboard","dashboard"],["Live Mock Interview","interview"],["Readiness Reports","reports"]];
  if(me.role==="athlete") base.splice(1,0,["My Profile","profile"]);
  if(["coach","manager","supervisor"].includes(me.role)) base.push(["Athlete Manager View","manager"]);
- return base;
+ base.push(['Account security','account']);return base;
 }
 function show(id,el){
+ if(id!=='account'){clearPasswordForm();$('passwordMessage').textContent='';}
  if(voice && id!==(voice.mode==="learn"?"learning":"interview"))stopVoice("Conversation ended when you left this page.");
 document.querySelectorAll(".screen").forEach(x=>x.classList.remove("on"));$(id).classList.add("on");document.querySelectorAll(".nav").forEach(x=>x.classList.remove("on"));document.querySelectorAll(".nav").forEach(x=>x.classList.toggle("on",x.dataset.screen===id))}
 async function boot(){
