@@ -9,6 +9,7 @@ function harness(user={id:'u1',role:'athlete'}){
  const db={users:[user],athletes:[student,{id:'s2',userId:'u2'}],reports:[],transcripts:[]};
  const pool={query:async(sql,args)=>{
    if(sql.includes('FROM app_state'))return {rows:[{data:structuredClone(db)}]};
+   if(sql.startsWith('UPDATE app_state')){Object.assign(db,structuredClone(args[0]));return {rows:[]}}
    if(sql.startsWith('SELECT data FROM learning_progress'))return {rows:progress.has(args[0])?[{data:progress.get(args[0])}]:[]};
    if(sql.startsWith('INSERT INTO learning_progress')){progress.set(args[0],JSON.parse(args[2]));return {rows:[]}}
    throw new Error('Unexpected query: '+sql);
@@ -21,6 +22,13 @@ function harness(user={id:'u1',role:'athlete'}){
  }
  return {request,progress,calls,db};
 }
+test('student registration permits no sport and retains student-only privileges',async()=>{
+ const h=harness({id:'u1',role:'athlete',email:'existing@example.test'});
+ const result=await h.request('POST','/api/register-athlete',{name:'New Student',email:'new@example.test',password:'example-password',country:'Nigeria',university:'Example University',major:'Biology',role:'coach'},false);
+ assert.equal(result.status,201);
+ assert.equal(h.db.users.at(-1).role,'athlete');
+ assert.equal(h.db.athletes.at(-1).sport,'');
+});
 test('notes save and reload without changing mock reports or scores',async()=>{
  const h=harness();const body={subjectReason:' My interest ',studyOpportunity:'A checked course',futureUse:'My goals',draftAnswer:'My own explanation',reflected:true,completed:true};
  const saved=await h.request('PUT','/api/learning/study-purpose?athleteId=s1',body);assert.equal(saved.status,200);assert.equal(saved.body.progress.subjectReason,'My interest');

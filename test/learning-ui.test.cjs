@@ -24,6 +24,28 @@ function fixture(){
  vm.runInContext(html.match(/<script>([\s\S]*?)<\/script>/)[1].replace('boot().catch(()=>{});',''),ctx);
  return {elements,store,ctx,run:code=>vm.runInContext(code,ctx)};
 }
+test('public entry is a welcome page without shared credentials',()=>{
+ assert.match(html,/<div id="welcome" class="welcome">/);
+ assert.match(html,/<div id="login" class="login hidden">/);
+ for(const id of ['email','password']){
+   const input=html.match(new RegExp('<input id="'+id+'"[^>]*>'))[0];
+   assert.doesNotMatch(input,/\bvalue=/);
+ }
+ assert.doesNotMatch(html,/demo123|efe\.sam@scholarbook\.net|Create Athlete Account/);
+ const f=fixture();f.run('showRegistration()');
+ assert.equal(f.elements.get('welcome').classList.contains('hidden'),true);
+ assert.equal(f.elements.get('registration').classList.contains('hidden'),false);
+ f.run('backToLogin()');assert.equal(f.elements.get('login').classList.contains('hidden'),false);
+ f.elements.get('password').value='temporary';f.run('showWelcome()');
+ assert.equal(f.elements.get('password').value,'');
+ assert.equal(f.elements.get('welcome').classList.contains('hidden'),false);
+ assert.equal(f.elements.get('login').classList.contains('hidden'),true);
+});
+test('authenticated boot hides all public pages',async()=>{
+ const f=fixture();await f.run('boot()');
+ for(const id of ['welcome','login','registration'])assert.equal(f.elements.get(id).classList.contains('hidden'),true);
+ assert.equal(f.elements.get('app').classList.contains('hidden'),false);
+});
 test('students land in learning and saved notes/completion reload',async()=>{
  const f=fixture();await f.run('boot()');assert.equal(f.elements.get('learning').classList.contains('on'),true);
  for(const name of ['subjectReason','studyOpportunity','futureUse','draftAnswer'])f.elements.get('learn_'+name).value='My '+name;

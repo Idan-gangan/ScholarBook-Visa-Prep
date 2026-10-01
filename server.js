@@ -155,7 +155,7 @@ const server=http.createServer(async (req,res)=>{
 
     if(req.method==="POST" && url.pathname==="/api/register-athlete"){
       const body=JSON.parse((await readBody(req)).toString()||"{}");
-      const required=["name","email","password","country","sport","university","major"];
+      const required=["name","email","password","country","university","major"];
       const missing=required.filter(k=>!clean(body[k]));
       if(missing.length) return json(res,400,{error:"Please complete: "+missing.join(", ")});
       if(clean(body.password).length<8) return json(res,400,{error:"Password must be at least 8 characters."});
@@ -436,5 +436,4 @@ initDb().then(() => {
   console.error("Database initialization failed:", err);
   process.exit(1);
 });
-
 
