@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>VisaAtlas — Working Demo</title>
+<title>VisaAtlas — Learn. Practise. Prepare.</title>
 <style>
 :root{--navy:#0b1f4d;--blue:#2457ff;--purple:#6d45e6;--bg:#f5f7fb;--line:#dde4ef;--muted:#6d7891;--green:#15915a;--amber:#c77d00;--red:#c73737}
 *{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:#14213d}
@@ -36,19 +36,40 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
 
 .lesson-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}.lesson-heading h1{margin:6px 0;max-width:780px}.lesson-grid{margin-top:16px;align-items:start}.lesson-content{line-height:1.6}.lesson-content li{margin-bottom:12px}.lesson-content ol{padding-left:22px}.lesson-block{margin-top:18px}.lesson-actions{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0}.lesson-check{display:flex;gap:10px;align-items:flex-start;line-height:1.5}.lesson-check input{width:20px;height:20px;flex-shrink:0}.lesson-status{margin-top:12px;min-height:20px}.lesson-transcript{max-height:340px;overflow:auto;overflow-wrap:anywhere}.msg{padding:10px 0;white-space:pre-wrap;overflow-wrap:anywhere}.btn:disabled{opacity:.55;cursor:not-allowed}.top{z-index:2}
 @media(max-width:900px){.lesson-grid{grid-template-columns:1fr}.field textarea,.field select{font-size:16px}}
+.welcome{min-height:100vh;background:#f5f7fb}.welcome-nav{max-width:1120px;margin:auto;padding:24px;display:flex;align-items:center;justify-content:space-between;gap:16px}.welcome-hero{max-width:1120px;margin:auto;padding:64px 24px 40px}.welcome-hero h1{font-size:clamp(38px,6vw,68px);line-height:1.08;max-width:850px;margin:16px 0;letter-spacing:-2px}.welcome-hero>p{max-width:640px;font-size:19px;line-height:1.6;color:#53627d}.welcome-tag{color:#2457ff;font-weight:700;font-size:14px}.welcome-steps{max-width:1120px;margin:auto;padding:0 24px 48px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}.welcome-steps p{line-height:1.6;color:#53627d}.welcome-number{font-size:14px;color:#2457ff;font-weight:800}.welcome-footer{max-width:1120px;margin:auto;padding:0 24px 30px;line-height:1.6;color:#53627d}.welcome .btn{min-height:46px}.welcome-actions{display:flex;gap:12px;flex-wrap:wrap;margin:26px 0}.welcome .brand{font-size:20px}@media(max-width:700px){.welcome-hero{padding-top:30px}.welcome-steps{grid-template-columns:1fr}.welcome-nav{padding:18px}.welcome-hero h1{letter-spacing:-1px}}
 </style>
 </head>
 <body>
-<div id="login" class="login">
+<div id="welcome" class="welcome">
+  <header class="welcome-nav"><div class="brand"><div class="logo">VA</div>VisaAtlas</div><button class="btn secondary" onclick="backToLogin()">Sign in</button></header>
+  <main>
+    <section class="welcome-hero">
+      <span class="welcome-tag">FOR STUDENTS PREPARING TO STUDY IN THE U.S.</span>
+      <h1>Your story.<br>Your goals.<br>Prepare to explain them.</h1>
+      <p>Learn how to explain your study plans with a personal AI tutor, practise in your own words, and try a realistic voice mock interview.</p>
+      <div class="welcome-actions"><button class="btn primary" onclick="showRegistration()">Get started</button><button class="btn secondary" onclick="backToLogin()">Sign in to continue</button></div>
+      <p class="small">For undergraduate students, graduate students, and student-athletes.</p>
+    </section>
+    <section class="welcome-steps" aria-label="How VisaAtlas works">
+      <article class="card"><span class="welcome-number">01 · LEARN</span><h2>Understand your story</h2><p>Get short explanations based on your student profile, from your school choice to your funding and future plans.</p></article>
+      <article class="card"><span class="welcome-number">02 · PRACTISE</span><h2>Find your own words</h2><p>Talk through your ideas with the tutor. Ask questions and practise explaining your real experiences clearly.</p></article>
+      <article class="card"><span class="welcome-number">03 · MOCK INTERVIEW</span><h2>Put it into practice</h2><p>Speak naturally in an AI mock interview and get feedback on what to work on next.</p></article>
+    </section>
+  </main>
+  <footer class="welcome-footer small">VisaAtlas is a learning and preparation tool, not a government service or legal adviser. Readiness feedback is not a prediction or guarantee of visa approval.</footer>
+</div>
+<div id="login" class="login hidden">
   <div class="loginCard">
     <div class="logo">VA</div>
     <h1>VisaAtlas</h1>
-    <p class="muted">Working demo: accounts, saved progress, AI voice interview, evaluation, human review.</p>
-    <div class="field"><label>Email</label><input id="email" value="efe.sam@scholarbook.net"></div>
-    <div class="field"><label>Password</label><input id="password" type="password" value="demo123"></div>
-    <button class="btn primary" style="width:100%" onclick="login()">Sign in</button>
-    <button class="linkbtn" style="width:100%;margin-top:10px" onclick="showRegistration()">New athlete? Create your account</button>
-    <p class="small muted">Athlete registration creates an athlete account only. Staff accounts are managed separately.</p>
+    <p class="muted">Sign in to continue your preparation.</p>
+    <form onsubmit="event.preventDefault();login()">
+    <div class="field"><label for="email">Email</label><input id="email" name="email" type="email" autocomplete="username" required placeholder="Your email address"></div>
+    <div class="field"><label for="password">Password</label><input id="password" name="password" type="password" autocomplete="current-password" required placeholder="Your password"></div>
+    <button class="btn primary" type="submit" style="width:100%">Sign in</button>
+    </form>
+    <button class="linkbtn" style="width:100%;margin-top:10px" onclick="showRegistration()">New here? Create a student account</button>
+    <button class="linkbtn" onclick="showWelcome()">Back to home</button>
     <div id="loginErr" class="small" style="color:#b32626"></div>
   </div>
 </div>
@@ -56,7 +77,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
 
 <div id="registration" class="hidden" style="min-height:100vh;background:var(--bg);padding:20px">
   <div class="modalish">
-    <div style="display:flex;justify-content:space-between;gap:15px;align-items:start"><div><div class="logo">VA</div><h1>Create Athlete Account</h1><p class="muted">Complete your own profile so the visa-prep team can see the correct information from the start.</p></div><button class="btn secondary" onclick="backToLogin()">Back to Sign In</button></div>
+    <div style="display:flex;justify-content:space-between;gap:15px;align-items:start;flex-wrap:wrap"><div><div class="logo">VA</div><h1>Create Student Account</h1><p class="muted">Tell us about your study plans so your preparation can fit your background.</p></div><button class="btn secondary" onclick="showWelcome()">Back to home</button></div>
     <div class="notice">Prototype notice: Do not enter passport numbers, DS-160 details, financial-document images, Social Security numbers, or other highly sensitive information.</div>
     <div class="formgrid">
       <div class="field"><label>Full name *</label><input id="r_name"></div>
@@ -65,7 +86,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
       <div class="field"><label>Phone</label><input id="r_phone"></div>
       <div class="field"><label>Country *</label><input id="r_country"></div>
       <div class="field"><label>Interview location / Embassy</label><input id="r_interviewLocation" placeholder="e.g. Nairobi, Kenya"></div>
-      <div class="field"><label>Sport *</label><input id="r_sport"></div>
+      <div class="field"><label for="r_sport">Sport (optional)</label><input id="r_sport" placeholder="Leave blank if you are not a student-athlete"></div>
       <div class="field"><label>University *</label><input id="r_university"></div>
       <div class="field"><label>Degree / Major *</label><input id="r_major"></div>
       <div class="field"><label>Academic level</label><select id="r_academicLevel"><option value="">Select</option><option>Freshman / First year</option><option>Sophomore / Second year</option><option>Junior / Third year</option><option>Senior / Fourth year</option><option>Graduate</option><option>Other</option></select></div>
@@ -78,7 +99,8 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
       <div class="field wide"><label>What are your plans after graduation?</label><textarea id="r_postGradPlan" rows="4" placeholder="Briefly describe your genuine current plan."></textarea></div>
     </div>
     <div class="stepnote small">By creating an account, you confirm that the information you enter is your own and should be truthful. This prototype does not determine visa eligibility.</div>
-    <button class="btn primary" style="width:100%;margin-top:15px" onclick="registerAthlete()">Create Athlete Account</button>
+    <button class="btn primary" style="width:100%;margin-top:15px" onclick="registerAthlete()">Create Student Account</button>
+    <button class="linkbtn" onclick="backToLogin()">Already have an account? Sign in</button>
     <div id="registerErr" class="small" style="color:#b32626;margin-top:10px"></div>
   </div>
 </div>
@@ -174,8 +196,10 @@ let me=null, athletes=[], reports=[], pc=null, dc=null, stream=null, transcript=
 const $=id=>document.getElementById(id);
 async function api(url,opt={}){const r=await fetch(url,{...opt,headers:{...(opt.headers||{}),"Content-Type":opt.body&&typeof opt.body==="string"?"application/json":(opt.headers||{})["Content-Type"]}});let d;try{d=await r.json()}catch{d=await r.text()}if(!r.ok)throw new Error(d.error||d||"Request failed");return d}
 async function login(){try{await api("/api/login",{method:"POST",body:JSON.stringify({email:$("email").value,password:$("password").value})});await boot()}catch(e){$("loginErr").textContent=e.message}}
-function showRegistration(){ $("login").classList.add("hidden"); $("registration").classList.remove("hidden"); }
-function backToLogin(){ $("registration").classList.add("hidden"); $("login").classList.remove("hidden"); }
+function publicPage(id){["welcome","login","registration"].forEach(page=>$(page).classList.toggle("hidden",page!==id));$("password").value="";$("loginErr").textContent="";}
+function showWelcome(){publicPage("welcome")}
+function showRegistration(){publicPage("registration")}
+function backToLogin(){publicPage("login")}
 async function registerAthlete(){
  const ids=["name","email","password","phone","country","interviewLocation","sport","university","major","academicLevel","scholarshipType","scholarshipCoverage","previousRefusal","previousAttempts","previousTravel","remainingSponsor","postGradPlan"];
  const body={}; ids.forEach(k=>body[k]=$("r_"+k).value);
@@ -194,7 +218,7 @@ function show(id,el){
 document.querySelectorAll(".screen").forEach(x=>x.classList.remove("on"));$(id).classList.add("on");document.querySelectorAll(".nav").forEach(x=>x.classList.remove("on"));document.querySelectorAll(".nav").forEach(x=>x.classList.toggle("on",x.dataset.screen===id))}
 async function boot(){
  me=await api("/api/me"); athletes=await api("/api/athletes"); reports=await api("/api/reports");
- $("login").classList.add("hidden");$("app").classList.remove("hidden");$("who").textContent=me.name;$("role").textContent=me.role;
+ ["welcome","login","registration"].forEach(id=>$(id).classList.add("hidden"));$("password").value="";$("app").classList.remove("hidden");$("who").textContent=me.name;$("role").textContent=me.role;
  $("nav").innerHTML=navItems().map((x,i)=>`<div data-screen="${x[1]}" class="nav ${i===0?"on":""}" onclick="show('${x[1]}',this)">${x[0]}</div>`).join("");
  $("athleteSelect").innerHTML=athletes.map(a=>`<option value="${a.id}">${a.name} — ${a.university}</option>`).join("");
  $("learn_athleteSelect").replaceChildren(...athletes.map(a=>new Option(a.name+" — "+(a.university||""),a.id)));
@@ -434,4 +458,3 @@ async function startLearningTutor(){
 boot().catch(()=>{});
 </script>
 </body></html>
-
