@@ -43,6 +43,21 @@ test('coach startup applies configured password and login tolerates email whites
  assert.ok(h.logs.includes('[auth] COACH_STORED_PASSWORD_DIFFERS_FROM_RUNTIME'));
  assert.doesNotMatch(h.logs.join('\n'),/new-password|coach@example|changed-after-startup|test-token/i);
 });
+test('hidden characters are diagnosed without accepting a modified password or leaking credentials',async()=>{
+ const password='private-fixture\r\n ';
+ const h=harness({id:'u1',role:'coach',email:'coach@example.test'},{COACH_EMAIL:'coach@example.test',COACH_PASSWORD:password});
+ await h.init();
+ assert.ok(h.logs.includes('[auth] COACH_PASSWORD_HAS_LINE_BREAK'));
+ assert.ok(h.logs.includes('[auth] COACH_PASSWORD_HAS_EDGE_WHITESPACE'));
+ const r=await h.request('POST','/api/login',{email:'coach@example.test',password:password.trim()},false);
+ assert.equal(r.status,401);
+ assert.match(r.body.reference,/^auth2-[a-f0-9]{12}$/);
+ assert.ok(h.logs.some(s=>s.includes('reference='+r.body.reference)));
+ assert.doesNotMatch(h.logs.join('\n'),/private-fixture|coach@example.test/);
+ assert.equal((await h.request('POST','/api/login',{email:'coach@example.test',password},false)).status,200);
+ for(let i=0;i<105;i++) await h.request('POST','/api/login',{email:'coach@example.test',password:'wrong'},false);
+ assert.equal(h.logs.filter(s=>s.includes('LOGIN_REJECTED reference=')).length,100);
+});
 test('missing coach config and unknown login have private, bounded diagnostics',async()=>{
  const h=harness({id:'u1',role:'athlete',email:'student@example.test'});
  const before=structuredClone(h.db);await h.init();assert.deepEqual(h.db,before);
