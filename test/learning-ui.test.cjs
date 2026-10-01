@@ -8,10 +8,11 @@ function fixture(){
  for(const match of html.matchAll(/id="([^"]+)"/g))elements.set(match[1],element());
  const document={getElementById:id=>{if(!elements.has(id))throw new Error('Missing DOM element '+id);return elements.get(id)},querySelectorAll:selector=>selector==='.screen'?['learning','dashboard','interview','profile','reports','manager'].map(id=>elements.get(id)):[],createElement:()=>element(),createTextNode:text=>({textContent:text})};
  const student={id:'s1',userId:'u1',name:'Test Student',university:'Example University',major:'Biology',currentScore:0};
- const store={progress:{},requests:[],tracks:[],failLoad:false};
+ const store={progress:{},requests:[],tracks:[],failLoad:false,failPassword:false};
  const ctx=vm.createContext({document,console,AbortController,URL,Date,JSON,Set,setTimeout,clearTimeout,Option:function(text,value){return {text,value}},window:{addEventListener(){}},location:{reload(){}},confirm:()=>true,navigator:{mediaDevices:{getUserMedia:async()=>{const track={enabled:true,stop(){this.stopped=true}};store.tracks.push(track);return {getTracks:()=>[track],getAudioTracks:()=>[track]}}}},RTCPeerConnection:class{addTrack(){}createDataChannel(){return {readyState:'open',addEventListener(){},send(){},close(){}}}async createOffer(){return {sdp:'offer'}}async setLocalDescription(){}async setRemoteDescription(){}close(){}},fetch:async(url,opt={})=>{
    store.requests.push({url,...opt});let data;const route=new URL(url,'http://local').pathname;
-   if(route==='/api/me')data={id:'u1',name:'Test Student',role:'athlete'};
+   if(route==='/api/change-password'){if(store.failPassword)return {ok:false,json:async()=>({error:'Current password is incorrect.'})};data={ok:true};}
+   else if(route==='/api/me')data={id:'u1',name:'Test Student',role:'athlete'};
    else if(route==='/api/athletes')data=[student];else if(route==='/api/reports')data=[];else if(route==='/api/my-profile')data=student;
    else if(route==='/api/learning/study-purpose'){
      if(store.failLoad&&!opt.method)return {ok:false,json:async()=>({error:'Unavailable'})};
@@ -45,6 +46,20 @@ test('authenticated boot hides all public pages',async()=>{
  const f=fixture();await f.run('boot()');
  for(const id of ['welcome','login','registration'])assert.equal(f.elements.get(id).classList.contains('hidden'),true);
  assert.equal(f.elements.get('app').classList.contains('hidden'),false);
+});
+test('password change shows errors, then clears secrets and asks for a new sign-in',async()=>{
+ const f=fixture();await f.run('boot()');
+ assert.ok(f.run("navItems().some(x=>x[1]==='account')"));
+ f.elements.get('currentPassword').value='old-password-long';f.elements.get('newPassword').value='new-password-long';f.elements.get('confirmPassword').value='mismatch';
+ await f.run('changePassword()');assert.equal(f.store.requests.some(r=>r.url==='/api/change-password'),false);
+ f.elements.get('confirmPassword').value='new-password-long';f.store.failPassword=true;
+ await f.run('changePassword()');assert.equal(f.elements.get('passwordMessage').textContent,'Current password is incorrect.');
+ assert.equal(f.elements.get('changePasswordBtn').disabled,false);
+ f.store.failPassword=false;await f.run('changePassword()');
+ for(const id of ['currentPassword','newPassword','confirmPassword'])assert.equal(f.elements.get(id).value,'');
+ assert.equal(f.elements.get('app').classList.contains('hidden'),true);
+ assert.equal(f.elements.get('login').classList.contains('hidden'),false);
+ assert.match(f.elements.get('loginErr').textContent,/Password changed/);
 });
 test('students land in learning and saved notes/completion reload',async()=>{
  const f=fixture();await f.run('boot()');assert.equal(f.elements.get('learning').classList.contains('on'),true);
