@@ -3,6 +3,7 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
+const {hashPassword,verifyPassword,validPassword,legacyHash}=require('./passwords');
 const { Pool } = require("pg");
 const { LESSON_ID, canAccessStudent, normalizeProgress, tutorInstructions } = require("./learning");
 const pool = new Pool({
@@ -15,6 +16,19 @@ const EVALUATION_MODEL = process.env.EVALUATION_MODEL || "gpt-5.6";
 const PUBLIC = path.join(__dirname, "public");
 const DATA_FILE = path.join(__dirname, "data", "db.json");
 const sessions = new Map();
+const authAttempts = new Map();
+function allowAuth(key){
+  const now=Date.now();
+  for(const [k,v] of authAttempts)if(v.until<=now)authAttempts.delete(k);
+  let entry=authAttempts.get(key);
+  if(!entry){if(authAttempts.size>=2000)return false;entry={count:0,until:now+60000};authAttempts.set(key,entry);}
+  return ++entry.count<=10;
+}
+function sessionCookie(token,clear=false){return `sb_session=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${clear?0:28800}${process.env.NODE_ENV==='production'||process.env.RENDER==='true'?'; Secure':''}`;}
+function startSession(userId,version){for(const [key,s] of sessions)if(s.expires<=Date.now())sessions.delete(key);const token=crypto.randomBytes(24).toString('hex');sessions.set(token,{userId,version,expires:Date.now()+8*60*60*1000});return token;}
+async function credential(userId){return (await pool.query('SELECT password_hash, version FROM user_credentials WHERE user_id=$1',[userId])).rows[0];}
+async function insertCredential(userId,hash){await pool.query('INSERT INTO user_credentials (user_id,password_hash) VALUES ($1,$2) ON CONFLICT (user_id) DO NOTHING',[userId,hash]);}
+async function replaceCredential(userId,previous,hash){return (await pool.query('UPDATE user_credentials SET password_hash=$1, version=version+1 WHERE user_id=$2 AND password_hash=$3 AND version=$4 RETURNING version',[hash,userId,previous.password_hash,previous.version])).rows[0];}
 // Fixed diagnostic codes only: never log emails, submitted passwords, hashes or tokens.
 // Emit each failure category once per process to avoid flooding logs on repeated attempts.
 const authDiagnostics = new Set();
@@ -59,10 +73,15 @@ function json(res, code, obj){
 }
 function readBody(req){
   return new Promise((resolve,reject)=>{
-    let chunks=[]; req.on("data",c=>chunks.push(c)); req.on("end",()=>resolve(Buffer.concat(chunks)));
+    let chunks=[],bytes=0,tooLarge=false;
+    req.on('data',c=>{bytes+=c.length;if(bytes>1024*1024){chunks=[];if(!tooLarge){tooLarge=true;reject(Object.assign(new Error('Request is too large.'),{status:413}));}}else if(!tooLarge)chunks.push(c);});
+    req.on("end",()=>{if(!tooLarge)resolve(Buffer.concat(chunks));});
     req.on("error",reject);
   });
 }async function initDb(){
+  await pool.query(`CREATE TABLE IF NOT EXISTS user_credentials (
+    user_id TEXT PRIMARY KEY, password_hash TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 0
+  )`);
   await pool.query(`CREATE TABLE IF NOT EXISTS learning_progress (
     student_id TEXT NOT NULL,
     lesson_id TEXT NOT NULL,
@@ -83,6 +102,13 @@ function readBody(req){
      ON CONFLICT (id) DO NOTHING`,
     [JSON.stringify(JSON.parse(fs.readFileSync(DATA_FILE, "utf8")))]
   );
+  // A separate credential row prevents unrelated profile/report writes undoing a password change.
+  const existing = await loadDb();
+  for(const user of existing.users || []){
+    if(user.passwordHash) await insertCredential(user.id,user.passwordHash);
+  }
+  await pool.query(`UPDATE app_state SET data=jsonb_set(data,'{users}',
+    COALESCE((SELECT jsonb_agg(u - 'passwordHash') FROM jsonb_array_elements(data->'users') u),'[]'::jsonb)) WHERE id=1`);
   const coachEmail = normalizeEmail(process.env.COACH_EMAIL);
 const coachPassword = process.env.COACH_PASSWORD || "";
 authDiagnostic(coachEmail ? "COACH_EMAIL_PRESENT" : "COACH_EMAIL_MISSING");
@@ -100,6 +126,9 @@ if (coachEmail && coachPassword) {
     u => normalizeEmail(u.email) === coachEmail
   );
 
+  if(coach){authDiagnostic('COACH_EXISTING_PASSWORD_PRESERVED');return;}
+  if(!validPassword(coachPassword))throw new Error('Initial COACH_PASSWORD must contain 15–128 characters and no line breaks.');
+
   if (!coach) {
     coach = {
       id: "u_" + crypto.randomBytes(6).toString("hex"),
@@ -111,14 +140,10 @@ if (coachEmail && coachPassword) {
 
   coach.name = "Efe-Sam Agalivie";
   coach.role = "coach";
-  coach.passwordHash = sha(coachPassword);
+  await insertCredential(coach.id,await hashPassword(coachPassword));
 
   await saveDb(db);
-  const saved = await loadDb();
-  const matches = saved.users.filter(u => normalizeEmail(u.email) === coachEmail);
-  if(matches.length > 1) authDiagnostic("COACH_DUPLICATE_EMAIL");
-  authDiagnostic(matches[0]?.passwordHash === sha(coachPassword)
-    ? "COACH_PASSWORD_WRITE_VERIFIED" : "COACH_PASSWORD_WRITE_NOT_VERIFIED");
+  authDiagnostic('COACH_ACCOUNT_CREATED');
 }
 }
 async function loadDb(){
@@ -137,7 +162,11 @@ async function getUser(req){
   const token=parseCookies(req).sb_session;
   if(!token || !sessions.has(token)) return null;
   const db= await loadDb();
-  return db.users.find(u=>u.id===sessions.get(token)) || null;
+  const session=sessions.get(token);
+  if(session.expires<=Date.now()){sessions.delete(token);return null;}
+  const saved=await credential(session.userId);
+  if(!saved || saved.version!==session.version){sessions.delete(token);return null;}
+  return db.users.find(u=>u.id===session.userId) || null;
 }
 async function requireUser(req,res){
   const u=await getUser(req); if(!u){json(res,401,{error:"Unauthorized"}); return null;} return u;
@@ -179,13 +208,15 @@ const server=http.createServer(async (req,res)=>{
       const required=["name","email","password","country","university","major"];
       const missing=required.filter(k=>!clean(body[k]));
       if(missing.length) return json(res,400,{error:"Please complete: "+missing.join(", ")});
-      if(clean(body.password).length<8) return json(res,400,{error:"Password must be at least 8 characters."});
+      if(!validPassword(body.password)) return json(res,400,{error:"Use a password of 15–128 characters with no line breaks."});
       const email=clean(body.email,160).toLowerCase();
+      if(!allowAuth('register:'+sha(email)))return json(res,429,{error:'Too many attempts. Please try again in one minute.'});
       if(!/^\S+@\S+\.\S+$/.test(email)) return json(res,400,{error:"Enter a valid email address."});
       const db=await loadDb();
       if(db.users.some(u=>u.email.toLowerCase()===email)) return json(res,409,{error:"An account with this email already exists."});
       const userId=makeId("u"); const athleteId=makeId("a");
-      db.users.push({id:userId,name:clean(body.name,120),email,role:"athlete",passwordHash:sha(body.password)});
+      await insertCredential(userId,await hashPassword(body.password));
+      db.users.push({id:userId,name:clean(body.name,120),email,role:"athlete"});
       db.athletes.push({
         id:athleteId,userId,name:clean(body.name,120),email,
         phone:clean(body.phone,40),country:clean(body.country,80),
@@ -198,8 +229,8 @@ const server=http.createServer(async (req,res)=>{
         sessions:0,mocks:0,initialScore:0,currentScore:0,mainConcern:"New athlete — not yet assessed"
       });
       await saveDb(db);
-      const token=crypto.randomBytes(24).toString("hex"); sessions.set(token,userId);
-      res.writeHead(201,{"Content-Type":"application/json","Set-Cookie":`sb_session=${token}; HttpOnly; SameSite=Lax; Path=/`});
+      const token=startSession(userId,0);
+      res.writeHead(201,{"Content-Type":"application/json","Cache-Control":"no-store","Set-Cookie":sessionCookie(token)});
       return res.end(JSON.stringify({ok:true,user:{id:userId,name:clean(body.name,120),role:"athlete",email}}));
     }
 
@@ -207,29 +238,50 @@ const server=http.createServer(async (req,res)=>{
       const body=JSON.parse((await readBody(req)).toString()||"{}");
       const db=await loadDb();
       const email=normalizeEmail(body.email);
+      if(!allowAuth('login:'+sha(email)))return json(res,429,{error:'Too many attempts. Please try again in one minute.'});
       const user=email ? db.users.find(u=>normalizeEmail(u.email)===email) : null;
-      if(!user || typeof body.password!=="string" || user.passwordHash!==sha(body.password)){
+      let saved=user?await credential(user.id):null;
+      if(!user || !saved || !await verifyPassword(body.password,saved.password_hash)){
         const reference="auth2-"+crypto.randomBytes(6).toString("hex");
         // Bounded, non-secret correlation: no credential values or fingerprints.
         if(loginTraceCount++ < 100) console.warn("[auth] LOGIN_REJECTED reference="+reference);
         authDiagnostic(user ? "LOGIN_PASSWORD_MISMATCH" : "LOGIN_ACCOUNT_NOT_FOUND");
         if(email && email===normalizeEmail(process.env.COACH_EMAIL)){
           authDiagnostic("LOGIN_TARGETS_CONFIGURED_COACH");
-          if(user && process.env.COACH_PASSWORD){
-            authDiagnostic(user.passwordHash===sha(process.env.COACH_PASSWORD)
-              ? "COACH_STORED_PASSWORD_MATCHES_RUNTIME" : "COACH_STORED_PASSWORD_DIFFERS_FROM_RUNTIME");
-          }
         }
         return json(res,401,{error:"Invalid email or password",reference});
       }
-      const token=crypto.randomBytes(24).toString("hex"); sessions.set(token,user.id);
-      res.writeHead(200,{"Content-Type":"application/json","Set-Cookie":`sb_session=${token}; HttpOnly; SameSite=Lax; Path=/`});
+      if(legacyHash(saved.password_hash)){
+        const next=await replaceCredential(user.id,saved,await hashPassword(body.password));
+        if(!next)return json(res,409,{error:'Account changed during sign-in. Please sign in again.'});
+        saved.version=next.version;
+      }
+      const token=startSession(user.id,saved.version);
+      res.writeHead(200,{"Content-Type":"application/json","Cache-Control":"no-store","Set-Cookie":sessionCookie(token)});
       return res.end(JSON.stringify({ok:true,user:{id:user.id,name:user.name,role:user.role,email:user.email}}));
+    }
+
+    if(req.method==='POST' && url.pathname==='/api/change-password'){
+      const u=await requireUser(req,res);if(!u)return;
+      if(!allowAuth('change:'+u.id))return json(res,429,{error:'Too many attempts. Please try again in one minute.'});
+      // JSON-only protects this cookie-authenticated endpoint from cross-site form submissions.
+      if(!(req.headers['content-type']||'').toLowerCase().startsWith('application/json'))return json(res,415,{error:'JSON required.'});
+      const body=JSON.parse((await readBody(req)).toString()||'{}');
+      if(!validPassword(body.newPassword))return json(res,400,{error:'Use a password of 15–128 characters with no line breaks.'});
+      if(body.newPassword!==body.confirmPassword)return json(res,400,{error:'New passwords do not match.'});
+      if(body.newPassword===body.currentPassword)return json(res,400,{error:'Choose a different new password.'});
+      const saved=await credential(u.id);
+      if(!saved || !await verifyPassword(body.currentPassword,saved.password_hash))return json(res,400,{error:'Current password is incorrect.'});
+      const changed=await replaceCredential(u.id,saved,await hashPassword(body.newPassword));
+      if(!changed)return json(res,409,{error:'Password changed in another session. Please sign in again.'});
+      for(const [token,session] of sessions)if(session.userId===u.id)sessions.delete(token);
+      res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store','Set-Cookie':sessionCookie('',true)});
+      return res.end(JSON.stringify({ok:true}));
     }
 
     if(req.method==="POST" && url.pathname==="/api/logout"){
       const token=parseCookies(req).sb_session; if(token) sessions.delete(token);
-      res.writeHead(200,{"Content-Type":"application/json","Set-Cookie":"sb_session=; HttpOnly; Max-Age=0; SameSite=Lax; Path=/"});
+      res.writeHead(200,{"Content-Type":"application/json","Set-Cookie":sessionCookie('',true)});
       return res.end(JSON.stringify({ok:true}));
     }
 
@@ -463,6 +515,7 @@ Start by greeting the athlete and asking why they are going to the United States
 
     return serveStatic(req,res);
   }catch(err){
+    if(err.status===429||err.status===413)return json(res,err.status,{error:err.message});
     console.error(err);
     return json(res,500,{error:"Server error",detail:String(err.message||err)});
   }
