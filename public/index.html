@@ -245,11 +245,12 @@ function show(id,el){
  if(id!=='account'){clearPasswordForm();$('passwordMessage').textContent='';}
  if(voice && id!==(voice.mode==="learn"?"learning":"interview"))stopVoice("Conversation ended when you left this page.");
 document.querySelectorAll(".screen").forEach(x=>x.classList.remove("on"));$(id).classList.add("on");document.querySelectorAll(".nav").forEach(x=>x.classList.remove("on"));document.querySelectorAll(".nav").forEach(x=>x.classList.toggle("on",x.dataset.screen===id))}
+function escapeHtml(value){return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 async function boot(){
  me=await api("/api/me"); athletes=await api("/api/athletes"); reports=await api("/api/reports");
  ["welcome","login","registration"].forEach(id=>$(id).classList.add("hidden"));$("password").value="";$("app").classList.remove("hidden");$("who").textContent=me.name;$("role").textContent=me.role;
  $("nav").innerHTML=navItems().map((x,i)=>`<div data-screen="${x[1]}" class="nav ${i===0?"on":""}" onclick="show('${x[1]}',this)">${x[0]}</div>`).join("");
- $("athleteSelect").innerHTML=athletes.map(a=>`<option value="${a.id}">${a.name} — ${a.university}</option>`).join("");
+ $("athleteSelect").replaceChildren(...athletes.map(a=>new Option(a.name+" — "+(a.university||""),a.id)));
  $("learn_athleteSelect").replaceChildren(...athletes.map(a=>new Option(a.name+" — "+(a.university||""),a.id)));
  renderAll(); if(me.role==="athlete") await renderProfile(); show(me.role==="athlete"?"learning":"dashboard");
  await loadLesson();
@@ -263,7 +264,7 @@ async function renderProfile(){
   ["previousAttempts","Previous attempts","number"],["previousTravel","Previous U.S. travel?","text"],["remainingSponsor","Who covers remaining costs?","text"],
   ["postGradPlan","Plans after graduation","textarea"]
  ];
- $("profileForm").innerHTML=fields.map(([k,label,t])=>`<div class="field ${k==="postGradPlan"?"wide":""}"><label>${label}</label>${t==="textarea"?`<textarea id="p_${k}" rows="4">${p[k]||""}</textarea>`:`<input id="p_${k}" type="${t}" value="${String(p[k]??"").replace(/"/g,"&quot;")}">`}</div>`).join("");
+ $("profileForm").innerHTML=fields.map(([k,label,t])=>`<div class="field ${k==="postGradPlan"?"wide":""}"><label>${label}</label>${t==="textarea"?`<textarea id="p_${k}" rows="4">${escapeHtml(p[k])}</textarea>`:`<input id="p_${k}" type="${t}" value="${escapeHtml(p[k])}">`}</div>`).join("");
 }
 async function saveProfile(){
  const keys=["phone","country","interviewLocation","sport","university","major","academicLevel","scholarship","scholarshipCoverage","previousRefusal","previousAttempts","previousTravel","remainingSponsor","postGradPlan"];
@@ -279,7 +280,7 @@ function renderAll(){
  $("dashCards").innerHTML=[
   ["Athletes",total],["Ready",ready],["Average Readiness",avg+"/100"],["Reports",reports.length]
  ].map(x=>`<div class="card"><div class="muted small">${x[0]}</div><div class="kpi">${x[1]}</div></div>`).join("");
- const rows=athletes.map(a=>`<tr><td><b>${a.name}</b></td><td>${a.interviewDate}</td><td>${a.sessions||0}</td><td>${a.mocks||0}</td><td>${a.initialScore}</td><td>${a.currentScore}</td><td>${pill(a.currentScore)}</td><td>${a.mainConcern||"—"}</td></tr>`).join("");
+ const rows=athletes.map(a=>`<tr><td><b>${escapeHtml(a.name)}</b></td><td>${escapeHtml(a.interviewDate)}</td><td>${escapeHtml(a.sessions||0)}</td><td>${escapeHtml(a.mocks||0)}</td><td>${escapeHtml(a.initialScore)}</td><td>${escapeHtml(a.currentScore)}</td><td>${pill(a.currentScore)}</td><td>${escapeHtml(a.mainConcern||"—")}</td></tr>`).join("");
  const table=`<table><thead><tr><th>Athlete</th><th>Interview</th><th>Human sessions</th><th>AI mocks</th><th>Initial</th><th>Current</th><th>Status</th><th>Main concern</th></tr></thead><tbody>${rows}</tbody></table>`;
  $("athleteTable").innerHTML=table;$("managerTable").innerHTML=table;
  renderReports();
@@ -287,10 +288,11 @@ function renderAll(){
 function renderReports(){
  $("reportsList").innerHTML=reports.slice().reverse().map(r=>{
    const a=athletes.find(x=>x.id===r.athleteId)||{};
-   const h=r.humanReview?`<div class="card" style="margin-top:10px"><b>Human review — ${r.humanReview.reviewer}</b><p>Adjusted score: <b>${r.humanReview.score}/100</b></p><p>${r.humanReview.note}</p></div>`:"";
-   const reviewBtn=(me.role==="coach"||me.role==="supervisor")?`<button class="btn secondary" onclick="humanReview('${r.id}',${r.overall})">Add human review</button>`:"";
-   return `<div class="card" style="margin-bottom:16px"><div style="display:flex;justify-content:space-between;gap:10px;align-items:start"><div><h3>${a.name||"Athlete"} · Mock #${r.mockNumber}</h3><div class="muted small">${new Date(r.createdAt).toLocaleString()}</div></div><div><span class="kpi">${r.overall}/100</span> ${pill(r.overall)}</div></div><p><b>Biggest weakness:</b> ${r.biggestWeakness}</p><p>${r.feedback}</p><p><b>Next step:</b> ${r.nextStep}</p>${reviewBtn}${h}</div>`
+   const h=r.humanReview?`<div class="card" style="margin-top:10px"><b>Human review — ${escapeHtml(r.humanReview.reviewer)}</b><p>Adjusted score: <b>${escapeHtml(r.humanReview.score)}/100</b></p><p>${escapeHtml(r.humanReview.note)}</p></div>`:"";
+   const reviewBtn=(me.role==="coach"||me.role==="supervisor")?`<button class="btn secondary" data-report-id="${escapeHtml(r.id)}" data-report-score="${escapeHtml(r.overall)}">Add human review</button>`:"";
+   return `<div class="card" style="margin-bottom:16px"><div style="display:flex;justify-content:space-between;gap:10px;align-items:start"><div><h3>${escapeHtml(a.name||"Athlete")} · Mock #${escapeHtml(r.mockNumber)}</h3><div class="muted small">${new Date(r.createdAt).toLocaleString()}</div></div><div><span class="kpi">${escapeHtml(r.overall)}/100</span> ${pill(r.overall)}</div></div><p><b>Biggest weakness:</b> ${escapeHtml(r.biggestWeakness)}</p><p>${escapeHtml(r.feedback)}</p><p><b>Next step:</b> ${escapeHtml(r.nextStep)}</p>${reviewBtn}${h}</div>`
  }).join("")||'<div class="card">No reports yet.</div>';
+ $("reportsList").querySelectorAll('[data-report-id]').forEach(button=>button.addEventListener('click',()=>humanReview(button.dataset.reportId,button.dataset.reportScore)));
 }
 async function humanReview(reportId,current){
  const score=prompt("Coach-adjusted readiness score (0-100):",current);if(score===null)return;
