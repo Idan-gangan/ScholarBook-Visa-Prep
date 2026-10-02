@@ -9,23 +9,28 @@
 button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{border:0;border-radius:10px;padding:11px 15px;font-weight:800;cursor:pointer}.primary{background:linear-gradient(135deg,var(--blue),var(--purple));color:white}.secondary{background:#edf1f7;color:#16233e}.danger{background:#fff0f0;color:var(--red)}
 .login{min-height:100vh;display:grid;place-items:center;background:linear-gradient(135deg,#08183e,#163979 60%,#6747dd)}.loginCard{width:min(560px,92vw);background:white;padding:28px;border-radius:18px;box-shadow:0 24px 70px #04102c55}.logo{width:46px;height:46px;border-radius:12px;background:linear-gradient(135deg,var(--navy),var(--blue));display:grid;place-items:center;color:white;font-weight:900}
 .field{margin:13px 0}.field label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}.field input,.field textarea,.field select{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;background:white}.formgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 14px}.formgrid .wide{grid-column:1/-1}.linkbtn{border:0;background:none;color:var(--blue);font-weight:800;cursor:pointer;padding:8px 0}.modalish{max-width:900px;margin:30px auto;background:white;border:1px solid var(--line);border-radius:18px;padding:24px}.stepnote{background:#f3f6ff;border:1px solid #d8e1ff;padding:12px;border-radius:10px;color:#324a8a}.field input,.field textarea{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px}.muted{color:var(--muted)}.small{font-size:13px}
-.top{height:66px;background:white;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0}.brand{display:flex;align-items:center;gap:10px;font-weight:900}.layout{display:grid;grid-template-columns:230px 1fr}.side{min-height:calc(100vh - 66px);background:var(--navy);padding:16px;color:white}.nav{padding:12px;border-radius:10px;color:#ced8ef;cursor:pointer;margin:4px 0}.nav:hover,.nav.on{background:#193873;color:white}.main{padding:24px;max-width:1400px;width:100%;margin:auto}.screen{display:none}.screen.on{display:block}.grid{display:grid;gap:16px}.g2{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}.g4{grid-template-columns:repeat(4,minmax(0,1fr))}.card{background:white;border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 8px 24px #081c4510}.kpi{font-size:34px;font-weight:900}.pill{display:inline-block;padding:6px 9px;border-radius:99px;font-size:12px;font-weight:800}.amber{background:#fff2d6;color:#8a5600}.green{background:#e4f7ed;color:#116d44}.red{background:#fde9e9;color:#9d2626}.blue{background:#eaf0ff;color:#2445ad}.progress{height:9px;background:#e9edf5;border-radius:99px;overflow:hidden}.bar{height:100%;background:linear-gradient(90deg,var(--blue),var(--purple))}
+.top{height:66px;background:white;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0}.brand{display:flex;align-items:center;gap:10px;font-weight:900}.layout{display:grid;grid-template-columns:230px 1fr}.side{min-height:calc(100vh - 66px);background:var(--navy);padding:16px;color:white}.nav{display:block;width:100%;border:0;background:transparent;text-align:left;font:inherit;padding:12px;border-radius:10px;color:#ced8ef;cursor:pointer;margin:4px 0}.nav:focus-visible{outline:2px solid white;outline-offset:2px}.nav:hover,.nav.on{background:#193873;color:white}.main{padding:24px;max-width:1400px;width:100%;margin:auto}.screen{display:none}.screen.on{display:block}.grid{display:grid;gap:16px}.g2{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}.g4{grid-template-columns:repeat(4,minmax(0,1fr))}.card{background:white;border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 8px 24px #081c4510}.kpi{font-size:34px;font-weight:900}.pill{display:inline-block;padding:6px 9px;border-radius:99px;font-size:12px;font-weight:800}.amber{background:#fff2d6;color:#8a5600}.green{background:#e4f7ed;color:#116d44}.red{background:#fde9e9;color:#9d2626}.blue{background:#eaf0ff;color:#2445ad}.progress{height:9px;background:#e9edf5;border-radius:99px;overflow:hidden}.bar{height:100%;background:linear-gradient(90deg,var(--blue),var(--purple))}
 @media(max-width:900px){
   .top{height:auto;min-height:66px;padding:10px 14px;gap:10px;flex-wrap:wrap}
   .brand{flex-shrink:0}
   .layout{grid-template-columns:1fr}
   .side{
-    display:flex;
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    align-content:start;
     min-height:auto;
     width:100%;
     padding:8px;
     gap:6px;
-    overflow-x:auto;
+    min-width:0;
     background:var(--navy);
   }
   .nav{
-    flex:0 0 auto;
-    white-space:nowrap;
+    min-width:0;
+    min-height:44px;
+    white-space:normal;
+    overflow-wrap:anywhere;
+    line-height:1.35;
     margin:0;
     padding:11px 14px;
   }
@@ -108,7 +113,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
 
 <div id="app" class="hidden">
   <div class="top"><div class="brand"><div class="logo">VA</div>VisaAtlas</div><div><b id="who"></b> · <span id="role" class="muted"></span> <button class="btn secondary" onclick="logout()">Log out</button></div></div>
-  <div class="layout"><aside class="side" id="nav"></aside><main class="main">
+  <div class="layout"><nav class="side" id="nav" aria-label="Main navigation"></nav><main class="main">
     <section id="learning" class="screen">
       <div class="lesson-heading"><div><p class="small muted">MY LEARNING · LESSON 1</p><h1>Why do you want to study in the United States?</h1><p>Build an answer from your own academic interests and plans.</p></div><span id="lessonBadge" class="pill blue">Not completed</span></div>
       <div class="field"><label for="learn_athleteSelect">Student</label><select id="learn_athleteSelect" onchange="changeLearningStudent()"></select></div>
@@ -265,12 +270,12 @@ function navItems(){
 function show(id,el){
  if(id!=='account'){clearPasswordForm();$('passwordMessage').textContent='';}
  if(voice && id!==(voice.mode==="learn"?"learning":"interview"))stopVoice("Conversation ended when you left this page.");
-document.querySelectorAll(".screen").forEach(x=>x.classList.remove("on"));$(id).classList.add("on");document.querySelectorAll(".nav").forEach(x=>x.classList.remove("on"));document.querySelectorAll(".nav").forEach(x=>x.classList.toggle("on",x.dataset.screen===id))}
+document.querySelectorAll(".screen").forEach(x=>x.classList.remove("on"));$(id).classList.add("on");document.querySelectorAll(".nav").forEach(x=>x.classList.remove("on"));document.querySelectorAll(".nav").forEach(x=>{const active=x.dataset.screen===id;x.classList.toggle("on",active);if(active)x.setAttribute("aria-current","page");else x.removeAttribute("aria-current")})}
 function escapeHtml(value){return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 async function boot(){
  me=await api("/api/me"); athletes=await api("/api/athletes"); reports=await api("/api/reports");
  ["welcome","login","registration"].forEach(id=>$(id).classList.add("hidden"));$("password").value="";$("app").classList.remove("hidden");$("who").textContent=me.name;$("role").textContent=me.role;
- $("nav").innerHTML=navItems().map((x,i)=>`<div data-screen="${x[1]}" class="nav ${i===0?"on":""}" onclick="show('${x[1]}',this)">${x[0]}</div>`).join("");
+ $("nav").innerHTML=navItems().map((x,i)=>`<button type="button" data-screen="${x[1]}" class="nav ${i===0?"on":""}" onclick="show('${x[1]}',this)">${x[0]}</button>`).join("");
  $("athleteSelect").replaceChildren(...athletes.map(a=>new Option(a.name+" — "+(a.university||""),a.id)));
  $("learn_athleteSelect").replaceChildren(...athletes.map(a=>new Option(a.name+" — "+(a.university||""),a.id)));
  renderAll(); if(me.role==="athlete") await renderProfile(); show(me.role==="athlete"?"learning":"dashboard");
