@@ -210,8 +210,29 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
 <script>
 let me=null, athletes=[], reports=[], pc=null, dc=null, stream=null, transcript=[];
 const $=id=>document.getElementById(id);
-async function api(url,opt={}){const r=await fetch(url,{...opt,headers:{...(opt.headers||{}),"Content-Type":opt.body&&typeof opt.body==="string"?"application/json":(opt.headers||{})["Content-Type"]}});let d;try{d=await r.json()}catch{d=await r.text()}if(!r.ok)throw new Error((d.error||d||"Request failed")+(typeof d.reference==="string"&&/^auth2-[a-f0-9]{12}$/.test(d.reference)?" (Reference: "+d.reference+")":""));return d}
-async function login(){try{await api("/api/login",{method:"POST",body:JSON.stringify({email:$("email").value,password:$("password").value})});await boot()}catch(e){$("loginErr").textContent=e.message}}
+let sessionVersion=0;
+const sessionMessage='Your session ended. Please sign in again. Saved work is still available; unsaved changes may need to be entered again.';
+function returnToSignIn(message=sessionMessage){
+ sessionVersion++;
+ if(voice)stopVoice('Session ended. Please sign in again.');
+ me=null;athletes=[];reports=[];transcript=[];learningTranscript=[];mockStudentId=null;
+ lessonVersion++;lessonStudentId=null;lessonDirty=false;lessonCompleted=false;
+ clearPasswordForm();
+ lessonFields.forEach(field=>$('learn_'+field).value='');$('learn_reflected').checked=false;
+ for(const id of ['profileForm','reportsList','athleteTable','managerTable','dashCards','nav','transcript','learn_transcript','athleteSelect','learn_athleteSelect'])$(id).replaceChildren();
+ $('who').textContent='';$('role').textContent='';
+ $('app').classList.add('hidden');backToLogin();$('loginErr').textContent=message;
+}
+async function api(url,opt={}){
+ const version=sessionVersion;
+ const r=await fetch(url,{...opt,headers:{...(opt.headers||{}),"Content-Type":opt.body&&typeof opt.body==="string"?"application/json":(opt.headers||{})["Content-Type"]}});
+ let d;try{d=await r.json()}catch{d={error:'Request failed. Please try again.'}}
+ if(version!==sessionVersion)throw new Error('Your session changed. Please try again.');
+ if(r.status===401 && d?.error==='Unauthorized' && me){returnToSignIn();throw new Error(sessionMessage)}
+ if(!r.ok)throw new Error((d?.error||d||"Request failed")+(typeof d?.reference==="string"&&/^auth2-[a-f0-9]{12}$/.test(d.reference)?" (Reference: "+d.reference+")":""));
+ return d;
+}
+async function login(){sessionVersion++;try{await api("/api/login",{method:"POST",body:JSON.stringify({email:$("email").value,password:$("password").value})});await boot()}catch(e){$("loginErr").textContent=e.message}}
 function publicPage(id){["welcome","login","registration"].forEach(page=>$(page).classList.toggle("hidden",page!==id));$("password").value="";$("loginErr").textContent="";}
 function showWelcome(){publicPage("welcome")}
 function showRegistration(){publicPage("registration")}
@@ -231,9 +252,7 @@ async function changePassword(){
  button.disabled=true;$('passwordMessage').textContent='Saving…';
  try{
    await api('/api/change-password',{method:'POST',body:JSON.stringify(body)});
-   clearPasswordForm();if(voice)stopVoice();me=null;athletes=[];reports=[];
-   $('app').classList.add('hidden');backToLogin();
-   $('loginErr').textContent='Password changed. Sign in with your new password.';
+   returnToSignIn('Password changed. Sign in with your new password.');
  }catch(error){$('passwordMessage').textContent=error.message;}
  finally{button.disabled=false;}
 }
@@ -414,7 +433,7 @@ async function startVoice(mode="mock"){
     v.abort=new AbortController();
     const r=await fetch("/api/realtime-session?athleteId="+encodeURIComponent(v.athleteId)+"&mode="+mode+(mode==="learn"?"&lesson=study-purpose":""),{method:"POST",body:offer.sdp,headers:{"Content-Type":"application/sdp"},signal:v.abort.signal});
     const answer=await r.text();if(voice!==v)return;
-    if(!r.ok){let message=answer;try{message=JSON.parse(answer).error||answer}catch{}throw new Error(message)}
+    if(!r.ok){let message=answer;try{message=JSON.parse(answer).error||answer}catch{}if(r.status===401 && message==="Unauthorized"){returnToSignIn();return}throw new Error(message)}
     const seconds=Number(r.headers.get('X-Voice-Limit-Seconds'));
     if(!Number.isFinite(seconds)||seconds<=0)throw new Error('Voice session limit is missing. Please refresh and try again.');
     v.limitTimer=setTimeout(()=>{if(voice===v)stopVoice(mode==='learn'?'Lesson time limit reached. Save your notes; you can continue later.':'Mock time limit reached. You can generate a report from this transcript.')},seconds*1000);

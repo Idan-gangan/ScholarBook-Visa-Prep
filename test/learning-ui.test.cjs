@@ -110,3 +110,48 @@ test('older reports retain all feedback without inventing structured strengths',
  for(const text of ['Original full feedback','Original concern','Original action'])assert.ok(markup.includes(text));
  assert.doesNotMatch(markup,/Your next three steps|What went well/);
 });
+
+test('expired protected requests clear private state and stop an active microphone',async()=>{
+ const f=fixture();await f.run('boot()');await f.run('startVoice()');
+ f.run('addLine("athlete","Private answer");lessonDirty=true');
+ f.elements.get('learn_draftAnswer').value='Private draft';
+ f.ctx.fetch=async()=>({ok:false,status:401,json:async()=>({error:'Unauthorized'})});
+ await assert.rejects(f.run('api("/api/reports")'),/Please sign in again/);
+ assert.equal(f.store.tracks[0].stopped,true);assert.equal(f.run('voice'),null);
+ assert.equal(f.run('me'),null);assert.equal(f.run('transcript.length'),0);
+ assert.equal(f.elements.get('learn_draftAnswer').value,'');
+ assert.equal(f.elements.get('app').classList.contains('hidden'),true);
+ assert.equal(f.elements.get('login').classList.contains('hidden'),false);
+ assert.match(f.elements.get('loginErr').textContent,/Saved work is still available/);
+});
+test('voice endpoint expiration returns to sign-in and closes the microphone',async()=>{
+ const f=fixture();await f.run('boot()');
+ f.ctx.fetch=async()=>({ok:false,status:401,text:async()=>JSON.stringify({error:'Unauthorized'})});
+ await f.run('startVoice()');
+ assert.equal(f.store.tracks[0].stopped,true);assert.equal(f.run('voice'),null);
+ assert.equal(f.elements.get('login').classList.contains('hidden'),false);
+ assert.match(f.elements.get('loginErr').textContent,/session ended/);
+});
+test('initial anonymous visit, invalid credentials and incorrect current password do not expire a session',async()=>{
+ const f=fixture();
+ f.ctx.fetch=async()=>({ok:false,status:401,json:async()=>({error:'Unauthorized'})});
+ await assert.rejects(f.run('boot()'),/Unauthorized/);
+ assert.equal(f.elements.get('loginErr').textContent,'');
+ f.ctx.fetch=async()=>({ok:false,status:401,json:async()=>({error:'Invalid email or password',reference:'auth2-123456abcdef'})});
+ await f.run('login()');assert.match(f.elements.get('loginErr').textContent,/Invalid email or password.*auth2-/);
+ f.run('me={id:"u1"}');
+ f.ctx.fetch=async()=>({ok:false,status:401,json:async()=>({error:'Current password is incorrect.'})});
+ await assert.rejects(f.run('api("/api/change-password")'),/Current password is incorrect/);
+ assert.equal(f.run('me.id'),'u1');
+});
+test('late success and late unauthorized responses cannot affect a replacement session',async()=>{
+ for(const status of [200,401]){
+ const f=fixture();await f.run('boot()');let resolve;
+ f.ctx.fetch=()=>new Promise(r=>resolve=r);
+ const pending=f.run('api("/api/reports")');
+ f.run('returnToSignIn();me={id:"u2"};sessionVersion++');
+ resolve({ok:status===200,status,json:async()=>status===200?[{id:'old-private-report'}]:{error:'Unauthorized'}});
+ await assert.rejects(pending,/session changed/);
+ assert.equal(f.run('me.id'),'u2');
+ }
+});
