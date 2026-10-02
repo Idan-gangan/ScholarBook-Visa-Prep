@@ -136,6 +136,8 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
         <h2>3. Learn with your tutor</h2>
         <p>Get short explanations tailored to your profile: study purpose, school choice, funding, and future plans. Ask a question, practise if you want, or say “next” to move on.</p>
         <div id="learn_voiceStatus" role="status" aria-live="polite">Not connected</div>
+        <div id="learn_voiceLimitNotice" class="small muted" role="status" aria-live="polite"></div>
+        <p class="small muted">Voice lessons last up to 8 minutes. Six voice starts per account each day (resets at midnight UTC); connection attempts count. Notes remain available.</p>
         <div class="lesson-actions"><button class="btn primary" id="learn_startBtn" onclick="startLearningTutor()">Start voice lesson</button><button class="btn danger" id="learn_stopBtn" onclick="stopVoice()" disabled>End lesson conversation</button></div>
         <div id="learn_transcript" class="lesson-transcript" aria-label="Tutor conversation"></div>
         <p class="small muted">Your conversation is for learning, with no readiness score. Save the points you want to keep in your notes below; the conversation itself is not saved.</p>
@@ -161,6 +163,8 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
       <div class="voiceBox">
         <div class="card">
           <div id="voiceStatus" class="status">Not connected</div>
+          <p class="small muted">Mock interviews last up to 12 minutes. Six voice starts per account each day, shared with lessons (midnight UTC reset); connection attempts count.</p>
+          <div id="voiceLimitNotice" class="small muted" role="status" aria-live="polite"></div>
           <h2 style="margin-bottom:4px">AI Consular Interviewer</h2>
           <p class="muted">The interviewer asks one question at a time and follows up based on the athlete's spoken answer.</p>
           <div style="display:flex;gap:10px;flex-wrap:wrap;margin:16px 0">
@@ -399,12 +403,17 @@ async function startVoice(mode="mock"){
     v.abort=new AbortController();
     const r=await fetch("/api/realtime-session?athleteId="+encodeURIComponent(v.athleteId)+"&mode="+mode+(mode==="learn"?"&lesson=study-purpose":""),{method:"POST",body:offer.sdp,headers:{"Content-Type":"application/sdp"},signal:v.abort.signal});
     const answer=await r.text();if(voice!==v)return;
-    if(!r.ok)throw new Error(answer);
+    if(!r.ok){let message=answer;try{message=JSON.parse(answer).error||answer}catch{}throw new Error(message)}
+    const seconds=Number(r.headers.get('X-Voice-Limit-Seconds'));
+    if(!Number.isFinite(seconds)||seconds<=0)throw new Error('Voice session limit is missing. Please refresh and try again.');
+    v.limitTimer=setTimeout(()=>{if(voice===v)stopVoice(mode==='learn'?'Lesson time limit reached. Save your notes; you can continue later.':'Mock time limit reached. You can generate a report from this transcript.')},seconds*1000);
+    v.warningTimer=setTimeout(()=>{if(voice===v)voiceEl('voiceLimitNotice').textContent='One minute remaining in this voice session.'},Math.max(0,seconds-60)*1000);
+    voiceEl('voiceLimitNotice').textContent=`Up to ${Math.round(seconds/60)} minutes. Voice stops automatically at the limit.`;
     await peer.setRemoteDescription({type:"answer",sdp:answer});
   }catch(e){if(voice===v)stopVoice("Could not start: "+e.message)}
 }
 function stopVoice(message=voiceScreen==="learn"?"Lesson conversation ended":"Interview ended"){
-  const v=voice;voice=null;clearTimeout(v?.inputTimer);v?.abort?.abort();
+  const v=voice;voice=null;clearTimeout(v?.inputTimer);clearTimeout(v?.limitTimer);clearTimeout(v?.warningTimer);v?.abort?.abort();
   if(stream)stream.getTracks().forEach(t=>t.stop());if(dc)dc.close();if(pc)pc.close();
   if(v?.audio){v.audio.pause();v.audio.srcObject=null}
   pc=dc=stream=null;voiceEl("voiceStatus").textContent=message;
