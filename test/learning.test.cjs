@@ -260,3 +260,13 @@ test('provider timeout gives a useful error and releases admission',async()=>{
  const body={athleteId:'s1',transcript:[{role:'athlete',text:'Plans'}]};
  for(let i=0;i<2;i++){const response=await h.request('POST','/api/evaluate',body);assert.equal(response.status,504);assert.doesNotMatch(response.text,/private/);}
 });
+test('structured evaluation stores concise sections and legacy compatibility fields',async()=>{
+ const h=harness();const result={overall:60,summary:'You explained your subject clearly.',priority:'Clarify the funding gap.',strengths:['You linked your subject to an interest.'],clarifications:['Which costs does your award cover?'],nextSteps:['Check your award letter.','Identify uncovered costs.','Explain your funding in your own words.']};
+ h.run(`fetch=async()=>({ok:true,json:async()=>({output_text:${JSON.stringify(JSON.stringify(result))}})})`);
+ const r=await h.request('POST','/api/evaluate',{athleteId:'s1',transcript:[{role:'athlete',text:'My answer'}]});
+ assert.equal(r.status,200);assert.equal(r.body.formatVersion,2);assert.deepEqual(r.body.nextSteps,result.nextSteps);assert.equal(r.body.feedback,result.summary);assert.equal(r.body.biggestWeakness,result.priority);
+});
+test('malformed structured sections are rejected without saving a report',async()=>{
+ const h=harness();h.run(`fetch=async()=>({ok:true,json:async()=>({output_text:JSON.stringify({overall:50,summary:'Summary',priority:'Priority',strengths:[],clarifications:['Clarify'],nextSteps:['Only one']})})})`);
+ const r=await h.request('POST','/api/evaluate',{athleteId:'s1',transcript:[{role:'athlete',text:'My answer'}]});assert.equal(r.status,502);assert.equal(h.db.reports.length,0);
+});

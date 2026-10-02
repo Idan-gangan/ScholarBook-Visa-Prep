@@ -95,3 +95,18 @@ test('profile, dashboard and report data cannot create HTML or inline handlers',
  }
  assert.match(f.elements.get('reportsList').innerHTML,/data-report-id="&lt;/);
 });
+test('structured reports show actionable sections and escape every list item',async()=>{
+ const f=fixture();await f.run('boot()');
+ f.run(`reports=[{id:'r1',athleteId:'s1',formatVersion:2,overall:60,feedback:'A short summary',biggestWeakness:'Clarify funding',strengths:['<img src=x onerror=alert(1)>'],clarifications:['Explain the amount'],nextSteps:['Check your award','Explain the gap','Practise aloud']}];renderReports()`);
+ const markup=f.elements.get('reportsList').innerHTML;
+ for(const heading of ['What went well','Points to clarify','Your next three steps','Practice readiness'])assert.ok(markup.includes(heading));
+ assert.match(markup,/<ol>/);assert.doesNotMatch(markup,/<img/);assert.match(markup,/&lt;img/);
+ f.run('reports[0].strengths=[];renderReports()');assert.match(f.elements.get('reportsList').innerHTML,/not enough evidence/);
+});
+test('older reports retain all feedback without inventing structured strengths',async()=>{
+ const f=fixture();await f.run('boot()');
+ f.run(`reports=[{id:'old',overall:42,feedback:'Original full feedback',biggestWeakness:'Original concern',nextStep:'Original action'}];renderReports()`);
+ const markup=f.elements.get('reportsList').innerHTML;
+ for(const text of ['Original full feedback','Original concern','Original action'])assert.ok(markup.includes(text));
+ assert.doesNotMatch(markup,/Your next three steps|What went well/);
+});
