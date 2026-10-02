@@ -18,7 +18,7 @@ function fixture(){
      if(store.failLoad&&!opt.method)return {ok:false,json:async()=>({error:'Unavailable'})};
      if(opt.method==='PUT')store.progress={...JSON.parse(opt.body),updatedAt:'2026-09-27'};
      data={progress:store.progress};
-   }else if(route==='/api/realtime-session')return {ok:true,text:async()=> 'answer'};
+   }else if(route==='/api/realtime-session')return {ok:true,headers:{get:()=> '480'},text:async()=> 'answer'};
    else throw new Error('Unexpected route '+route);
    return {ok:true,json:async()=>structuredClone(data)};
  }});

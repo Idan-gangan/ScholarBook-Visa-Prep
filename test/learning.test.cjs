@@ -6,7 +6,7 @@ const learning=require('../learning');
 const passwords=require('../passwords');
 const student={id:'s1',userId:'u1',name:'Test student',major:'Biology',university:'Example University',scholarship:'Merit award',scholarshipCoverage:'Tuition only',remainingSponsor:'Parent',postGradPlan:'Environmental research',email:'private@example.test'};
 function harness(user={id:'u1',role:'athlete'},env={}){
- let handler;const progress=new Map(),calls=[],logs=[];
+ let handler;let starts=0;const progress=new Map(),calls=[],logs=[];
  const credentials=new Map([[user.id,{password_hash:user.passwordHash||'fixture-unusable',version:0}]]);
  const db={users:[user],athletes:[student,{id:'s2',userId:'u2'}],reports:[],transcripts:[]};
  const pool={query:async(sql,args)=>{
@@ -19,9 +19,11 @@ function harness(user={id:'u1',role:'athlete'},env={}){
    if(sql.startsWith('UPDATE app_state')){Object.assign(db,structuredClone(args[0]));return {rows:[]}}
    if(sql.startsWith('SELECT data FROM learning_progress'))return {rows:progress.has(args[0])?[{data:progress.get(args[0])}]:[]};
    if(sql.startsWith('INSERT INTO learning_progress')){progress.set(args[0],JSON.parse(args[2]));return {rows:[]}}
+   if(sql.startsWith('INSERT INTO voice_daily_usage'))return {rows:++starts<=6?[{starts}]:[]};
+   if(sql.startsWith('INSERT INTO voice_call_limits'))return {rows:[]};
    throw new Error('Unexpected query: '+sql);
  }};
- const context=vm.createContext({require:id=>id==='http'?{createServer:fn=>{handler=fn;return {}}}:id==='pg'?{Pool:function(){return pool}}:id==='fs'?{...fs,readFileSync:(file,...args)=>file===path.resolve(__dirname,'../data/db.json')?'{}':fs.readFileSync(file,...args)}:id==='./learning'?learning:id==='./passwords'?passwords:require(id),__dirname:path.resolve(__dirname,'..'),process:{env:{OPENAI_API_KEY:'test-only',...env}},console:{log:(...args)=>logs.push(args.join(' ')),warn:(...args)=>logs.push(args.join(' ')),error:(...args)=>logs.push(args.join(' '))},Buffer,URL,FormData,fetch:async(url,options)=>{if(url.endsWith('/responses')){calls.push({url,request:JSON.parse(options.body)});return {ok:true,json:async()=>({output_text:JSON.stringify({scores:{},overall:45,readiness:'High Concern',biggestWeakness:'Test',feedback:'Test feedback',nextStep:'Practice'})})};}calls.push({url,session:JSON.parse(options.body.get('session'))});return {status:200,text:async()=> 'test-sdp-answer'}}});
+ const context=vm.createContext({require:id=>id==='http'?{createServer:fn=>{handler=fn;return {}}}:id==='pg'?{Pool:function(){return pool}}:id==='fs'?{...fs,readFileSync:(file,...args)=>file===path.resolve(__dirname,'../data/db.json')?'{}':fs.readFileSync(file,...args)}:id==='./voice-limits'?require('../voice-limits'):id==='./learning'?learning:id==='./passwords'?passwords:require(id),__dirname:path.resolve(__dirname,'..'),process:{env:{OPENAI_API_KEY:'test-only',...env}},console:{log:(...args)=>logs.push(args.join(' ')),warn:(...args)=>logs.push(args.join(' ')),error:(...args)=>logs.push(args.join(' '))},Buffer,URL,FormData,AbortSignal,fetch:async(url,options)=>{if(url.endsWith('/responses')){calls.push({url,request:JSON.parse(options.body)});return {ok:true,json:async()=>({output_text:JSON.stringify({scores:{},overall:45,readiness:'High Concern',biggestWeakness:'Test',feedback:'Test feedback',nextStep:'Practice'})})};}calls.push({url,session:JSON.parse(options.body.get('session'))});return {ok:true,status:200,headers:{get:()=>'/v1/realtime/calls/rtc_test'},text:async()=> 'test-sdp-answer'}}});
  let source=fs.readFileSync(path.join(__dirname,'../server.js'),'utf8');source=source.slice(0,source.indexOf('initDb().then('));vm.runInContext(source,context);vm.runInContext(`sessions.set('test-token',{userId:${JSON.stringify(user.id)},version:0,expires:Date.now()+60000})`,context);
  async function request(method,url,body,authenticated=true){
    const req=Readable.from(body===undefined?[]:[Buffer.from(typeof body==='string'?body:JSON.stringify(body))]);req.method=method;req.url=url;req.headers={'content-type':'application/json',host:'localhost',cookie:authenticated?'sb_session=test-token':''};
@@ -134,7 +136,7 @@ test('notes save and reload without changing mock reports or scores',async()=>{
 test('unauthenticated and cross-student requests cannot read/save notes or start tutor',async()=>{
  const h=harness();assert.equal((await h.request('GET','/api/learning/study-purpose?athleteId=s1',undefined,false)).status,401);
  for(const method of ['GET','PUT'])assert.equal((await h.request(method,'/api/learning/study-purpose?athleteId=s2',{})).status,403);
- assert.equal((await h.request('POST','/api/realtime-session?athleteId=s2&mode=learn&lesson=study-purpose','offer')).status,403);assert.equal(h.calls.length,0);
+ assert.equal((await h.request('POST','/api/realtime-session?athleteId=s2&mode=learn&lesson=study-purpose','v=0\r\noffer')).status,403);assert.equal(h.calls.length,0);
 });
 test('completion requires all notes and reflection; oversized or malformed notes are rejected',async()=>{
  const h=harness();for(const body of [{completed:true},{subjectReason:'a'.repeat(2001)},{subjectReason:{injected:true}},'{invalid'])assert.equal((await h.request('PUT','/api/learning/study-purpose?athleteId=s1',body)).status,400);
@@ -142,8 +144,10 @@ test('completion requires all notes and reflection; oversized or malformed notes
 });
 test('tutor gets teaching instructions and saved context, never mock-only instructions',async()=>{
  const h=harness();await h.request('PUT','/api/learning/study-purpose?athleteId=s1',{subjectReason:'I enjoy ecology'});
- assert.equal((await h.request('POST','/api/realtime-session?athleteId=s1&mode=learn&lesson=study-purpose','offer')).status,200);
+ assert.equal((await h.request('POST','/api/realtime-session?athleteId=s1&mode=learn&lesson=study-purpose','v=0\r\noffer')).status,200);
  const session=h.calls[0].session;
+ assert.equal(session.max_output_tokens,1024);
+ assert.match(session.instructions,/25–45 words/);
  const context=JSON.parse(session.instructions.slice(session.instructions.lastIndexOf('\n')+1));
  assert.equal(context.profile.scholarshipCoverage,'Tuition only');
  assert.equal(context.profile.remainingSponsor,'Parent');
@@ -153,10 +157,22 @@ test('tutor gets teaching instructions and saved context, never mock-only instru
  assert.match(session.instructions,/learning tutor/);assert.match(session.instructions,/I enjoy ecology/);assert.doesNotMatch(session.instructions,/Do not coach during the interview/);assert.equal(session.audio.input.turn_detection.create_response,false);assert.equal(session.audio.input.turn_detection.interrupt_response,false);
 });
 test('mock role stays separate and unknown lesson/mode makes no API call',async()=>{
- const h=harness();for(const query of ['mode=other','mode=learn&lesson=missing'])assert.equal((await h.request('POST','/api/realtime-session?athleteId=s1&'+query,'offer')).status,400);
- assert.equal(h.calls.length,0);await h.request('POST','/api/realtime-session?athleteId=s1','offer');assert.match(h.calls[0].session.instructions,/Do not coach during the interview/);
+ const h=harness();for(const query of ['mode=other','mode=learn&lesson=missing'])assert.equal((await h.request('POST','/api/realtime-session?athleteId=s1&'+query,'v=0\r\noffer')).status,400);
+ assert.equal(h.calls.length,0);await h.request('POST','/api/realtime-session?athleteId=s1','v=0\r\noffer');assert.match(h.calls[0].session.instructions,/Do not coach during the interview/);
 });
 test('staff can coach a student while unrelated roles cannot access their learning',async()=>{
  assert.equal((await harness({id:'staff',role:'coach'}).request('GET','/api/learning/study-purpose?athleteId=s1')).status,200);
  assert.equal(learning.canAccessStudent({id:'other',role:'unknown'},student),false);
+});
+test('voice admission is checked before upstream calls and rejects malformed SDP',async()=>{
+ const h=harness();const route='/api/realtime-session?athleteId=s1';
+ assert.equal((await h.request('POST',route,'not-sdp')).status,400);
+ assert.equal(h.calls.length,0);
+ for(let i=0;i<6;i++){
+   const r=await h.request('POST',route,'v=0\r\noffer');assert.equal(r.status,200);
+   assert.equal(r.headers['X-Voice-Limit-Seconds'],'720');
+ }
+ assert.equal(h.calls[0].session.max_output_tokens,512);
+ assert.equal((await h.request('POST',route,'v=0\r\noffer')).status,429);
+ assert.equal(h.calls.length,6);
 });

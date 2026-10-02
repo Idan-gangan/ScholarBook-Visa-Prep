@@ -55,6 +55,23 @@ test('ending during microphone permission stops late media',async()=>{
 test('ending during pending transcription clears timeout',()=>{
  const s=setup();s.event(commit('a'));s.run('stopVoice()');assert.equal(s.timers.size,0);
 });
+test('ending clears both session limit and warning timers',()=>{
+ const s=setup();s.run('voice.limitTimer=setTimeout(()=>{},480000);voice.warningTimer=setTimeout(()=>{},420000)');
+ assert.equal(s.timers.size,2);s.run('stopVoice()');assert.equal(s.timers.size,0);
+});
+test('session deadline stops media while preserving the captured transcript',async()=>{
+ const s=setup();s.run('stopVoice();transcript=[{text:"keep this answer"}]');
+ s.ctx.navigator.mediaDevices={getUserMedia:async()=>s.ctx.mic};
+ s.ctx.document={createElement:()=>({pause(){}})};
+ s.ctx.RTCPeerConnection=class{addTrack(){}createDataChannel(){return {addEventListener(){},close(){}}}async createOffer(){return {sdp:'v=0'}}async setLocalDescription(){}async setRemoteDescription(){}close(){}};
+ s.ctx.fetch=async()=>({ok:true,text:async()=> 'answer',headers:{get:()=> '720'}});
+ await s.run('startVoice()');s.run('transcript.push({text:"keep this answer"})');
+ assert.equal(s.timers.size,2);
+ const deadline=[...s.timers.values()][0];deadline();
+ assert.equal(s.run('voice'),null);assert.equal(s.track.stopped,true);
+ assert.equal(s.run('transcript[0].text'),'keep this answer');assert.equal(s.timers.size,0);
+ assert.match(s.els.get('voiceStatus').textContent,/time limit reached/);
+});
 test('browser script parses and manual answer controls are removed',()=>{
  new vm.Script(html.match(/<script>([\s\S]*?)<\/script>/)[1]);assert.doesNotMatch(html,/answerBtn|voiceMode|toggleAnswer|Tap to answer|Finish answer/);
 });

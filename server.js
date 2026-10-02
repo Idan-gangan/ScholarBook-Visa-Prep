@@ -12,6 +12,8 @@ const pool = new Pool({
 
 const PORT = process.env.PORT || 3000;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
+const {POLICY,createVoiceLimits}=require('./voice-limits');
+const voiceLimits=createVoiceLimits(pool,OPENAI_API_KEY);
 const EVALUATION_MODEL = process.env.EVALUATION_MODEL || "gpt-5.6";
 const PUBLIC = path.join(__dirname, "public");
 const DATA_FILE = path.join(__dirname, "data", "db.json");
@@ -457,6 +459,8 @@ Use only information in the supplied profile and transcript. Do not reward inven
       if(!["mock","learn"].includes(mode)) return json(res,400,{error:"Unknown session mode"});
       if(mode==="learn" && url.searchParams.get("lesson")!==LESSON_ID) return json(res,400,{error:"Unknown lesson"});
       const sdp=(await readBody(req)).toString();
+      if(!sdp.startsWith('v=0') || sdp.length>64000)return json(res,400,{error:'Invalid voice connection offer.'});
+      if(!await voiceLimits.reserve(u.id))return json(res,429,{error:'Daily voice limit reached (6 starts per account). Try again after midnight UTC. Your learning notes remain available.'});
 const embassyKnowledge = loadEmbassyKnowledge(athlete.interviewLocation);
       let instructions=`You are a realistic but fair F-1 student visa mock interviewer for VisaAtlas.
 You are speaking with ${athlete.name}.
@@ -482,6 +486,7 @@ Start by greeting the athlete and asking why they are going to the United States
       fd.set("session",JSON.stringify({
         type:"realtime",
         model:"gpt-realtime-2.1",
+        max_output_tokens:POLICY[mode].tokens,
         instructions,
         audio:{
           input:{
@@ -506,10 +511,13 @@ Start by greeting the athlete and asking why they are going to the United States
           "Authorization":`Bearer ${OPENAI_API_KEY}`,
           "OpenAI-Safety-Identifier":sha(u.id).slice(0,32)
         },
-        body:fd
+        body:fd,
+        signal:AbortSignal.timeout(30000)
       });
       const answer=await rr.text();
-      res.writeHead(rr.status,{"Content-Type":"application/sdp"});
+      if(!rr.ok)return json(res,502,{error:'The voice service could not connect. Please try again later.'});
+      const seconds=await voiceLimits.track(rr.headers.get('location'),mode);
+      res.writeHead(rr.status,{"Content-Type":"application/sdp","Cache-Control":"no-store","X-Voice-Limit-Seconds":String(seconds)});
       return res.end(answer);
     }
 
@@ -520,7 +528,8 @@ Start by greeting the athlete and asking why they are going to the United States
     return json(res,500,{error:"Server error",detail:String(err.message||err)});
   }
 });
-initDb().then(() => {
+initDb().then(()=>voiceLimits.init()).then(() => {
+  voiceLimits.start();
   server.listen(PORT, () => console.log(`VisaAtlas demo running on http://localhost:${PORT}`));
 }).catch(err => {
   console.error("Database initialization failed:", err);
