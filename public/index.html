@@ -178,7 +178,8 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
           <h3>After the interview</h3>
           <p class="muted">The transcript is sent to the evaluation model to create a readiness report.</p>
           <button class="btn primary" style="width:100%" onclick="generateReport()">Generate Readiness Report</button>
-          <div id="evalStatus" class="small muted" style="margin-top:12px"></div>
+          <p class="muted small">Six report attempts per account each day, resetting at midnight UTC. Failed attempts count. Repeating a completed transcript reopens its saved report.</p>
+<div id="evalStatus" class="small muted" style="margin-top:12px"></div>
         </div>
       </div>
     </section>
@@ -422,10 +423,13 @@ function stopVoice(message=voiceScreen==="learn"?"Lesson conversation ended":"In
   voiceEl("startBtn").disabled=false;voiceEl("stopBtn").disabled=true;
   voiceEl("athleteSelect").disabled=false;
 }
+let reportGenerating=false;
 async function generateReport(){
+ if(reportGenerating)return;
  if(voice){$("evalStatus").textContent="End the conversation before generating a report.";return}
  if(transcript.length<2){$("evalStatus").textContent="Add or capture at least a short interview transcript first.";return}
- $("evalStatus").textContent="Generating readiness report…";
+ reportGenerating=true;
+ $("evalStatus").textContent="Generating readiness report… This may take up to 90 seconds.";
  try{
    const athleteId=mockStudentId || $("athleteSelect").value;
    await api("/api/save-transcript",{method:"POST",body:JSON.stringify({athleteId,transcript})});
@@ -433,6 +437,7 @@ async function generateReport(){
    $("evalStatus").textContent=`Report created: ${r.overall}/100 — ${r.readiness}`;
    athletes=await api("/api/athletes");reports=await api("/api/reports");renderAll();show("reports");
  }catch(e){$("evalStatus").textContent=e.message}
+ finally{reportGenerating=false;}
 }
 
 const lessonFields=["subjectReason","studyOpportunity","futureUse","draftAnswer"];
