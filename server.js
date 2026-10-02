@@ -417,10 +417,15 @@ Return ONLY strict JSON matching:
  "scores":{"purpose_of_study":0,"university_knowledge":0,"major_knowledge":0,"scholarship_finances":0,"post_graduation_plans":0,"application_knowledge":0,"communication":0,"consistency_honesty":0},
  "overall":0,
  "readiness":"Ready|Almost Ready|Needs Significant Prep|High Concern",
- "biggestWeakness":"...",
- "feedback":"...",
- "nextStep":"..."
+ "summary":"One short sentence summarizing this practice interview.",
+ "priority":"The single most useful point to clarify next.",
+ "strengths":["One specific strength supported by an answer."],
+ "clarifications":["One point needing clarification, tied to an actual answer."],
+ "nextSteps":["First concrete practice action.","Second concrete practice action.","Third concrete practice action."]
 }
+Keep the entire written feedback under 180 words. Write directly to the student using "you" and plain language.
+Return 0–3 strengths, 1–3 clarifications, and exactly 3 nextSteps. Each item must be one short sentence, at most 30 words and 240 characters. summary and priority must each be at most 240 characters.
+Tie feedback to actual answers. If evidence is too limited to identify a strength, return an empty strengths array; never invent praise. Distinguish "not discussed" from "incorrect". If a transcript phrase looks mistranscribed, ask for clarification rather than treating it as an established fact. Do not penalize accent or require native-speaker grammar; assess whether meaning is clear. Do not invent facts, motivations, funding, or post-study plans for the student, and never tell them to replace their genuine intentions with a preferred answer. Do not give legal determinations or visa approval predictions.
 Use only information in the supplied profile and transcript. Do not reward invented facts or memorized-sounding certainty.`;
 
       const r=await fetch("https://api.openai.com/v1/responses",{
@@ -440,6 +445,16 @@ Use only information in the supplied profile and transcript. Do not reward inven
       let result;
       try{ result=JSON.parse(text); }catch(e){ return json(res,502,{error:"Evaluation could not be completed. Please try again."}); }
 
+      const structured=result && ("summary" in Object(result) || "nextSteps" in Object(result));
+      if(structured){
+        const short=value=>typeof value==='string'&&value.trim().length>0&&value.length<=240&&value.trim().split(/\s+/).length<=30;
+        const list=(value,min,max)=>Array.isArray(value)&&value.length>=min&&value.length<=max&&value.every(short);
+        if(!short(result.summary)||!short(result.priority)||!list(result.strengths,0,3)||!list(result.clarifications,1,3)||!list(result.nextSteps,3,3)){
+          return json(res,502,{error:"The report format was incomplete. Please try again later."});
+        }
+        // Retain legacy text fields for older clients without rewriting saved reports.
+        result.feedback=result.summary;result.biggestWeakness=result.priority;result.nextStep=result.nextSteps.join(' ');
+      }
       if(!result || typeof result!=="object" || !Number.isFinite(result.overall) || result.overall<0 || result.overall>100 ||
          ["biggestWeakness","feedback","nextStep"].some(k=>typeof result[k]!=="string" || result[k].length>10000)){
         return json(res,502,{error:"Evaluation could not be completed. Please try again."});
@@ -461,6 +476,7 @@ Use only information in the supplied profile and transcript. Do not reward inven
         scores:safeScores,overall:result.overall,
         readiness:result.overall>=85?"Ready":result.overall>=70?"Almost Ready":result.overall>=55?"Needs Significant Prep":"High Concern",
         biggestWeakness:result.biggestWeakness,feedback:result.feedback,nextStep:result.nextStep,
+        ...(structured?{formatVersion:2,strengths:result.strengths,clarifications:result.clarifications,nextSteps:result.nextSteps}:{}),
         humanReview:null
       };
       current.reports.push(report);
