@@ -176,3 +176,17 @@ test('voice admission is checked before upstream calls and rejects malformed SDP
  assert.equal((await h.request('POST',route,'v=0\r\noffer')).status,429);
  assert.equal(h.calls.length,6);
 });
+test('evaluation cannot overwrite report ownership and metadata through model output',async()=>{
+ const h=harness();
+ const forged={id:'forged',athleteId:'s2',mockNumber:999,createdAt:'forged',overall:45,scores:{communication:999},feedback:'Feedback',biggestWeakness:'Weakness',nextStep:'Practice',humanReview:{score:100}};
+ h.run(`fetch=async()=>({ok:true,json:async()=>({output_text:${JSON.stringify(JSON.stringify(forged))}})})`);
+ const r=await h.request('POST','/api/evaluate',{athleteId:'s1',transcript:[]});
+ assert.equal(r.status,200);assert.equal(r.body.athleteId,'s1');assert.notEqual(r.body.id,'forged');assert.equal(r.body.mockNumber,1);assert.notEqual(r.body.createdAt,'forged');assert.equal(r.body.humanReview,null);assert.deepEqual(r.body.scores,{});
+ assert.equal(r.headers['X-Content-Type-Options'],'nosniff');
+});
+test('malformed evaluation and internal failures do not expose raw data',async()=>{
+ const h=harness();h.run(`fetch=async()=>({ok:true,json:async()=>({output_text:'secret invalid model text'})})`);
+ const bad=await h.request('POST','/api/evaluate',{athleteId:'s1',transcript:[]});assert.equal(bad.status,502);assert.doesNotMatch(bad.text,/secret/);
+ h.run(`loadDb=async()=>{throw new Error('private database connection detail')}`);
+ const failed=await h.request('GET','/api/me');assert.equal(failed.status,500);assert.deepEqual(failed.body,{error:'Server error'});
+});

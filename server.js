@@ -69,8 +69,9 @@ if (
 function sha(v){ return crypto.createHash("sha256").update(v).digest("hex"); }
 
 
+const RESPONSE_HEADERS={"X-Content-Type-Options":"nosniff","X-Frame-Options":"DENY","Referrer-Policy":"same-origin"};
 function json(res, code, obj){
-  res.writeHead(code, {"Content-Type":"application/json","Cache-Control":"no-store"});
+  res.writeHead(code, {...RESPONSE_HEADERS,"Content-Type":"application/json","Cache-Control":"no-store"});
   res.end(JSON.stringify(obj));
 }
 function readBody(req){
@@ -184,7 +185,7 @@ function serveStatic(req,res){
   if(!file.startsWith(PUBLIC) || !fs.existsSync(file) || fs.statSync(file).isDirectory()){
     res.writeHead(404); return res.end("Not found");
   }
-  res.writeHead(200,{"Content-Type":contentType(file)}); fs.createReadStream(file).pipe(res);
+  res.writeHead(200,{...RESPONSE_HEADERS,"Content-Type":contentType(file),"Cache-Control":"no-cache"}); fs.createReadStream(file).pipe(res);
 }
 function makeId(prefix){ return prefix+"_"+crypto.randomBytes(6).toString("hex"); }
 function clean(v,max=200){ return String(v??"").trim().slice(0,max); }
@@ -412,14 +413,26 @@ Use only information in the supplied profile and transcript. Do not reward inven
       if(!r.ok) return json(res,r.status,{error:api.error?.message||"OpenAI evaluation failed"});
       let text=outputText(api).trim().replace(/^```json\s*/,"").replace(/```$/,"").trim();
       let result;
-      try{ result=JSON.parse(text); }catch(e){ return json(res,502,{error:"Model returned non-JSON evaluation",raw:text}); }
+      try{ result=JSON.parse(text); }catch(e){ return json(res,502,{error:"Evaluation could not be completed. Please try again."}); }
 
+      if(!result || typeof result!=="object" || !Number.isFinite(result.overall) || result.overall<0 || result.overall>100 ||
+         ["biggestWeakness","feedback","nextStep"].some(k=>typeof result[k]!=="string" || result[k].length>10000)){
+        return json(res,502,{error:"Evaluation could not be completed. Please try again."});
+      }
+      // Provider output can describe feedback, but cannot choose ownership or identifiers.
+      const safeScores={};
+      for(const [key,max] of Object.entries(rubric)){
+        const value=result.scores?.[key];
+        if(Number.isFinite(value)&&value>=0&&value<=max)safeScores[key]=value;
+      }
       const report={
         id:"rp_"+crypto.randomBytes(6).toString("hex"),
         athleteId:athlete.id,
         mockNumber:(db.reports.filter(x=>x.athleteId===athlete.id).length+1),
         createdAt:new Date().toISOString(),
-        ...result,
+        scores:safeScores,overall:result.overall,
+        readiness:result.overall>=85?"Ready":result.overall>=70?"Almost Ready":result.overall>=55?"Needs Significant Prep":"High Concern",
+        biggestWeakness:result.biggestWeakness,feedback:result.feedback,nextStep:result.nextStep,
         humanReview:null
       };
       db.reports.push(report);
@@ -525,7 +538,7 @@ Start by greeting the athlete and asking why they are going to the United States
   }catch(err){
     if(err.status===429||err.status===413)return json(res,err.status,{error:err.message});
     console.error(err);
-    return json(res,500,{error:"Server error",detail:String(err.message||err)});
+    return json(res,500,{error:"Server error"});
   }
 });
 initDb().then(()=>voiceLimits.init()).then(() => {
