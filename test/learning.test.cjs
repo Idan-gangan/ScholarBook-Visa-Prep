@@ -23,6 +23,24 @@ function harness(user={id:'u1',role:'athlete'},env={}){
    if(sql.startsWith('INSERT INTO voice_call_limits'))return {rows:[]};
    throw new Error('Unexpected query: '+sql);
  }};
+ let queue=Promise.resolve();
+ pool.connect=async()=>{
+   let unlock,snapshot,credentialSnapshot;
+   return {query:async(sql,args)=>{
+     if(sql==='BEGIN')return {rows:[]};
+     if(sql.includes('FOR UPDATE')){
+       const previous=queue;queue=new Promise(resolve=>unlock=resolve);await previous;
+       snapshot=structuredClone(db);credentialSnapshot=structuredClone(credentials);
+       return {rows:[{data:structuredClone(db)}]};
+     }
+     if(sql==='ROLLBACK'){
+       if(snapshot){Object.assign(db,snapshot);credentials.clear();for(const [k,v] of credentialSnapshot)credentials.set(k,v);}
+       return {rows:[]};
+     }
+     if(sql==='COMMIT')return {rows:[]};
+     return pool.query(sql,args);
+   },release(){if(unlock)unlock();}};
+ };
  const context=vm.createContext({require:id=>id==='http'?{createServer:fn=>{handler=fn;return {}}}:id==='pg'?{Pool:function(){return pool}}:id==='fs'?{...fs,readFileSync:(file,...args)=>file===path.resolve(__dirname,'../data/db.json')?'{}':fs.readFileSync(file,...args)}:id==='./voice-limits'?require('../voice-limits'):id==='./learning'?learning:id==='./passwords'?passwords:require(id),__dirname:path.resolve(__dirname,'..'),process:{env:{OPENAI_API_KEY:'test-only',...env}},console:{log:(...args)=>logs.push(args.join(' ')),warn:(...args)=>logs.push(args.join(' ')),error:(...args)=>logs.push(args.join(' '))},Buffer,URL,FormData,AbortSignal,fetch:async(url,options)=>{if(url.endsWith('/responses')){calls.push({url,request:JSON.parse(options.body)});return {ok:true,json:async()=>({output_text:JSON.stringify({scores:{},overall:45,readiness:'High Concern',biggestWeakness:'Test',feedback:'Test feedback',nextStep:'Practice'})})};}calls.push({url,session:JSON.parse(options.body.get('session'))});return {ok:true,status:200,headers:{get:()=>'/v1/realtime/calls/rtc_test'},text:async()=> 'test-sdp-answer'}}});
  let source=fs.readFileSync(path.join(__dirname,'../server.js'),'utf8');source=source.slice(0,source.indexOf('initDb().then('));vm.runInContext(source,context);vm.runInContext(`sessions.set('test-token',{userId:${JSON.stringify(user.id)},version:0,expires:Date.now()+60000})`,context);
  async function request(method,url,body,authenticated=true){
@@ -189,4 +207,32 @@ test('malformed evaluation and internal failures do not expose raw data',async()
  const bad=await h.request('POST','/api/evaluate',{athleteId:'s1',transcript:[]});assert.equal(bad.status,502);assert.doesNotMatch(bad.text,/secret/);
  h.run(`loadDb=async()=>{throw new Error('private database connection detail')}`);
  const failed=await h.request('GET','/api/me');assert.equal(failed.status,500);assert.deepEqual(failed.body,{error:'Server error'});
+});
+test('overlapping profile writes preserve both fields',async()=>{
+ const h=harness();
+ const results=await Promise.all([h.request('PUT','/api/my-profile',{major:'Chemistry'}),h.request('PUT','/api/my-profile',{university:'New university'})]);
+ assert.ok(results.every(r=>r.status===200));assert.equal(h.db.athletes[0].major,'Chemistry');assert.equal(h.db.athletes[0].university,'New university');
+});
+test('slow evaluations preserve intervening profile saves and allocate distinct report numbers',async()=>{
+ const h=harness();
+ h.run(`pending=[];fetch=async()=>{await new Promise(resolve=>pending.push(resolve));return {ok:true,json:async()=>({output_text:JSON.stringify({overall:50,feedback:'Feedback',biggestWeakness:'Weakness',nextStep:'Practice'})})}}`);
+ const first=h.request('POST','/api/evaluate',{athleteId:'s1',transcript:[]});
+ const second=h.request('POST','/api/evaluate',{athleteId:'s1',transcript:[]});
+ for(let i=0;i<100&&h.run('pending.length')<2;i++)await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(h.run('pending.length'),2);
+ const profile=await h.request('PUT','/api/my-profile',{major:'Updated while evaluating'});assert.equal(profile.status,200);
+ h.run('pending.forEach(resolve=>resolve())');
+ const reports=await Promise.all([first,second]);assert.ok(reports.every(r=>r.status===200));
+ assert.deepEqual(reports.map(r=>r.body.mockNumber).sort(),[1,2]);assert.equal(h.db.athletes[0].mocks,2);assert.equal(h.db.athletes[0].major,'Updated while evaluating');
+});
+test('concurrent duplicate registrations create only one account and credential',async()=>{
+ const h=harness();const body={name:'Student',email:'new@example.test',password:'a-long-test-password',country:'Nigeria',university:'Example',major:'Biology'};
+ const responses=await Promise.all([h.request('POST','/api/register-athlete',body,false),h.request('POST','/api/register-athlete',body,false)]);
+ assert.deepEqual(responses.map(r=>r.status).sort(),[201,409]);assert.equal(h.db.users.filter(u=>u.email===body.email).length,1);assert.equal(h.credentials.size,2);
+});
+test('failed mutation rolls back account data and credential then releases the lock',async()=>{
+ const h=harness();
+ await assert.rejects(h.run(`mutateDb(async(db,client)=>{db.users.push({id:'failed'});await client.query('INSERT INTO user_credentials (user_id,password_hash) VALUES ($1,$2) ON CONFLICT (user_id) DO NOTHING',['failed','hash']);throw new Error('fail')})`),/fail/);
+ assert.equal(h.db.users.some(u=>u.id==='failed'),false);assert.equal(h.credentials.has('failed'),false);
+ await h.run(`mutateDb(async(db)=>{db.athletes[0].major='After rollback'})`);assert.equal(h.db.athletes[0].major,'After rollback');
 });
