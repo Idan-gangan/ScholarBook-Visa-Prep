@@ -14,6 +14,8 @@ const PORT = process.env.PORT || 3000;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 const {POLICY,createVoiceLimits}=require('./voice-limits');
 const voiceLimits=createVoiceLimits(pool,OPENAI_API_KEY);
+const {EVALUATION_POLICY,normalizeTranscript,createEvaluationLimits}=require("./evaluation-limits");
+const evaluationLimits=createEvaluationLimits(pool);
 const EVALUATION_MODEL = process.env.EVALUATION_MODEL || "gpt-5.6";
 const PUBLIC = path.join(__dirname, "public");
 const DATA_FILE = path.join(__dirname, "data", "db.json");
@@ -378,6 +380,17 @@ const server=http.createServer(async (req,res)=>{
       if(!canAccessStudent(u,athlete)) return json(res,403,{error:"You cannot generate a report for this student."});
       if(!OPENAI_API_KEY) return json(res,503,{error:"OPENAI_API_KEY is not configured on the server."});
 
+      let interview;
+      try{interview=normalizeTranscript(body.transcript);}catch(error){return json(res,400,{error:error.message});}
+      const evaluationKey=sha(JSON.stringify([u.id,athlete.id,EVALUATION_MODEL,interview]));
+      const previous=db.reports.find(report=>report.evaluationKey===evaluationKey);
+      if(previous)return json(res,200,previous);
+      const lease=await evaluationLimits.reserve(u.id);
+      if(!lease)return json(res,429,{error:"A report is already processing, or you have used today's six report attempts. Daily limits reset at midnight UTC."});
+      try{
+      // Recheck after admission in case another request finished between the first lookup and reservation.
+      const cached=(await loadDb()).reports.find(report=>report.evaluationKey===evaluationKey);
+      if(cached)return json(res,200,cached);
       const rubric = {
         purpose_of_study:15, university_knowledge:15, major_knowledge:15, scholarship_finances:15,
         post_graduation_plans:15, application_knowledge:10, communication:10, consistency_honesty:5
@@ -394,7 +407,7 @@ Athlete profile:
 ${JSON.stringify(athlete,null,2)}
 
 Transcript:
-${JSON.stringify(body.transcript||[],null,2)}
+${JSON.stringify(interview,null,2)}
 
 Rubric maximums:
 ${JSON.stringify(rubric)}
@@ -417,10 +430,12 @@ Use only information in the supplied profile and transcript. Do not reward inven
           "Content-Type":"application/json",
           "OpenAI-Safety-Identifier":sha(u.id).slice(0,32)
         },
-        body:JSON.stringify({model:EVALUATION_MODEL,input:prompt})
+        signal:AbortSignal.timeout(EVALUATION_POLICY.timeoutMs),
+        body:JSON.stringify({model:EVALUATION_MODEL,input:prompt,max_output_tokens:EVALUATION_POLICY.outputTokens,store:false})
       });
       const api=await r.json();
-      if(!r.ok) return json(res,r.status,{error:api.error?.message||"OpenAI evaluation failed"});
+      if(!r.ok)return json(res,502,{error:"Report generation is temporarily unavailable. Please try again later."});
+      if(api.status==="incomplete")return json(res,502,{error:"The report could not finish within its output limit. Please try again later."});
       let text=outputText(api).trim().replace(/^```json\s*/,"").replace(/```$/,"").trim();
       let result;
       try{ result=JSON.parse(text); }catch(e){ return json(res,502,{error:"Evaluation could not be completed. Please try again."}); }
@@ -440,7 +455,7 @@ Use only information in the supplied profile and transcript. Do not reward inven
       if(!canAccessStudent(u,currentAthlete))throw stateError(403,"You cannot generate a report for this student.");
       const report={
         id:"rp_"+crypto.randomBytes(6).toString("hex"),
-        athleteId:athlete.id,
+        athleteId:athlete.id,evaluationKey,
         mockNumber:(current.reports.filter(x=>x.athleteId===athlete.id).length+1),
         createdAt:new Date().toISOString(),
         scores:safeScores,overall:result.overall,
@@ -454,6 +469,12 @@ Use only information in the supplied profile and transcript. Do not reward inven
       return report;
       });
       return json(res,200,savedReport);
+      }catch(error){
+        if(error.name==='TimeoutError'||error.name==='AbortError')return json(res,504,{error:"Report generation timed out. Please try again later."});
+        throw error;
+      }finally{
+        try{await evaluationLimits.release(u.id,lease);}catch{console.error('[evaluation] LEASE_RELEASE_FAILED');}
+      }
     }
 
     if(url.pathname === "/api/learning/study-purpose" && ["GET", "PUT"].includes(req.method)){
@@ -556,7 +577,7 @@ Start by greeting the athlete and asking why they are going to the United States
     return json(res,500,{error:"Server error"});
   }
 });
-initDb().then(()=>voiceLimits.init()).then(() => {
+initDb().then(()=>voiceLimits.init()).then(()=>evaluationLimits.init()).then(() => {
   voiceLimits.start();
   server.listen(PORT, () => console.log(`VisaAtlas demo running on http://localhost:${PORT}`));
 }).catch(err => {
