@@ -122,40 +122,43 @@ if(coachPassword){
 }
 
 if (coachEmail && coachPassword) {
-  const db = await loadDb();
-  db.users = Array.isArray(db.users) ? db.users : [];
-
-  let coach = db.users.find(
-    u => normalizeEmail(u.email) === coachEmail
-  );
-
-  if(coach){authDiagnostic('COACH_EXISTING_PASSWORD_PRESERVED');return;}
+  const existingCoach=(await loadDb()).users.find(u=>normalizeEmail(u.email)===coachEmail);
+  if(existingCoach){authDiagnostic('COACH_EXISTING_PASSWORD_PRESERVED');return;}
   if(!validPassword(coachPassword))throw new Error('Initial COACH_PASSWORD must contain 15–128 characters and no line breaks.');
-
-  if (!coach) {
-    coach = {
-      id: "u_" + crypto.randomBytes(6).toString("hex"),
-      name: "Efe-Sam Agalivie",
-      email: coachEmail
-    };
+  const hash=await hashPassword(coachPassword);
+  await mutateDb(async(db,client)=>{
+    if(db.users.some(u=>normalizeEmail(u.email)===coachEmail))return;
+    const coach={id:makeId('u'),name:'Efe-Sam Agalivie',email:coachEmail,role:'coach'};
+    await client.query('INSERT INTO user_credentials (user_id,password_hash) VALUES ($1,$2) ON CONFLICT (user_id) DO NOTHING',[coach.id,hash]);
     db.users.push(coach);
-  }
-
-  coach.name = "Efe-Sam Agalivie";
-  coach.role = "coach";
-  await insertCredential(coach.id,await hashPassword(coachPassword));
-
-  await saveDb(db);
-  authDiagnostic('COACH_ACCOUNT_CREATED');
+  });
+  authDiagnostic('COACH_ACCOUNT_READY');
 }
 }
 async function loadDb(){
-const result = await pool.query("SELECT data FROM app_state WHERE id = 1");
- return result.rows[0]?.data || { users: [], athletes: [], reports: [], transcripts: [] };
+ const result=await pool.query("SELECT data FROM app_state WHERE id = 1");
+ return result.rows[0]?.data || {users:[],athletes:[],reports:[],transcripts:[]};
 }
-async function saveDb(db){
-  await pool.query("UPDATE app_state SET data = $1 WHERE id = 1", [db]);
+// All state writers use one short database transaction, shared across app instances.
+// Hashing and provider calls must finish before entering this critical section.
+async function mutateDb(change){
+ const client=await pool.connect();
+ try{
+   await client.query('BEGIN');
+   const result=await client.query('SELECT data FROM app_state WHERE id = 1 FOR UPDATE');
+   if(!result.rows[0])throw new Error('Application state is missing');
+   const db=result.rows[0].data;
+   const value=await change(db,client);
+   await client.query('UPDATE app_state SET data = $1 WHERE id = 1',[db]);
+   await client.query('COMMIT');
+   return value;
+ }catch(error){
+   try{await client.query('ROLLBACK');}catch(rollbackError){console.error('State rollback failed',rollbackError);}
+   throw error;
+ }finally{client.release();}
 }
+function stateError(status,message){return Object.assign(new Error(message),{status,publicMessage:message});}
+
 function parseCookies(req){
   return Object.fromEntries((req.headers.cookie||"").split(";").filter(Boolean).map(x=>{
     const i=x.indexOf("="); return [x.slice(0,i).trim(), decodeURIComponent(x.slice(i+1))];
@@ -215,10 +218,11 @@ const server=http.createServer(async (req,res)=>{
       const email=clean(body.email,160).toLowerCase();
       if(!allowAuth('register:'+sha(email)))return json(res,429,{error:'Too many attempts. Please try again in one minute.'});
       if(!/^\S+@\S+\.\S+$/.test(email)) return json(res,400,{error:"Enter a valid email address."});
-      const db=await loadDb();
-      if(db.users.some(u=>u.email.toLowerCase()===email)) return json(res,409,{error:"An account with this email already exists."});
+      const hash=await hashPassword(body.password);
       const userId=makeId("u"); const athleteId=makeId("a");
-      await insertCredential(userId,await hashPassword(body.password));
+      await mutateDb(async(db,client)=>{
+      if(db.users.some(u=>normalizeEmail(u.email)===email))throw stateError(409,"An account with this email already exists.");
+      await client.query('INSERT INTO user_credentials (user_id,password_hash) VALUES ($1,$2) ON CONFLICT (user_id) DO NOTHING',[userId,hash]);
       db.users.push({id:userId,name:clean(body.name,120),email,role:"athlete"});
       db.athletes.push({
         id:athleteId,userId,name:clean(body.name,120),email,
@@ -231,7 +235,7 @@ const server=http.createServer(async (req,res)=>{
         postGradPlan:clean(body.postGradPlan,500),profileStatus:"Complete",createdAt:new Date().toISOString(),
         sessions:0,mocks:0,initialScore:0,currentScore:0,mainConcern:"New athlete — not yet assessed"
       });
-      await saveDb(db);
+      });
       const token=startSession(userId,0);
       res.writeHead(201,{"Content-Type":"application/json","Cache-Control":"no-store","Set-Cookie":sessionCookie(token)});
       return res.end(JSON.stringify({ok:true,user:{id:userId,name:clean(body.name,120),role:"athlete",email}}));
@@ -306,12 +310,15 @@ const server=http.createServer(async (req,res)=>{
       const u=await requireUser(req,res); if(!u) return;
       if(u.role!=="athlete") return json(res,403,{error:"Athlete access required"});
       const body=JSON.parse((await readBody(req)).toString()||"{}");
-      const db=await loadDb(); const athlete=db.athletes.find(a=>a.userId===u.id);
-      if(!athlete) return json(res,404,{error:"Athlete profile not found"});
+      const updated=await mutateDb(async(db)=>{
+      const athlete=db.athletes.find(a=>a.userId===u.id);
+      if(!athlete)throw stateError(404,"Athlete profile not found");
       const fields={phone:40,country:80,interviewLocation:120,university:160,major:160,academicLevel:80,sport:120,scholarship:120,scholarshipCoverage:240,previousRefusal:20,previousTravel:20,remainingSponsor:160,postGradPlan:500};
       for(const [k,max] of Object.entries(fields)) if(k in body) athlete[k]=clean(body[k],max);
       if("previousAttempts" in body) athlete.previousAttempts=Math.max(0,Number(body.previousAttempts||0));
-      athlete.updatedAt=new Date().toISOString(); await saveDb(db); return json(res,200,athlete);
+      athlete.updatedAt=new Date().toISOString(); return athlete;
+      });
+      return json(res,200,updated);
     }
 
     if(req.method==="GET" && url.pathname==="/api/athletes"){
@@ -337,19 +344,21 @@ const server=http.createServer(async (req,res)=>{
       const u=await requireUser(req,res); if(!u) return;
       if(!["coach","supervisor"].includes(u.role)) return json(res,403,{error:"Coach or supervisor access required"});
       const body=JSON.parse((await readBody(req)).toString()||"{}");
-      const db=await  loadDb();
+      const updated=await mutateDb(async(db)=>{
       const report=db.reports.find(r=>r.id===body.reportId);
-      if(!report) return json(res,404,{error:"Report not found"});
+      if(!report)throw stateError(404,"Report not found");
       report.humanReview={score:Number(body.score),note:String(body.note||""),reviewer:u.name,reviewedAt:new Date().toISOString()};
-      await saveDb(db); return json(res,200,report);
+      return report;
+      });
+      return json(res,200,updated);
     }
 
     if(req.method==="POST" && url.pathname==="/api/save-transcript"){
       const u=await requireUser(req,res); if(!u) return;
       const body=JSON.parse((await readBody(req)).toString()||"{}");
-      const db=await loadDb();
+      await mutateDb(async(db)=>{
       const athlete=db.athletes.find(a=>a.id===body.athleteId);
-      if(!canAccessStudent(u,athlete)) return json(res,403,{error:"You cannot save a transcript for this student."});
+      if(!canAccessStudent(u,athlete)) throw stateError(403,"You cannot save a transcript for this student.");
       db.transcripts.push({
         id:"tr_"+crypto.randomBytes(6).toString("hex"),
         athleteId:athlete.id,
@@ -357,7 +366,8 @@ const server=http.createServer(async (req,res)=>{
         transcript:Array.isArray(body.transcript)?body.transcript:[],
         createdAt:new Date().toISOString()
       });
-      await saveDb(db); return json(res,200,{ok:true});
+      });
+      return json(res,200,{ok:true});
     }
 
     if(req.method==="POST" && url.pathname==="/api/evaluate"){
@@ -425,21 +435,25 @@ Use only information in the supplied profile and transcript. Do not reward inven
         const value=result.scores?.[key];
         if(Number.isFinite(value)&&value>=0&&value<=max)safeScores[key]=value;
       }
+      const savedReport=await mutateDb(async(current)=>{
+      const currentAthlete=current.athletes.find(a=>a.id===athlete.id);
+      if(!canAccessStudent(u,currentAthlete))throw stateError(403,"You cannot generate a report for this student.");
       const report={
         id:"rp_"+crypto.randomBytes(6).toString("hex"),
         athleteId:athlete.id,
-        mockNumber:(db.reports.filter(x=>x.athleteId===athlete.id).length+1),
+        mockNumber:(current.reports.filter(x=>x.athleteId===athlete.id).length+1),
         createdAt:new Date().toISOString(),
         scores:safeScores,overall:result.overall,
         readiness:result.overall>=85?"Ready":result.overall>=70?"Almost Ready":result.overall>=55?"Needs Significant Prep":"High Concern",
         biggestWeakness:result.biggestWeakness,feedback:result.feedback,nextStep:result.nextStep,
         humanReview:null
       };
-      db.reports.push(report);
-      athlete.currentScore=Number(result.overall||0);
-      athlete.mocks=(athlete.mocks||0)+1;
-      await saveDb(db);
-      return json(res,200,report);
+      current.reports.push(report);
+      currentAthlete.currentScore=result.overall;
+      currentAthlete.mocks=(currentAthlete.mocks||0)+1;
+      return report;
+      });
+      return json(res,200,savedReport);
     }
 
     if(url.pathname === "/api/learning/study-purpose" && ["GET", "PUT"].includes(req.method)){
@@ -537,6 +551,7 @@ Start by greeting the athlete and asking why they are going to the United States
     return serveStatic(req,res);
   }catch(err){
     if(err.status===429||err.status===413)return json(res,err.status,{error:err.message});
+    if(err.publicMessage)return json(res,err.status,{error:err.publicMessage});
     console.error(err);
     return json(res,500,{error:"Server error"});
   }

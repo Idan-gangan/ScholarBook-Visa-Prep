@@ -1,0 +1,31 @@
+name: State reliability
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: disposable-test-only
+          POSTGRES_DB: visaatlas_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      # The existing lockfile is incomplete; lockfile repair remains separate work.
+      - run: npm install --ignore-scripts --package-lock=false
+      - run: node --test test/*.test.cjs
+      - run: node --test test/postgres-state.cjs
+        env:
+          TEST_DATABASE_URL: postgres://postgres:disposable-test-only@localhost:5432/visaatlas_test
