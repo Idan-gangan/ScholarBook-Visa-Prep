@@ -23,6 +23,22 @@ test('PostgreSQL serializes state writes across pools and rolls back failed cred
    assert.equal((await pools[1].query('SELECT * FROM user_credentials')).rows.length,0);
    await writers[1](async(db)=>{db.count++;});
    data=(await pools[0].query('SELECT data FROM app_state WHERE id=1')).rows[0].data;assert.equal(data.count,21);
+   const {createEvaluationLimits}=require('../evaluation-limits');
+   const limits=pools.map(pool=>createEvaluationLimits(pool));await limits[0].init();
+   const reservations=await Promise.all(Array.from({length:20},(_,i)=>limits[i%2].reserve('account')));
+   const tokens=reservations.filter(Boolean);assert.equal(tokens.length,1);
+   await limits[1].release('account','wrong-token');assert.equal(await limits[0].reserve('account'),null);
+   await limits[1].release('account',tokens[0]);
+   for(let i=0;i<5;i++){const token=await limits[i%2].reserve('account');assert.ok(token);await limits[0].release('account',token);}
+   assert.equal(await limits[1].reserve('account'),null);
+   // Restarting the service does not reset quota.
+   assert.equal(await createEvaluationLimits(pools[0]).reserve('account'),null);
+   await pools[0].query("UPDATE evaluation_daily_usage SET usage_day=(NOW() AT TIME ZONE 'UTC')::date-1 WHERE user_id='account'");
+   const tomorrow=await limits[1].reserve('account');assert.ok(tomorrow);
+   await pools[0].query("UPDATE evaluation_daily_usage SET lease_until=NOW()-INTERVAL '1 second' WHERE user_id='account'");
+   const recovered=await limits[0].reserve('account');assert.ok(recovered);
+   await limits[1].release('account',tomorrow);assert.equal(await limits[0].reserve('account'),null);
+   await limits[0].release('account',recovered);
  }finally{
    await Promise.all(pools.map(pool=>pool.end()));
    await admin.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);await admin.end();
