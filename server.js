@@ -225,7 +225,7 @@ const server=http.createServer(async (req,res)=>{
         for(const [token,session] of sessions)if(session.userId===userId)sessions.delete(token);
         return json(res,200,{ok:true});
       }catch(error){
-        if(error.publicMessage)return json(res,error.status,{error:error.publicMessage});
+        if(error.publicMessage)return json(res,error.status,{error:error.publicMessage,...(error.retryAfter?{retryAfter:error.retryAfter}:{})});
         if(error.status===429)return json(res,429,{error:'Too many attempts. Please try again shortly.'});
         authDiagnostic('PASSWORD_RECOVERY_FAILED');
         return json(res,503,{error:'Password recovery is temporarily unavailable. Please try again later.'});
@@ -617,6 +617,7 @@ Start by greeting the athlete and asking why they are going to the United States
 });
 initDb().then(()=>passwordRecovery.init()).then(()=>voiceLimits.init()).then(()=>evaluationLimits.init()).then(() => {
   voiceLimits.start();
+  passwordRecovery.start();
   server.listen(PORT, () => console.log(`VisaAtlas demo running on http://localhost:${PORT}`));
 }).catch(err => {
   console.error("Database initialization failed:", err);
