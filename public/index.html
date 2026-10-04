@@ -74,6 +74,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
     <div class="field"><label for="password">Password</label><input id="password" name="password" type="password" autocomplete="current-password" required placeholder="Your password"></div>
     <button class="btn primary" type="submit" style="width:100%">Sign in</button>
     </form>
+    <p><a href="/password-recovery.html">Forgot your password?</a></p>
     <button class="linkbtn" style="width:100%;margin-top:10px" onclick="showRegistration()">New here? Create a student account</button>
     <button class="linkbtn" onclick="showWelcome()">Back to home</button>
     <div id="loginErr" class="small" style="color:#b32626"></div>
@@ -528,6 +529,6 @@ async function startLearningTutor(){
    if($("learning").classList.contains("on") && lessonStudentId===studentId)await startVoice("learn");
  }
 }
-boot().catch(()=>{});
+boot().catch(()=>{if(new URLSearchParams(location.search).get("signin")==="1")backToLogin()});
 </script>
 </body></html>

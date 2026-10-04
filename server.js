@@ -16,6 +16,8 @@ const {POLICY,createVoiceLimits}=require('./voice-limits');
 const voiceLimits=createVoiceLimits(pool,OPENAI_API_KEY);
 const {EVALUATION_POLICY,normalizeTranscript,createEvaluationLimits}=require("./evaluation-limits");
 const evaluationLimits=createEvaluationLimits(pool);
+const {createPasswordRecovery}=require('./password-recovery');
+const passwordRecovery=createPasswordRecovery(pool,{env:process.env,diagnostic:authDiagnostic});
 const EVALUATION_MODEL = process.env.EVALUATION_MODEL || "gpt-5.6";
 const PUBLIC = path.join(__dirname, "public");
 const DATA_FILE = path.join(__dirname, "data", "db.json");
@@ -76,10 +78,10 @@ function json(res, code, obj){
   res.writeHead(code, {...RESPONSE_HEADERS,"Content-Type":"application/json","Cache-Control":"no-store"});
   res.end(JSON.stringify(obj));
 }
-function readBody(req){
+function readBody(req,maxBytes=1024*1024){
   return new Promise((resolve,reject)=>{
     let chunks=[],bytes=0,tooLarge=false;
-    req.on('data',c=>{bytes+=c.length;if(bytes>1024*1024){chunks=[];if(!tooLarge){tooLarge=true;reject(Object.assign(new Error('Request is too large.'),{status:413}));}}else if(!tooLarge)chunks.push(c);});
+    req.on('data',c=>{bytes+=c.length;if(bytes>maxBytes){chunks=[];if(!tooLarge){tooLarge=true;reject(Object.assign(new Error('Request is too large.'),{status:413}));}}else if(!tooLarge)chunks.push(c);});
     req.on("end",()=>{if(!tooLarge)resolve(Buffer.concat(chunks));});
     req.on("error",reject);
   });
@@ -190,7 +192,8 @@ function serveStatic(req,res){
   if(!file.startsWith(PUBLIC) || !fs.existsSync(file) || fs.statSync(file).isDirectory()){
     res.writeHead(404); return res.end("Not found");
   }
-  res.writeHead(200,{...RESPONSE_HEADERS,"Content-Type":contentType(file),"Cache-Control":"no-cache"}); fs.createReadStream(file).pipe(res);
+  const recovery=path.basename(file).startsWith('password-recovery.');
+  res.writeHead(200,{...RESPONSE_HEADERS,"Content-Type":contentType(file),"Cache-Control":recovery?'no-store':'no-cache',...(recovery?{'Referrer-Policy':'no-referrer'}:{})}); fs.createReadStream(file).pipe(res);
 }
 function makeId(prefix){ return prefix+"_"+crypto.randomBytes(6).toString("hex"); }
 function clean(v,max=200){ return String(v??"").trim().slice(0,max); }
@@ -209,6 +212,25 @@ function outputText(resp){
 const server=http.createServer(async (req,res)=>{
   try{
     const url=new URL(req.url, `http://${req.headers.host}`);
+
+    if(req.method==='POST' && ['/api/forgot-password','/api/reset-password'].includes(url.pathname)){
+      if(!(req.headers['content-type']||'').toLowerCase().startsWith('application/json'))return json(res,415,{error:'JSON required.'});
+      try{
+        let body;
+        try{body=JSON.parse((await readBody(req,4096)).toString());}catch(error){return json(res,error.status===413?413:400,{error:'Invalid request.'});}
+        if(!body || typeof body!=='object' || Array.isArray(body))return json(res,400,{error:'Invalid request.'});
+        if(url.pathname==='/api/forgot-password')return json(res,200,passwordRecovery.request(body.email));
+        if(!allowAuth('reset:'+sha(typeof body.token==='string'?body.token:'')))return json(res,429,{error:'Too many attempts. Please try again in one minute.'});
+        const userId=await passwordRecovery.reset(body);
+        for(const [token,session] of sessions)if(session.userId===userId)sessions.delete(token);
+        return json(res,200,{ok:true});
+      }catch(error){
+        if(error.publicMessage)return json(res,error.status,{error:error.publicMessage});
+        if(error.status===429)return json(res,429,{error:'Too many attempts. Please try again shortly.'});
+        authDiagnostic('PASSWORD_RECOVERY_FAILED');
+        return json(res,503,{error:'Password recovery is temporarily unavailable. Please try again later.'});
+      }
+    }
 
 
     if(req.method==="POST" && url.pathname==="/api/register-athlete"){
@@ -593,7 +615,7 @@ Start by greeting the athlete and asking why they are going to the United States
     return json(res,500,{error:"Server error"});
   }
 });
-initDb().then(()=>voiceLimits.init()).then(()=>evaluationLimits.init()).then(() => {
+initDb().then(()=>passwordRecovery.init()).then(()=>voiceLimits.init()).then(()=>evaluationLimits.init()).then(() => {
   voiceLimits.start();
   server.listen(PORT, () => console.log(`VisaAtlas demo running on http://localhost:${PORT}`));
 }).catch(err => {
