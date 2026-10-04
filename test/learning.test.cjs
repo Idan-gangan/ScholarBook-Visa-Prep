@@ -47,7 +47,7 @@ function harness(user={id:'u1',role:'athlete'},env={}){
      return pool.query(sql,args);
    },release(){if(unlock)unlock();}};
  };
- const context=vm.createContext({require:id=>id==='http'?{createServer:fn=>{handler=fn;return {}}}:id==='pg'?{Pool:function(){return pool}}:id==='fs'?{...fs,readFileSync:(file,...args)=>file===path.resolve(__dirname,'../data/db.json')?'{}':fs.readFileSync(file,...args)}:id==='./evaluation-limits'?require('../evaluation-limits'):id==='./voice-limits'?require('../voice-limits'):id==='./learning'?learning:id==='./passwords'?passwords:require(id),__dirname:path.resolve(__dirname,'..'),process:{env:{OPENAI_API_KEY:'test-only',...env}},console:{log:(...args)=>logs.push(args.join(' ')),warn:(...args)=>logs.push(args.join(' ')),error:(...args)=>logs.push(args.join(' '))},Buffer,URL,FormData,AbortSignal,fetch:async(url,options)=>{if(url.endsWith('/responses')){calls.push({url,request:JSON.parse(options.body)});return {ok:true,json:async()=>({output_text:JSON.stringify({scores:{},overall:45,readiness:'High Concern',biggestWeakness:'Test',feedback:'Test feedback',nextStep:'Practice'})})};}calls.push({url,session:JSON.parse(options.body.get('session'))});return {ok:true,status:200,headers:{get:()=>'/v1/realtime/calls/rtc_test'},text:async()=> 'test-sdp-answer'}}});
+ const context=vm.createContext({require:id=>id==='http'?{createServer:fn=>{handler=fn;return {}}}:id==='pg'?{Pool:function(){return pool}}:id==='fs'?{...fs,readFileSync:(file,...args)=>file===path.resolve(__dirname,'../data/db.json')?'{}':fs.readFileSync(file,...args)}:id==='./evaluation-limits'?require('../evaluation-limits'):id==='./voice-limits'?require('../voice-limits'):id==='./learning'?learning:id==='./passwords'?passwords:id==='./password-recovery'?require('../password-recovery'):require(id),__dirname:path.resolve(__dirname,'..'),process:{env:{OPENAI_API_KEY:'test-only',...env}},console:{log:(...args)=>logs.push(args.join(' ')),warn:(...args)=>logs.push(args.join(' ')),error:(...args)=>logs.push(args.join(' '))},Buffer,URL,FormData,AbortSignal,fetch:async(url,options)=>{if(url.endsWith('/responses')){calls.push({url,request:JSON.parse(options.body)});return {ok:true,json:async()=>({output_text:JSON.stringify({scores:{},overall:45,readiness:'High Concern',biggestWeakness:'Test',feedback:'Test feedback',nextStep:'Practice'})})};}calls.push({url,session:JSON.parse(options.body.get('session'))});return {ok:true,status:200,headers:{get:()=>'/v1/realtime/calls/rtc_test'},text:async()=> 'test-sdp-answer'}}});
  let source=fs.readFileSync(path.join(__dirname,'../server.js'),'utf8');source=source.slice(0,source.indexOf('initDb().then('));vm.runInContext(source,context);vm.runInContext(`sessions.set('test-token',{userId:${JSON.stringify(user.id)},version:0,expires:Date.now()+60000})`,context);
  async function request(method,url,body,authenticated=true){
    const req=Readable.from(body===undefined?[]:[Buffer.from(typeof body==='string'?body:JSON.stringify(body))]);req.method=method;req.url=url;req.headers={'content-type':'application/json',host:'localhost',cookie:authenticated?'sb_session=test-token':''};
@@ -55,6 +55,21 @@ function harness(user={id:'u1',role:'athlete'},env={}){
  }
  return {request,progress,calls,db,logs,credentials,init:()=>vm.runInContext('initDb()',context),run:code=>vm.runInContext(code,context)};
 }
+test('recovery routes reject malformed bodies, hide internal errors and revoke local sessions on success',async()=>{
+ const h=harness({id:'u1',role:'athlete',email:'student@example.test'});
+ for(const route of ['/api/forgot-password','/api/reset-password']){
+   for(const body of ['{','null','[]'])assert.equal((await h.request('POST',route,body,false)).status,400);
+   assert.equal((await h.request('POST',route,'x'.repeat(4097),false)).status,413);
+ }
+ assert.equal((await h.request('POST','/api/forgot-password',{email:'student@example.test'},false)).status,503);
+ h.run("passwordRecovery.reset=async()=>{throw new Error('private-token-provider-details')}");
+ const failed=await h.request('POST','/api/reset-password',{token:'a'.repeat(64)},false);
+ assert.equal(failed.status,503);assert.ok(!JSON.stringify([failed,h.logs]).includes('private-token-provider-details'));
+ h.run("passwordRecovery.reset=async()=> 'u1'");
+ assert.equal((await h.request('POST','/api/reset-password',{token:'b'.repeat(64)},false)).status,200);
+ assert.equal(h.run('sessions.size'),0);
+ assert.equal((await h.request('GET','/api/me')).status,401);
+});
 test('coach password survives startup and legacy login upgrades only after valid verification',async()=>{
  const hash=require('node:crypto').createHash('sha256').update('existing-password').digest('hex');
  const h=harness({id:'u1',role:'coach',email:'Coach@example.test',passwordHash:hash},{COACH_EMAIL:'coach@example.test',COACH_PASSWORD:'different-env-password'});

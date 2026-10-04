@@ -26,6 +26,6 @@ jobs:
       # The existing lockfile is incomplete; lockfile repair remains separate work.
       - run: npm install --ignore-scripts --package-lock=false
       - run: node --test test/*.test.cjs
-      - run: node --test test/postgres-state.cjs
+      - run: node --test test/postgres-state.cjs test/postgres-recovery.cjs
         env:
           TEST_DATABASE_URL: postgres://postgres:disposable-test-only@localhost:5432/visaatlas_test
