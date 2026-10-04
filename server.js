@@ -219,7 +219,7 @@ const server=http.createServer(async (req,res)=>{
         let body;
         try{body=JSON.parse((await readBody(req,4096)).toString());}catch(error){return json(res,error.status===413?413:400,{error:'Invalid request.'});}
         if(!body || typeof body!=='object' || Array.isArray(body))return json(res,400,{error:'Invalid request.'});
-        if(url.pathname==='/api/forgot-password')return json(res,200,passwordRecovery.request(body.email));
+        if(url.pathname==='/api/forgot-password')return json(res,200,await passwordRecovery.request(body.email));
         if(!allowAuth('reset:'+sha(typeof body.token==='string'?body.token:'')))return json(res,429,{error:'Too many attempts. Please try again in one minute.'});
         const userId=await passwordRecovery.reset(body);
         for(const [token,session] of sessions)if(session.userId===userId)sessions.delete(token);

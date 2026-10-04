@@ -33,20 +33,30 @@ function createPasswordRecovery(pool,{env=process.env,send=globalThis.fetch,diag
           attempts=CASE WHEN password_reset_limits.expires_at<=NOW() THEN 1 ELSE password_reset_limits.attempts+1 END,
           expires_at=CASE WHEN password_reset_limits.expires_at<=NOW() THEN NOW()+INTERVAL '1 hour' ELSE password_reset_limits.expires_at END
           WHERE password_reset_limits.expires_at<=NOW() OR password_reset_limits.attempts<$2 RETURNING bucket`,[bucket,limit]);
-        if(!result.rowCount){await client.query('ROLLBACK');return false;}
+        if(!result.rowCount){
+          const wait=await client.query(`SELECT GREATEST(1,CEIL(EXTRACT(EPOCH FROM (expires_at-NOW()))))::integer AS retry_after
+            FROM password_reset_limits WHERE bucket=$1`,[bucket]);
+          await client.query('ROLLBACK');
+          diagnostic(bucket==='global'?'PASSWORD_RECOVERY_GLOBAL_LIMIT':'PASSWORD_RECOVERY_EMAIL_LIMIT');
+          const seconds=wait.rows[0]?.retry_after||3600;
+          throw fail(429,`Too many reset requests. Try again in ${Math.ceil(seconds/60)} minute(s).`);
+        }
       }
       await client.query('COMMIT');return true;
-    }catch(error){await client.query('ROLLBACK');throw error;}finally{client.release();}
+    }catch(error){if(error.status!==429)await client.query('ROLLBACK');throw error;}finally{client.release();}
   }
   async function issue(email,settings=config()){
-    if(!await reserve(email))return;
+    await reserve(email);
+    return deliver(email,settings);
+  }
+  async function deliver(email,settings){
     await pool.query('DELETE FROM password_reset_tokens WHERE expires_at<=NOW()');
     await pool.query("DELETE FROM password_reset_limits WHERE expires_at<=NOW() AND bucket<>'global'");
     const found=await pool.query(`SELECT c.user_id,c.version FROM app_state s,
       jsonb_array_elements(s.data->'users') u JOIN user_credentials c ON c.user_id=u->>'id'
       WHERE s.id=1 AND lower(trim(u->>'email'))=$1`,[email]);
     // Ambiguous identities must never receive a recovery link.
-    if(found.rows.length!==1)return;
+    if(found.rows.length!==1){diagnostic('PASSWORD_RECOVERY_ACCOUNT_UNMATCHED');return;}
     const saved=found.rows[0],token=crypto.randomBytes(32).toString('hex'),tokenHash=digest(token);
     await pool.query(`INSERT INTO password_reset_tokens(token_hash,user_id,credential_version,expires_at)
       VALUES($1,$2,$3,NOW()+INTERVAL '30 minutes')`,[tokenHash,saved.user_id,saved.version]);
@@ -58,22 +68,29 @@ function createPasswordRecovery(pool,{env=process.env,send=globalThis.fetch,diag
         body:JSON.stringify({from:settings.from,to:[email],subject:'Reset your VisaAtlas password',
           text:'Use this link to reset your VisaAtlas password:\n\n'+link+'\n\nThis link expires in 30 minutes and can be used once. If you did not request it, you can ignore this email. Your password has not changed.'})
       });
-      if(!response.ok)throw new Error('send failed');
+      if(!response.ok){
+        const status=[400,401,403,404,409,422,429,500,502,503,504].includes(response.status)?response.status:'OTHER';
+        diagnostic('PASSWORD_RECOVERY_PROVIDER_HTTP_'+status);
+        throw new Error('send failed');
+      }
+      diagnostic('PASSWORD_RECOVERY_PROVIDER_ACCEPTED');
     }catch(error){
+      if(error.name==='TimeoutError')diagnostic('PASSWORD_RECOVERY_PROVIDER_TIMEOUT');
+      else if(error.name==='TypeError')diagnostic('PASSWORD_RECOVERY_PROVIDER_NETWORK');
       await pool.query('DELETE FROM password_reset_tokens WHERE token_hash=$1',[tokenHash]);
       throw fail(503,'Password recovery is temporarily unavailable. Please try again later.');
     }
   }
-  function request(value){
+  async function request(value){
     const email=typeof value==='string'?value.trim().toLowerCase():'';
     if(email.length>160 || !/^\S+@\S+\.\S+$/.test(email))throw fail(400,'Enter a valid email address.');
     const settings=config();
-    // Respond before account lookup/provider I/O so the response cannot reveal membership.
-    // Bound in-process work; database limits also apply to every instance.
-    if(active<5){
-      active++;
-      setImmediate(()=>{issue(email,settings).catch(()=>diagnostic('PASSWORD_RECOVERY_SEND_FAILED')).finally(()=>active--);});
-    }
+    // Check admission before acknowledging; this depends only on request counts,
+    // never account existence. Account lookup/provider I/O still run after response.
+    if(active>=5)throw fail(503,'Password recovery is busy. Please try again in one minute.');
+    active++;
+    try{await reserve(email);}catch(error){active--;throw error;}
+    setImmediate(()=>{deliver(email,settings).catch(()=>diagnostic('PASSWORD_RECOVERY_SEND_FAILED')).finally(()=>active--);});
     return {ok:true,message:MESSAGE};
   }
   async function reset(body){

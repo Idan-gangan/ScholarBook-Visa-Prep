@@ -62,6 +62,12 @@ test('recovery routes reject malformed bodies, hide internal errors and revoke l
    assert.equal((await h.request('POST',route,'x'.repeat(4097),false)).status,413);
  }
  assert.equal((await h.request('POST','/api/forgot-password',{email:'student@example.test'},false)).status,503);
+ h.run("passwordRecovery.request=async()=>({ok:true,message:'Check your email'})");
+ const admitted=await h.request('POST','/api/forgot-password',{email:'student@example.test'},false);
+ assert.equal(admitted.body.message,'Check your email');
+ h.run("passwordRecovery.request=async()=>{throw Object.assign(new Error('quota'),{status:429,publicMessage:'Try again in 5 minutes.'})}");
+ const blocked=await h.request('POST','/api/forgot-password',{email:'student@example.test'},false);
+ assert.equal(blocked.status,429);assert.equal(blocked.body.error,'Try again in 5 minutes.');
  h.run("passwordRecovery.reset=async()=>{throw new Error('private-token-provider-details')}");
  const failed=await h.request('POST','/api/reset-password',{token:'a'.repeat(64)},false);
  assert.equal(failed.status,503);assert.ok(!JSON.stringify([failed,h.logs]).includes('private-token-provider-details'));
