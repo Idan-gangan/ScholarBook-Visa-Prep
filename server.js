@@ -5,7 +5,7 @@ const path = require("path");
 const crypto = require("crypto");
 const {hashPassword,verifyPassword,validPassword,legacyHash}=require('./passwords');
 const { Pool } = require("pg");
-const { LESSON_ID, canAccessStudent, normalizeProgress, tutorInstructions } = require("./learning");
+const { LESSONS, LESSON_ID, canAccessStudent, normalizeProgress, tutorInstructions } = require("./learning");
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
@@ -515,13 +515,15 @@ Use only information in the supplied profile and transcript. Do not reward inven
       }
     }
 
-    if(url.pathname === "/api/learning/study-purpose" && ["GET", "PUT"].includes(req.method)){
+    if(url.pathname.startsWith("/api/learning/") && ["GET", "PUT"].includes(req.method)){
+      const lessonId=url.pathname.slice("/api/learning/".length);
+      if(!LESSONS.some(lesson=>lesson.id===lessonId))return json(res,404,{error:"Unknown lesson"});
       const u=await requireUser(req,res); if(!u) return;
       const db=await loadDb();
       const student=db.athletes.find(a=>a.id===url.searchParams.get("athleteId"));
       if(!canAccessStudent(u,student)) return json(res,403,{error:"You cannot access this student's learning."});
       if(req.method === "GET"){
-        const result=await pool.query("SELECT data FROM learning_progress WHERE student_id=$1 AND lesson_id=$2",[student.id,LESSON_ID]);
+        const result=await pool.query("SELECT data FROM learning_progress WHERE student_id=$1 AND lesson_id=$2",[student.id,lessonId]);
         return json(res,200,{progress:result.rows[0]?.data || {}});
       }
       let progress;
@@ -529,7 +531,7 @@ Use only information in the supplied profile and transcript. Do not reward inven
       catch(error){return json(res,400,{error:error.message})}
       progress.updatedAt=new Date().toISOString();
       await pool.query(`INSERT INTO learning_progress (student_id,lesson_id,data) VALUES ($1,$2,$3::jsonb)
-        ON CONFLICT (student_id,lesson_id) DO UPDATE SET data=EXCLUDED.data,updated_at=NOW()`,[student.id,LESSON_ID,JSON.stringify(progress)]);
+        ON CONFLICT (student_id,lesson_id) DO UPDATE SET data=EXCLUDED.data,updated_at=NOW()`,[student.id,lessonId,JSON.stringify(progress)]);
       return json(res,200,{progress});
     }
 
@@ -543,7 +545,7 @@ Use only information in the supplied profile and transcript. Do not reward inven
       if(!canAccessStudent(u,athlete)) return json(res,403,{error:"You cannot start a session for this student."});
       const mode=url.searchParams.get("mode") || "mock";
       if(!["mock","learn"].includes(mode)) return json(res,400,{error:"Unknown session mode"});
-      if(mode==="learn" && url.searchParams.get("lesson")!==LESSON_ID) return json(res,400,{error:"Unknown lesson"});
+      if(mode==="learn" && !LESSONS.some(lesson=>lesson.id===url.searchParams.get("lesson"))) return json(res,400,{error:"Unknown lesson"});
       const sdp=(await readBody(req)).toString();
       if(!sdp.startsWith('v=0') || sdp.length>64000)return json(res,400,{error:'Invalid voice connection offer.'});
       if(!await voiceLimits.reserve(u.id))return json(res,429,{error:'Daily voice limit reached (6 starts per account). Try again after midnight UTC. Your learning notes remain available.'});
@@ -564,8 +566,8 @@ Keep each interviewer turn concise, usually one question.
 Start by greeting the athlete and asking why they are going to the United States.`;
 
       if(mode==="learn"){
-        const saved=await pool.query("SELECT data FROM learning_progress WHERE student_id=$1 AND lesson_id=$2",[athlete.id,LESSON_ID]);
-        instructions=tutorInstructions(athlete,saved.rows[0]?.data || {});
+        const saved=await pool.query("SELECT data FROM learning_progress WHERE student_id=$1 AND lesson_id=$2",[athlete.id,url.searchParams.get("lesson")]);
+        instructions=tutorInstructions(athlete,saved.rows[0]?.data || {},url.searchParams.get("lesson"));
       }
       const fd=new FormData();
       fd.set("sdp",sdp);
