@@ -18,8 +18,8 @@ function harness(user={id:'u1',role:'athlete'},env={}){
    if(sql.startsWith('UPDATE app_state SET data=jsonb_set')){for(const u of db.users)delete u.passwordHash;return {rows:[]};}
    if(sql.includes('FROM app_state'))return {rows:[{data:structuredClone(db)}]};
    if(sql.startsWith('UPDATE app_state')){Object.assign(db,structuredClone(args[0]));return {rows:[]}}
-   if(sql.startsWith('SELECT data FROM learning_progress'))return {rows:progress.has(args[0])?[{data:progress.get(args[0])}]:[]};
-   if(sql.startsWith('INSERT INTO learning_progress')){progress.set(args[0],JSON.parse(args[2]));return {rows:[]}}
+   if(sql.startsWith('SELECT data FROM learning_progress'))return {rows:progress.has(args[0]+":"+args[1])?[{data:progress.get(args[0]+":"+args[1])}]:[]};
+   if(sql.startsWith('INSERT INTO learning_progress')){progress.set(args[0]+":"+args[1],JSON.parse(args[2]));return {rows:[]}}
    if(sql.startsWith('INSERT INTO evaluation_daily_usage')){
      const row=evaluationUsage.get(args[0])||{attempts:0,token:null};
      if(row.token||row.attempts>=6)return {rows:[]};row.attempts++;row.token=args[1];evaluationUsage.set(args[0],row);return {rows:[{attempts:row.attempts}]};
@@ -290,4 +290,22 @@ test('structured evaluation stores concise sections and legacy compatibility fie
 test('malformed structured sections are rejected without saving a report',async()=>{
  const h=harness();h.run(`fetch=async()=>({ok:true,json:async()=>({output_text:JSON.stringify({overall:50,summary:'Summary',priority:'Priority',strengths:[],clarifications:['Clarify'],nextSteps:['Only one']})})})`);
  const r=await h.request('POST','/api/evaluate',{athleteId:'s1',transcript:[{role:'athlete',text:'My answer'}]});assert.equal(r.status,502);assert.equal(h.db.reports.length,0);
+});
+
+test('six modules isolate saved progress and reject unknown modules before starting voice',async()=>{
+ const h=harness();
+ for(const lesson of learning.LESSONS){
+  const route='/api/learning/'+lesson.id+'?athleteId=s1';
+  assert.equal((await h.request('PUT',route,{draftAnswer:lesson.id})).status,200);
+ }
+ for(const lesson of learning.LESSONS){
+  assert.equal((await h.request('GET','/api/learning/'+lesson.id+'?athleteId=s1')).body.progress.draftAnswer,lesson.id);
+  assert.equal((await h.request('GET','/api/learning/'+lesson.id+'?athleteId=s2')).status,403);
+ }
+ assert.equal((await h.request('GET','/api/learning/missing?athleteId=s1')).status,404);
+ assert.equal((await h.request('POST','/api/realtime-session?athleteId=s1&mode=learn&lesson=missing','v=0\r\noffer')).status,400);
+ assert.equal((await h.request('POST','/api/realtime-session?athleteId=s1&mode=learn&lesson=funding','v=0\r\noffer')).status,200);
+ const prompt=h.calls.at(-1).session.instructions;
+ assert.match(prompt,/Selected module: Your funding/);assert.match(prompt,/remaining sponsor/);
+ assert.match(prompt,/"draftAnswer":"funding"/);
 });
