@@ -20,3 +20,12 @@ test('context preserves explicit zero and false values and separates missing pro
  assert.equal(context.profile.sport,'Not provided');
  assert.equal(context.profile.major,'Not provided');
 });
+
+test('academic routing supports four levels without guessing an ambiguous graduate degree',()=>{
+ for(const [value,expected] of [['High school','high-school'],['Secondary school','high-school'],['Undergraduate','undergraduate'],['Freshman / First year','undergraduate'],['Master’s','masters'],['PhD / Doctorate','phd'],['Ph.D.','phd'],['Graduate','unspecified'],['','unspecified']]){
+  assert.equal(LESSONS.resolveLevel(value),expected);
+  const prompt=tutorInstructions({academicLevel:value,sport:''});
+  assert.ok(prompt.includes('Preparation path: '+expected));
+  for(const topic of LESSONS.levelTopics[expected])assert.ok(prompt.includes(topic));
+ }
+});

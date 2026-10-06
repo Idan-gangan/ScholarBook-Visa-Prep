@@ -5,7 +5,7 @@ const path = require("path");
 const crypto = require("crypto");
 const {hashPassword,verifyPassword,validPassword,legacyHash}=require('./passwords');
 const { Pool } = require("pg");
-const { LESSONS, LESSON_ID, canAccessStudent, normalizeProgress, tutorInstructions } = require("./learning");
+const { studyLevelInstructions, LESSONS, LESSON_ID, canAccessStudent, normalizeProgress, tutorInstructions } = require("./learning");
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
@@ -237,7 +237,7 @@ const server=http.createServer(async (req,res)=>{
       const body=JSON.parse((await readBody(req)).toString()||"{}");
       const required=["name","email","password","country","university","major"];
       const missing=required.filter(k=>!clean(body[k]));
-      if(missing.length) return json(res,400,{error:"Please complete: "+missing.join(", ")});
+      if(missing.length) return json(res,400,{error:"Please complete: "+missing.map(k=>({university:"school / university",major:"subjects / program / research area"}[k]||k)).join(", ")});
       if(!validPassword(body.password)) return json(res,400,{error:"Use a password of 15–128 characters with no line breaks."});
       const email=clean(body.email,160).toLowerCase();
       if(!allowAuth('register:'+sha(email)))return json(res,429,{error:'Too many attempts. Please try again in one minute.'});
@@ -257,7 +257,7 @@ const server=http.createServer(async (req,res)=>{
         previousRefusal:clean(body.previousRefusal,20),previousAttempts:Number(body.previousAttempts||0),
         previousTravel:clean(body.previousTravel,20),remainingSponsor:clean(body.remainingSponsor,160),
         postGradPlan:clean(body.postGradPlan,500),profileStatus:"Complete",createdAt:new Date().toISOString(),
-        sessions:0,mocks:0,initialScore:0,currentScore:0,mainConcern:"New athlete — not yet assessed"
+        sessions:0,mocks:0,initialScore:0,currentScore:0,mainConcern:"New student — not yet assessed"
       });
       });
       const token=startSession(userId,0);
@@ -324,19 +324,19 @@ const server=http.createServer(async (req,res)=>{
 
     if(req.method==="GET" && url.pathname==="/api/my-profile"){
       const u=await requireUser(req,res); if(!u) return;
-      if(u.role!=="athlete") return json(res,403,{error:"Athlete access required"});
+      if(u.role!=="athlete") return json(res,403,{error:"Student access required"});
       const db=await loadDb(); const athlete=db.athletes.find(a=>a.userId===u.id);
-      if(!athlete) return json(res,404,{error:"Athlete profile not found"});
+      if(!athlete) return json(res,404,{error:"Student profile not found"});
       return json(res,200,athlete);
     }
 
     if(req.method==="PUT" && url.pathname==="/api/my-profile"){
       const u=await requireUser(req,res); if(!u) return;
-      if(u.role!=="athlete") return json(res,403,{error:"Athlete access required"});
+      if(u.role!=="athlete") return json(res,403,{error:"Student access required"});
       const body=JSON.parse((await readBody(req)).toString()||"{}");
       const updated=await mutateDb(async(db)=>{
       const athlete=db.athletes.find(a=>a.userId===u.id);
-      if(!athlete)throw stateError(404,"Athlete profile not found");
+      if(!athlete)throw stateError(404,"Student profile not found");
       const fields={phone:40,country:80,interviewLocation:120,university:160,major:160,academicLevel:80,sport:120,scholarship:120,scholarshipCoverage:240,previousRefusal:20,previousTravel:20,remainingSponsor:160,postGradPlan:500};
       for(const [k,max] of Object.entries(fields)) if(k in body) athlete[k]=clean(body[k],max);
       if("previousAttempts" in body) athlete.previousAttempts=Math.max(0,Number(body.previousAttempts||0));
@@ -420,12 +420,13 @@ const server=http.createServer(async (req,res)=>{
 
       const prompt = `You are evaluating an F-1 student visa MOCK INTERVIEW for preparation quality only.
 Never predict visa approval and never state an approval probability. Score only interview readiness.
+${studyLevelInstructions(athlete)}
 
 Embassy-specific preparation context:
 ${JSON.stringify(loadEmbassyKnowledge(athlete.interviewLocation))}
 
-Use the rubric above to evaluate the athlete's interview readiness. Give specific feedback based on the athlete's actual answers, academic background, scholarship and funding, and post-graduation plans. Use the embassy-specific context when relevant, but do not treat reported interview patterns as official embassy rules. Do not invent current embassy trends, applicant facts, or visa approval probabilities. If no location-specific knowledge is available, use general F-1 preparation guidance only.
-Athlete profile:
+Use the rubric above to evaluate the student's interview readiness. Give specific feedback based on the student's actual answers, academic background, scholarship and funding, and post-graduation plans. Use the embassy-specific context when relevant, but do not treat reported interview patterns as official embassy rules. Do not invent current embassy trends, applicant facts, or visa approval probabilities. If no location-specific knowledge is available, use general F-1 preparation guidance only.
+Student profile:
 ${JSON.stringify(athlete,null,2)}
 
 Transcript:
@@ -541,7 +542,7 @@ Use only information in the supplied profile and transcript. Do not reward inven
       const athleteId=url.searchParams.get("athleteId");
       const db=await loadDb();
       const athlete=db.athletes.find(a=>a.id===athleteId);
-      if(!athlete) return json(res,404,{error:"Athlete not found"});
+      if(!athlete) return json(res,404,{error:"Student not found"});
       if(!canAccessStudent(u,athlete)) return json(res,403,{error:"You cannot start a session for this student."});
       const mode=url.searchParams.get("mode") || "mock";
       if(!["mock","learn"].includes(mode)) return json(res,400,{error:"Unknown session mode"});
@@ -552,18 +553,19 @@ Use only information in the supplied profile and transcript. Do not reward inven
 const embassyKnowledge = loadEmbassyKnowledge(athlete.interviewLocation);
       let instructions=`You are a realistic but fair F-1 student visa mock interviewer for VisaAtlas.
 You are speaking with ${athlete.name}.
-Known profile: university=${athlete.university}; major=${athlete.major}; sport=${athlete.sport}; scholarship=${athlete.scholarship}; interview location=${athlete.interviewLocation}.
+${studyLevelInstructions(athlete)}
+Known profile: school=${athlete.university}; major=${athlete.major}; sport=${athlete.sport}; scholarship=${athlete.scholarship}; interview location=${athlete.interviewLocation}.
 Embassy-specific preparation context:
 ${embassyKnowledge ? JSON.stringify(embassyKnowledge) : "No location-specific knowledge available. Use general F-1 preparation guidance only."}
 
-Use this context to guide the mock interview, not as official embassy policy. Ask natural follow-up questions based on the athlete's profile and answers. Adapt questions to the athlete's academic level and interview timing. Do not invent location-specific facts or treat reported interview patterns as guarantees.
+Use this context to guide the mock interview, not as official embassy policy. Ask natural follow-up questions based on the student's profile and answers. Adapt questions to the student's academic level and interview timing. Do not invent location-specific facts or treat reported interview patterns as guarantees.
 Conduct a natural spoken mock interview. Ask ONE question at a time. Listen to the answer, then ask a relevant follow-up based on what was actually said.
 Cover purpose of study, university choice, major knowledge, scholarship/finances, post-graduation plans, and application knowledge.
-Do not coach during the interview. Do not tell the athlete what answer to give.
+Do not coach during the interview. Do not tell the student what answer to give.
 Do not predict whether a visa will be approved and do not give a visa approval percentage.
 If an answer sounds memorized, vague, inconsistent, or unsupported, probe naturally.
 Keep each interviewer turn concise, usually one question.
-Start by greeting the athlete and asking why they are going to the United States.`;
+Start by greeting the student and asking why they are going to the United States.`;
 
       if(mode==="learn"){
         const saved=await pool.query("SELECT data FROM learning_progress WHERE student_id=$1 AND lesson_id=$2",[athlete.id,url.searchParams.get("lesson")]);

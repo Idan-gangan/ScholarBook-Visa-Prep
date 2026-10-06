@@ -309,3 +309,12 @@ test('six modules isolate saved progress and reject unknown modules before start
  assert.match(prompt,/Selected module: Your funding/);assert.match(prompt,/remaining sponsor/);
  assert.match(prompt,/"draftAnswer":"funding"/);
 });
+
+test('mock sessions receive the saved academic preparation path',async()=>{
+ for(const level of ['High school','Undergraduate','Master’s','PhD / Doctorate']){
+  const h=harness();h.db.athletes[0].academicLevel=level;h.db.athletes[0].sport='';
+  const response=await h.request('POST','/api/realtime-session?athleteId=s1&mode=mock','v=0\r\noffer');
+  assert.equal(response.status,200);
+  assert.ok(h.calls[0].session.instructions.includes('Preparation path: '+learning.LESSONS.resolveLevel(level)));
+ }
+});
