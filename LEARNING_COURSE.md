@@ -31,4 +31,10 @@ After deployment, select High school or PhD / Doctorate in My Profile, save, and
 
 ## Teaching with examples
 
+### Profile-adapted cards and voice context
+
+The shared curriculum now produces the same profile-adapted teaching card for the page and tutor. Cards expose the question’s purpose, an answer structure, an illustrative answer and optional practice. Examples use the selected student’s school, subject, education level and stated funding; missing facts remain explicit placeholders. The app does not verify profile claims. Sport/athletic funding and refusal history control relevant branches; the legacy athlete account role never establishes sports participation. Funding guidance distinguishes named awards, stated coverage and remaining support, without adding travel or summer coverage. Saved notes, completion tracking and voice limits are unchanged.
+
+Live review: test all four academic levels, a non-athlete with family funding, an athletic award with limited coverage, and previous-refusal versus no-refusal profiles. Check short natural examples, no invented motivations or school features, no repeated invitations, and feedback on an incomplete answer. No live AI calls are made by the automated tests.
+
 The voice tutor now pairs each teaching point with a short first-person example before optional practice. Examples use supplied facts or explicit placeholders; level-specific patterns cover high school, undergraduate, master’s, PhD, and relevant athletic funding. An incomplete attempt gets specific feedback and a revised example before moving on. “Next” continues teaching without requiring an answer. Target turns are 35–65 words so the explanation and example fit together. Live generated speech still needs a listening check for brevity, factual grounding, and useful feedback; automated tests verify session instruction wiring, not model compliance.

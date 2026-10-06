@@ -29,3 +29,43 @@ test('academic routing supports four levels without guessing an ambiguous gradua
   for(const topic of LESSONS.levelTopics[expected])assert.ok(prompt.includes(topic));
  }
 });
+
+test('lesson examples use the selected profile and the appropriate education level',()=>{
+ for(const [academicLevel,expected] of [['High school','secondary education'],['Undergraduate','bachelor’s'],['Master’s','master’s'],['PhD','PhD']]){
+  const card=LESSONS.forStudent({academicLevel,university:'Student School',major:'Chemistry'},'study-purpose');
+  assert.ok(card.example.includes(expected));assert.ok(card.example.includes('Student School'));
+  assert.doesNotMatch(card.example,/Texas Tech|cybersecurity|scholarship/i);
+  assert.ok(tutorInstructions({academicLevel,university:'Student School',major:'Chemistry'}).includes(JSON.stringify(card)));
+ }
+ const missing=LESSONS.forStudent({},'study-purpose');
+ assert.match(missing.example,/\[school\]/);assert.match(missing.example,/\[subject or research field\]/);
+ assert.doesNotMatch(missing.example,/bachelor|master|PhD|scholarship/);
+});
+
+test('funding guidance preserves actual coverage and does not manufacture an award',()=>{
+ const full=LESSONS.forStudent({sport:'Track and field',scholarship:'Athletic scholarship',scholarshipCoverage:'Tuition and housing'},'funding');
+ assert.equal(full.athletic,true);assert.match(full.example,/Tuition and housing/);
+ assert.doesNotMatch(full.example,/travel|summer|fully funded/);
+ const partial=LESSONS.forStudent({scholarship:'Partial merit award',scholarshipCoverage:'Half of tuition',remainingSponsor:'My parents'},'funding');
+ assert.match(partial.example,/Half of tuition/);assert.match(partial.example,/My parents/);assert.equal(partial.athletic,false);
+ const family=LESSONS.forStudent({scholarship:'None',remainingSponsor:'My mother'},'funding');
+ assert.match(family.example,/My mother/);assert.doesNotMatch(family.example,/scholarship/);
+ assert.equal(family.questions.some(q=>q.includes('scholarship')),false);
+ const unknown=LESSONS.forStudent({},'funding');assert.match(unknown.example,/\[actual funding source\]/);
+ assert.doesNotMatch(unknown.example,/My parents|self-funded/);
+});
+
+test('circumstance branches require supplied history, never the legacy athlete role',()=>{
+ for(const sport of ['', 'None', 'N/A', 'Not applicable', false, 0]){
+  const card=LESSONS.forStudent({role:'athlete',sport,previousRefusal:'No',previousAttempts:0},'circumstances');
+  assert.equal(card.athletic,false);assert.equal(card.refusal,false);
+  assert.equal(card.questions.some(q=>/recruited|previous application/.test(q)),false);
+ }
+ const card=LESSONS.forStudent({scholarship:'Athletic award',previousRefusal:'Yes'},'circumstances');
+ assert.equal(card.athletic,true);assert.equal(card.refusal,true);
+ assert.ok(card.questions.some(q=>q.includes('recruited')));assert.ok(card.questions.some(q=>q.includes('previous application')));
+ assert.match(card.example,/\[actual change, if any\]/);
+ const high=LESSONS.forStudent({academicLevel:'High school'},'academic-journey');
+ assert.match(high.example,/currently in \[grade\]/);assert.doesNotMatch(high.example,/completed.*degree/);
+ assert.throws(()=>LESSONS.forStudent({},'invalid'),/Unknown lesson/);
+});

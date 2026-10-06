@@ -188,3 +188,16 @@ test('student labels and study-level choices preserve legacy profile values safe
  f.ctx.oldValue='<img src=x>';
  assert.doesNotMatch(f.run('levelOptions(oldValue)'),/<img/);
 });
+
+test('lesson cards show a profile-specific structure and example as safe text',async()=>{
+ const f=fixture();await f.run('boot()');
+ assert.match(f.elements.get('moduleExample').textContent,/Example University/);
+ assert.match(f.elements.get('moduleExample').textContent,/Biology/);
+ assert.ok(f.elements.get('moduleStructure').textContent.length>0);
+ f.run(`athletes=[{id:'s1',academicLevel:'PhD',university:'<img src=x>',major:'Water systems'}];renderCourse()`);
+ assert.match(f.elements.get('moduleExample').textContent,/PhD in Water systems/);
+ assert.equal(f.elements.get('moduleExample').innerHTML,'');
+ f.run(`athletes=[{id:'s1',academicLevel:'High school',university:'Secondary School'}];renderCourse()`);
+ assert.match(f.elements.get('moduleExample').textContent,/secondary education/);
+ assert.doesNotMatch(f.elements.get('moduleExample').textContent,/Water systems|PhD/);
+});

@@ -199,6 +199,55 @@ lessons.levelQuestions = {
   ['Explain your research interests in plain language.', 'Why is this program a good fit?', 'How is your doctoral study funded?']
  ]
 };
+// Shared by the lesson cards and voice tutor: unknown facts stay unknown.
+lessons.forStudent = function(student, lessonId){
+ const lesson=lessons.find(item=>item.id===lessonId);
+ if(!lesson)throw new Error('Unknown lesson');
+ const value=key=>{
+  const raw=student[key];
+  const text=raw==null?'':String(raw).trim();
+  return /^(?:|no|none|false|0|n\/a|not applicable|not provided|unknown)$/i.test(text)?'':text;
+ };
+ const level=lessons.resolveLevel(student.academicLevel), index=lessons.indexOf(lesson);
+ const school=value('university')||'[school]', subject=value('major')||'[subject or research field]';
+ const sport=value('sport'), award=value('scholarship'), coverage=value('scholarshipCoverage'), sponsor=value('remainingSponsor');
+ const athletic=!!sport || /\b(athletic|sport|track and field)\b/i.test(award);
+ const refusal= /^(yes|true)$/i.test(String(student.previousRefusal||'').trim()) || Number(student.previousAttempts)>0;
+ let points=[...(lessons.levelTopics[level][index]?[lessons.levelTopics[level][index]]:[]),...lesson.points];
+ let questions=[...(lessons.levelQuestions[level]?.[index]||lesson.questions)];
+ let structure='', example='';
+ if(lessonId==='study-purpose'){
+  structure='State your study purpose, name the school, then add one relevant reason if asked. A country-choice follow-up needs your genuine reason for choosing the U.S.';
+  const study=level==='high-school'?'continue my secondary education':level==='undergraduate'?`pursue a bachelor’s degree in ${subject}`:level==='masters'?`pursue a master’s degree in ${subject}`:level==='phd'?`pursue a PhD in ${subject}`:`study ${subject}`;
+  example=`I’m going to ${school} to ${study}.`;
+  if(award)example+=` I have been offered ${award}.`;
+ }else if(lessonId==='academic-journey'){
+  structure='Describe your current or most recent education, the actual timeline, and the next step. Use only real activities and results.';
+  example=level==='high-school'?`I’m currently in [grade], studying [subjects], and plan to continue at ${school}.`:`I completed [qualification] in [year]. Since then, I have [actual activity], and my next step is studying ${subject} at ${school}.`;
+  if(level==='high-school')points=[lessons.levelTopics[level][index],'Describe your current subjects and recent results accurately.','Explain any actual gap or school change without assuming you have finished secondary school.'];
+  else if(level!=='masters'&&level!=='phd')points=points.filter(p=>!p.startsWith('For graduate study'));
+  else if(level==='phd')points=points.filter(p=>!p.startsWith('For graduate study'));
+ }else if(lessonId==='funding'){
+  structure='Name the actual funding source, explain its stated coverage, then identify remaining costs and who pays them. Check exact amounts and award terms.';
+  example=award?`My funding includes ${award}. ${coverage?`The stated coverage is ${coverage}.`:'I need to confirm the exact coverage.'}`:coverage?`My stated funding coverage is ${coverage}. I need to confirm the funding source and any remaining costs.`:sponsor?`My education will be supported by ${sponsor}. I need to confirm the exact costs and support arranged.`:'My education will be paid for by [actual funding source], covering [confirmed costs].';
+  if((award||coverage)&&sponsor)example+=` ${sponsor} will support the remaining costs.`;
+  if(!award&&!coverage){points=points.filter(p=>!p.startsWith('For a scholarship'));questions=questions.filter(q=>!q.includes('scholarship'));}
+  points.push('Full funding does not automatically establish coverage of travel, summer costs, insurance, or other unlisted expenses. Check the actual terms; missing details are not a contradiction.');
+ }else if(lessonId==='future-plans'){
+  structure='State your genuine next step and how your education supports it. Separate an aspiration from a confirmed arrangement.';
+  example=value('postGradPlan')?`My current plan is: ${value('postGradPlan')}. My studies will help me develop [relevant skills].`:level==='high-school'?'After secondary school, I’m considering [genuine further study or interest]. I’m still exploring the specific path.':'After my studies, I hope to [genuine goal], using [relevant skills].';
+ }else if(lessonId==='circumstances'){
+  structure='Select only a circumstance that applies. Explain what happened, any real change, and what is now confirmed.';
+  points=points.filter(p=>(refusal||!p.startsWith('Previous refusals:'))&&(athletic||!p.startsWith('Athletics,')));
+  questions=questions.filter(q=>(refusal||!q.includes('previous application'))&&(athletic||!q.includes('recruited')));
+  example=refusal?'Since my previous application, [actual change, if any]. The confirmed details are [facts].':`My program at ${school} starts on [confirmed date].`;
+  if(!refusal)points.push('Previous-refusal history is not established here. Do not assume a refusal; discuss it only if it applies.');
+ }else{
+  structure='Answer the exact question directly, add one relevant fact, then pause. Ask for clarification instead of guessing.';
+  example=`I chose ${school} because [genuine reason]. One feature I checked is [relevant school or program detail].`;
+ }
+ return {id:lessonId,level,athletic,refusal,intro:lesson.intro,points,questions,structure,example,exampleNotice:'Illustrative wording from your profile, not verified facts. Replace brackets with your actual details; do not memorize or add unsupported claims.'};
+};
 if(typeof module!=="undefined" && module.exports)module.exports=lessons;
 else root.VisaAtlasCurriculum=lessons;
 })(typeof window!=="undefined"?window:globalThis);
