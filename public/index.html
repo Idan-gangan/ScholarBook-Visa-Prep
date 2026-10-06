@@ -55,7 +55,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
       <h1>Your story.<br>Your goals.<br>Prepare to explain them.</h1>
       <p>Learn how to explain your study plans with a personal AI tutor, practise in your own words, and try a realistic voice mock interview.</p>
       <div class="welcome-actions"><button class="btn primary" onclick="showRegistration()">Get started</button><button class="btn secondary" onclick="backToLogin()">Sign in to continue</button></div>
-      <p class="small">For undergraduate students, graduate students, and student-athletes.</p>
+      <p class="small">For high-school, undergraduate, master’s, and PhD students. Athletics is optional.</p>
     </section>
     <section class="welcome-steps" aria-label="How VisaAtlas works">
       <article class="card"><span class="welcome-number">01 · LEARN</span><h2>Understand your story</h2><p>Get short explanations based on your student profile, from your school choice to your funding and future plans.</p></article>
@@ -95,10 +95,10 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
       <div class="field"><label>Country *</label><input id="r_country"></div>
       <div class="field"><label>Interview location / Embassy</label><input id="r_interviewLocation" placeholder="e.g. Nairobi, Kenya"></div>
       <div class="field"><label for="r_sport">Sport (optional)</label><input id="r_sport" placeholder="Leave blank if you are not a student-athlete"></div>
-      <div class="field"><label>University *</label><input id="r_university"></div>
-      <div class="field"><label>Degree / Major *</label><input id="r_major"></div>
-      <div class="field"><label>Academic level</label><select id="r_academicLevel"><option value="">Select</option><option>Freshman / First year</option><option>Sophomore / Second year</option><option>Junior / Third year</option><option>Senior / Fourth year</option><option>Graduate</option><option>Other</option></select></div>
-      <div class="field"><label>Scholarship type</label><input id="r_scholarshipType" placeholder="e.g. Athletic scholarship"></div>
+      <div class="field"><label>School / University *</label><input id="r_university"></div>
+      <div class="field"><label>Subjects / Program / Research area *</label><input id="r_major" placeholder="e.g. Secondary school subjects, Biology, or research area"></div>
+      <div class="field"><label>Academic level</label><select id="r_academicLevel"><option value="">Select</option><option>High school</option><option>Undergraduate</option><option>Master’s</option><option>PhD / Doctorate</option><option>Other</option></select></div>
+      <div class="field"><label>Scholarship type</label><input id="r_scholarshipType" placeholder="If applicable: merit, research, athletic, or other"></div>
       <div class="field"><label>What does the scholarship cover?</label><input id="r_scholarshipCoverage" placeholder="Use your actual award information"></div>
       <div class="field"><label>Previous U.S. visa refusal?</label><select id="r_previousRefusal"><option>No</option><option>Yes</option></select></div>
       <div class="field"><label>Number of previous attempts</label><input id="r_previousAttempts" type="number" min="0" value="0"></div>
@@ -164,19 +164,19 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
     <section id="dashboard" class="screen">
       <h1>Dashboard</h1><div class="notice">Readiness scores measure preparation only. They are not visa-approval predictions or guarantees.</div>
       <div id="dashCards" class="grid g4"></div>
-      <div class="card" style="margin-top:16px;overflow:auto"><h3>Athletes</h3><div id="athleteTable"></div></div>
+      <div class="card" style="margin-top:16px;overflow:auto"><h3>Students</h3><div id="athleteTable"></div></div>
     </section>
     <section id="interview" class="screen">
       <h1>Live AI Mock Interview</h1>
       <div class="notice">Use Chrome/Edge with microphone access. Your OpenAI API key stays on the server; it is not sent to the browser directly.</div>
-      <div class="field"><label>Athlete</label><select id="athleteSelect"></select></div>
+      <div class="field"><label>Student</label><select id="athleteSelect"></select></div>
       <div class="voiceBox">
         <div class="card">
           <div id="voiceStatus" class="status">Not connected</div>
           <p class="small muted">Mock interviews last up to 12 minutes. Six voice starts per account each day, shared with lessons (midnight UTC reset); connection attempts count.</p>
           <div id="voiceLimitNotice" class="small muted" role="status" aria-live="polite"></div>
           <h2 style="margin-bottom:4px">AI Consular Interviewer</h2>
-          <p class="muted">The interviewer asks one question at a time and follows up based on the athlete's spoken answer.</p>
+          <p class="muted">The interviewer asks one question at a time and follows up based on the student’s spoken answer.</p>
           <div style="display:flex;gap:10px;flex-wrap:wrap;margin:16px 0">
             <button class="btn primary" id="startBtn" onclick="startVoice()">🎙 Start Voice Interview</button>
             <button class="btn danger" id="stopBtn" onclick="stopVoice()" disabled>End Interview</button>
@@ -195,14 +195,14 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
     </section>
 
     <section id="profile" class="screen">
-      <h1>My Athlete Profile</h1>
+      <h1>My Student Profile</h1>
       <div class="notice">Keep this information accurate because the mock interviewer uses your profile as context. Do not enter passport numbers, DS-160 details, or upload sensitive financial documents in this prototype.</div>
       <div class="card"><div id="profileForm" class="formgrid"></div><button class="btn primary" onclick="saveProfile()">Save Profile Changes</button><span id="profileStatus" class="small muted" style="margin-left:10px"></span></div>
     </section>
     <section id="reports" class="screen">
       <h1>Readiness Reports</h1><div id="reportsList"></div>
     </section>
-    <section id="manager" class="screen"><h1>Athlete Manager View</h1><div class="card" style="overflow:auto"><div id="managerTable"></div></div></section>
+    <section id="manager" class="screen"><h1>Student Manager View</h1><div class="card" style="overflow:auto"><div id="managerTable"></div></div></section>
     <section id="account" class="screen"><h1>Account security</h1>
       <form class="card" style="max-width:560px" onsubmit="event.preventDefault();changePassword()">
         <h2>Change password</h2><p class="muted">Use 15–128 characters. A long, unique passphrase works well. You will sign in again after saving.</p>
@@ -269,7 +269,7 @@ async function changePassword(){
 function navItems(){
  const base=[["My Learning","learning"],["Dashboard","dashboard"],["Live Mock Interview","interview"],["Readiness Reports","reports"]];
  if(me.role==="athlete") base.splice(1,0,["My Profile","profile"]);
- if(["coach","manager","supervisor"].includes(me.role)) base.push(["Athlete Manager View","manager"]);
+ if(["coach","manager","supervisor"].includes(me.role)) base.push(["Student Manager View","manager"]);
  base.push(['Account security','account']);return base;
 }
 function show(id,el){
@@ -279,23 +279,28 @@ document.querySelectorAll(".screen").forEach(x=>x.classList.remove("on"));$(id).
 function escapeHtml(value){return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 async function boot(){
  me=await api("/api/me"); athletes=await api("/api/athletes"); reports=await api("/api/reports");
- ["welcome","login","registration"].forEach(id=>$(id).classList.add("hidden"));$("password").value="";$("app").classList.remove("hidden");$("who").textContent=me.name;$("role").textContent=me.role;
+ ["welcome","login","registration"].forEach(id=>$(id).classList.add("hidden"));$("password").value="";$("app").classList.remove("hidden");$("who").textContent=me.name;$("role").textContent=me.role==="athlete"?"Student":me.role;
  $("nav").innerHTML=navItems().map((x,i)=>`<button type="button" data-screen="${x[1]}" class="nav ${i===0?"on":""}" onclick="show('${x[1]}',this)">${x[0]}</button>`).join("");
  $("athleteSelect").replaceChildren(...athletes.map(a=>new Option(a.name+" — "+(a.university||""),a.id)));
  $("learn_athleteSelect").replaceChildren(...athletes.map(a=>new Option(a.name+" — "+(a.university||""),a.id)));
  renderAll(); if(me.role==="athlete") await renderProfile(); show(me.role==="athlete"?"learning":"dashboard");
  await loadLesson();
 }
+function levelOptions(current){
+ const values=["",...window.VisaAtlasCurriculum.studyLevels];
+ if(current && !values.includes(current))values.push(current);
+ return values.map(value=>`<option value="${escapeHtml(value)}"${value===(current||"")?' selected':''}>${escapeHtml(value||"Select academic level")}</option>`).join("");
+}
 async function renderProfile(){
  const p=await api("/api/my-profile");
  const fields=[
   ["phone","Phone","text"],["country","Country","text"],["interviewLocation","Interview location / Embassy","text"],
-  ["sport","Sport","text"],["university","University","text"],["major","Degree / Major","text"],["academicLevel","Academic level","text"],
+  ["sport","Sport (optional)","text"],["university","School / University","text"],["major","Subjects / Program / Research area","text"],["academicLevel","Academic level","level"],
   ["scholarship","Scholarship type","text"],["scholarshipCoverage","Scholarship coverage","text"],["previousRefusal","Previous U.S. visa refusal?","text"],
   ["previousAttempts","Previous attempts","number"],["previousTravel","Previous U.S. travel?","text"],["remainingSponsor","Who covers remaining costs?","text"],
   ["postGradPlan","Plans after graduation","textarea"]
  ];
- $("profileForm").innerHTML=fields.map(([k,label,t])=>`<div class="field ${k==="postGradPlan"?"wide":""}"><label>${label}</label>${t==="textarea"?`<textarea id="p_${k}" rows="4">${escapeHtml(p[k])}</textarea>`:`<input id="p_${k}" type="${t}" value="${escapeHtml(p[k])}">`}</div>`).join("");
+ $("profileForm").innerHTML=fields.map(([k,label,t])=>`<div class="field ${k==="postGradPlan"?"wide":""}"><label>${label}</label>${t==="level"?`<select id="p_${k}">${levelOptions(p[k])}</select>`:t==="textarea"?`<textarea id="p_${k}" rows="4">${escapeHtml(p[k])}</textarea>`:`<input id="p_${k}" type="${t}" value="${escapeHtml(p[k])}">`}</div>`).join("");
 }
 async function saveProfile(){
  const keys=["phone","country","interviewLocation","sport","university","major","academicLevel","scholarship","scholarshipCoverage","previousRefusal","previousAttempts","previousTravel","remainingSponsor","postGradPlan"];
@@ -309,10 +314,10 @@ function renderAll(){
  const total=athletes.length, ready=athletes.filter(a=>(a.currentScore||0)>=85).length;
  const avg=Math.round(athletes.reduce((s,a)=>s+(a.currentScore||0),0)/(total||1));
  $("dashCards").innerHTML=[
-  ["Athletes",total],["Ready",ready],["Average Readiness",avg+"/100"],["Reports",reports.length]
+  ["Students",total],["Ready",ready],["Average Readiness",avg+"/100"],["Reports",reports.length]
  ].map(x=>`<div class="card"><div class="muted small">${x[0]}</div><div class="kpi">${x[1]}</div></div>`).join("");
- const rows=athletes.map(a=>`<tr><td><b>${escapeHtml(a.name)}</b></td><td>${escapeHtml(a.interviewDate)}</td><td>${escapeHtml(a.sessions||0)}</td><td>${escapeHtml(a.mocks||0)}</td><td>${escapeHtml(a.initialScore)}</td><td>${escapeHtml(a.currentScore)}</td><td>${pill(a.currentScore)}</td><td>${escapeHtml(a.mainConcern||"—")}</td></tr>`).join("");
- const table=`<table><thead><tr><th>Athlete</th><th>Interview</th><th>Human sessions</th><th>AI mocks</th><th>Initial</th><th>Current</th><th>Status</th><th>Main concern</th></tr></thead><tbody>${rows}</tbody></table>`;
+ const rows=athletes.map(a=>`<tr><td><b>${escapeHtml(a.name)}</b></td><td>${escapeHtml(a.interviewDate)}</td><td>${escapeHtml(a.sessions||0)}</td><td>${escapeHtml(a.mocks||0)}</td><td>${escapeHtml(a.initialScore)}</td><td>${escapeHtml(a.currentScore)}</td><td>${pill(a.currentScore)}</td><td>${escapeHtml(a.mainConcern==="New athlete — not yet assessed"?"New student — not yet assessed":a.mainConcern||"—")}</td></tr>`).join("");
+ const table=`<table><thead><tr><th>Student</th><th>Interview</th><th>Human sessions</th><th>AI mocks</th><th>Initial</th><th>Current</th><th>Status</th><th>Main concern</th></tr></thead><tbody>${rows}</tbody></table>`;
  $("athleteTable").innerHTML=table;$("managerTable").innerHTML=table;
  renderReports();
 }
@@ -334,7 +339,7 @@ function renderReports(){
 }
 async function humanReview(reportId,current){
  const score=prompt("Coach-adjusted readiness score (0-100):",current);if(score===null)return;
- const note=prompt("Reason for adjustment:","Answers were technically correct, but the athlete still needs more natural responses under rephrased follow-up questions.");if(note===null)return;
+ const note=prompt("Reason for adjustment:","Answers were technically correct, but the student still needs more natural responses under rephrased follow-up questions.");if(note===null)return;
  await api("/api/human-review",{method:"POST",body:JSON.stringify({reportId,score:Number(score),note})});reports=await api("/api/reports");renderAll();
 }
 function addLine(role,text,mode=voiceScreen){
@@ -496,10 +501,15 @@ function renderCourse(){
  const module=curriculum.find(m=>m.id===activeLessonId);
  $("moduleTitle").textContent=module.title;$("moduleNumber").textContent="MODULE "+(curriculum.indexOf(module)+1);
  $("moduleSummary").textContent=module.summary;$("moduleIntro").textContent=module.intro;$("moduleExample").textContent=module.example;
- for(const [id,values] of [["modulePoints",module.points],["moduleQuestions",module.questions]]){
-  $(id).replaceChildren();values.forEach(value=>{const li=document.createElement("li");li.textContent=value;$(id).appendChild(li)});
+ const student=athletes.find(a=>a.id===lessonStudentId)||{};
+ const path=curriculum.resolveLevel(student.academicLevel);
+ const levelTip=curriculum.levelTopics[path][curriculum.indexOf(module)];
+ const points=path==="high-school" && module.id==="academic-journey"?[levelTip,"Describe your current subjects and recent results accurately. Use your actual school experiences to explain the move.","If there is a gap or change in schooling, explain the real timeline. You do not need a completed degree."]:levelTip?[levelTip,...module.points]:module.points;
+ for(const [id,values] of [["modulePoints",points],["moduleQuestions",curriculum.levelQuestions[path]?.[curriculum.indexOf(module)]||module.questions]]){
+  $(id).replaceChildren();values.forEach(value=>{if(path==="high-school" && id==="modulePoints" && /For graduate study/.test(value))return;const li=document.createElement("li");li.textContent=value;$(id).appendChild(li)});
  }
- module.prompts.forEach((prompt,i)=>{const field=lessonFields[i];document.querySelector('label[for="learn_'+field+'"]').textContent=prompt;$("learn_"+field).placeholder="Use your actual facts; note anything you need to check."});
+ const prompts=path==="high-school" && module.id==="academic-journey"?["What grade and subjects are you studying now?","What recent results and school experiences are relevant?","Why is this school the next step for you?"]:module.prompts;
+ prompts.forEach((prompt,i)=>{const field=lessonFields[i];document.querySelector('label[for="learn_'+field+'"]').textContent=prompt;$("learn_"+field).placeholder="Use your actual facts; note anything you need to check."});
  $("continueLearningBtn").disabled=lessonSaving || lessonLoading || !lessonStudentId;
  $("nextModuleBtn").disabled=lessonSaving || lessonLoading || activeLessonId===curriculum.at(-1).id;
 }

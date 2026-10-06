@@ -177,3 +177,14 @@ test('module switch respects unsaved notes and stops an active tutor',async()=>{
  f.ctx.confirm=()=>true;await f.run('startLearningTutor()');await f.run('selectLearningModule("funding")');
  assert.equal(f.store.tracks[0].stopped,true);assert.equal(f.run('activeLessonId'),'funding');
 });
+
+test('student labels and study-level choices preserve legacy profile values safely',async()=>{
+ const f=fixture();await f.run('boot()');
+ assert.equal(f.elements.get('role').textContent,'Student');
+ assert.match(f.elements.get('athleteTable').innerHTML,/<th>Student<\/th>/);
+ const options=f.run('levelOptions("Graduate")');
+ for(const name of ['High school','Undergraduate','Master’s','PhD / Doctorate'])assert.ok(options.includes(name));
+ assert.match(options,/value="Graduate" selected/);
+ f.ctx.oldValue='<img src=x>';
+ assert.doesNotMatch(f.run('levelOptions(oldValue)'),/<img/);
+});

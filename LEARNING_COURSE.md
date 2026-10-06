@@ -20,3 +20,11 @@ Progress continues to use the existing `(student_id, lesson_id)` key. The origin
 Validation: run `node --test test/*.test.cjs`. Tests cover separate module saves/reloads, continuing to the first unfinished module, selected tutor context, unknown module rejection, cross-student access, unsaved-note confirmation and microphone shutdown on module changes.
 
 After deployment, check desktop and mobile layout, complete/reload a module, and listen to one short tutor session in Academic journey or Funding. Confirm it teaches the selected content and moves to its next point when asked. No live provider session or production data is used by automated tests.
+
+## All F-1 study levels
+
+Registration and profiles offer High school, Undergraduate, Master’s, PhD / Doctorate, and Other. Existing free-text values are retained. Legacy undergraduate year names resolve to undergraduate; ambiguous Graduate values remain unspecified until clarified.
+
+The shared curriculum provides level-specific guidance in all six modules and high-school/PhD practice questions. The same academic-path instructions are sent to the tutor, mock interviewer, and report evaluator. Student-facing roles and labels use Student. Internal athlete role values, endpoint names, IDs, and stored data remain compatible; no migration is needed. Athletics remains optional and must be established by the profile or conversation. No eligibility rules are introduced.
+
+After deployment, select High school or PhD / Doctorate in My Profile, save, and check the matching lesson questions and a fresh voice session. Live generated responses still require verification.
