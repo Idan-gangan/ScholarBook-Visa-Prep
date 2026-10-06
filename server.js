@@ -6,6 +6,7 @@ const crypto = require("crypto");
 const {hashPassword,verifyPassword,validPassword,legacyHash}=require('./passwords');
 const { Pool } = require("pg");
 const { studyLevelInstructions, LESSONS, LESSON_ID, canAccessStudent, normalizeProgress, tutorInstructions } = require("./learning");
+const { practiceTargets, resolvePractice, practiceInstructions } = require('./report-practice');
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
@@ -361,7 +362,7 @@ const server=http.createServer(async (req,res)=>{
         const athlete=db.athletes.find(a=>a.userId===u.id);
         reports=reports.filter(r=>r.athleteId===athlete?.id);
       }
-      return json(res,200,reports);
+      return json(res,200,reports.map(report=>({...report,practiceTargets:practiceTargets(report)})));
     }
 
     if(req.method==="POST" && url.pathname==="/api/human-review"){
@@ -444,9 +445,11 @@ Return ONLY strict JSON matching:
  "priority":"The single most useful point to clarify next.",
  "strengths":["One specific strength supported by an answer."],
  "clarifications":["One point needing clarification, tied to an actual answer."],
- "nextSteps":["First concrete practice action.","Second concrete practice action.","Third concrete practice action."]
+ "nextSteps":["First concrete practice action.","Second concrete practice action.","Third concrete practice action."],
+ "practiceLessons":["one lesson ID per clarification, in the same order"]
 }
 Keep the entire written feedback under 180 words. Write directly to the student using "you" and plain language.
+For each clarification select its most relevant lesson ID: study-purpose (school, subject, study choice), academic-journey (education, grades, gaps), funding (costs, scholarships, sponsors), future-plans (post-study plans), circumstances (refusals, timing, travel), interview-practice (communication or unclear topic). Do not create additional weaknesses to fill this list.
 Return 0–3 strengths, 1–3 clarifications, and exactly 3 nextSteps. Each item must be one short sentence, at most 30 words and 240 characters. summary and priority must each be at most 240 characters.
 Tie feedback to actual answers. If evidence is too limited to identify a strength, return an empty strengths array; never invent praise. Distinguish "not discussed" from "incorrect". If a transcript phrase looks mistranscribed, ask for clarification rather than treating it as an established fact. Do not penalize accent or require native-speaker grammar; assess whether meaning is clear. Do not invent facts, motivations, funding, or post-study plans for the student, and never tell them to replace their genuine intentions with a preferred answer. Do not give legal determinations or visa approval predictions.
 Use only information in the supplied profile and transcript. Do not reward invented facts or memorized-sounding certainty.`;
@@ -499,6 +502,7 @@ Use only information in the supplied profile and transcript. Do not reward inven
         scores:safeScores,overall:result.overall,
         readiness:result.overall>=85?"Ready":result.overall>=70?"Almost Ready":result.overall>=55?"Needs Significant Prep":"High Concern",
         biggestWeakness:result.biggestWeakness,feedback:result.feedback,nextStep:result.nextStep,
+        practiceLessons:Array.isArray(result.practiceLessons)?result.practiceLessons.slice(0,3).map(id=>LESSONS.some(lesson=>lesson.id===id)?id:'interview-practice'):[],
         ...(structured?{formatVersion:2,strengths:result.strengths,clarifications:result.clarifications,nextSteps:result.nextSteps}:{}),
         humanReview:null
       };
@@ -547,6 +551,11 @@ Use only information in the supplied profile and transcript. Do not reward inven
       const mode=url.searchParams.get("mode") || "mock";
       if(!["mock","learn"].includes(mode)) return json(res,400,{error:"Unknown session mode"});
       if(mode==="learn" && !LESSONS.some(lesson=>lesson.id===url.searchParams.get("lesson"))) return json(res,400,{error:"Unknown lesson"});
+      let practiceContext=null;
+      if(mode==='learn' && url.searchParams.has('reportId')){
+        practiceContext=resolvePractice(db,athlete.id,url.searchParams.get('reportId'),url.searchParams.get('focus'),url.searchParams.get('lesson'));
+        if(!practiceContext)return json(res,404,{error:'This report practice focus is unavailable for this student and lesson.'});
+      }
       const sdp=(await readBody(req)).toString();
       if(!sdp.startsWith('v=0') || sdp.length>64000)return json(res,400,{error:'Invalid voice connection offer.'});
       if(!await voiceLimits.reserve(u.id))return json(res,429,{error:'Daily voice limit reached (6 starts per account). Try again after midnight UTC. Your learning notes remain available.'});
@@ -569,7 +578,7 @@ Start by greeting the student and asking why they are going to the United States
 
       if(mode==="learn"){
         const saved=await pool.query("SELECT data FROM learning_progress WHERE student_id=$1 AND lesson_id=$2",[athlete.id,url.searchParams.get("lesson")]);
-        instructions=tutorInstructions(athlete,saved.rows[0]?.data || {},url.searchParams.get("lesson"));
+        instructions=tutorInstructions(athlete,saved.rows[0]?.data || {},url.searchParams.get("lesson"))+practiceInstructions(practiceContext);
       }
       const fd=new FormData();
       fd.set("sdp",sdp);

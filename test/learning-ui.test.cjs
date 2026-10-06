@@ -26,6 +26,22 @@ function fixture(){
  vm.runInContext(html.match(/<script>([\s\S]*?)<\/script>/)[1].replace('boot().catch(()=>{if(new URLSearchParams(location.search).get("signin")==="1")backToLogin()});',''),ctx);
  return {elements,store,ctx,run:code=>vm.runInContext(code,ctx)};
 }
+test('report practice opens the matched lesson and clears on module change',async()=>{
+ const f=fixture();await f.run('boot()');
+ f.run(`reports=[{id:'r1',athleteId:'s1',practiceTargets:[{lessonId:'funding',title:'Your funding',focus:'Clarify tuition coverage'}]}]`);
+ await f.run("openReportPractice('r1',0)");
+ assert.equal(f.run('activeLessonId'),'funding');assert.match(f.elements.get('practiceFocusText').textContent,/Clarify tuition coverage/);
+ assert.equal(f.run('reportPracticeQuery()'),'&reportId=r1&focus=0');
+ await f.run('startLearningTutor()');
+ assert.ok(f.store.requests.some(request=>request.url.includes('mode=learn&lesson=funding&reportId=r1&focus=0')));
+ await f.run("selectLearningModule('study-purpose')");assert.equal(f.run('reportPracticeQuery()'),'');assert.equal(f.run('lessonPractice'),null);
+});
+test('report practice escapes feedback and rejects unavailable student targets',async()=>{
+ const f=fixture();await f.run('boot()');
+ assert.doesNotMatch(f.run(`reportPractice({id:'r',practiceTargets:[{focus:'<img onerror=alert(1)>',title:'<script>',lessonId:'funding'}]})`),/<img|<script>/);
+ f.run(`reports=[{id:'r2',athleteId:'missing',practiceTargets:[{lessonId:'funding'}]}]`);
+ await f.run("openReportPractice('r2',0)");assert.equal(f.run('lessonPractice'),null);
+});
 test('public entry is a welcome page without shared credentials',()=>{
  assert.match(html,/<div id="welcome" class="welcome">/);
  assert.match(html,/<div id="login" class="login hidden">/);

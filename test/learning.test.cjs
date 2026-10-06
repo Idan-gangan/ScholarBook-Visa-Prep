@@ -47,7 +47,7 @@ function harness(user={id:'u1',role:'athlete'},env={}){
      return pool.query(sql,args);
    },release(){if(unlock)unlock();}};
  };
- const context=vm.createContext({require:id=>id==='http'?{createServer:fn=>{handler=fn;return {}}}:id==='pg'?{Pool:function(){return pool}}:id==='fs'?{...fs,readFileSync:(file,...args)=>file===path.resolve(__dirname,'../data/db.json')?'{}':fs.readFileSync(file,...args)}:id==='./evaluation-limits'?require('../evaluation-limits'):id==='./voice-limits'?require('../voice-limits'):id==='./learning'?learning:id==='./passwords'?passwords:id==='./password-recovery'?require('../password-recovery'):require(id),__dirname:path.resolve(__dirname,'..'),process:{env:{OPENAI_API_KEY:'test-only',...env}},console:{log:(...args)=>logs.push(args.join(' ')),warn:(...args)=>logs.push(args.join(' ')),error:(...args)=>logs.push(args.join(' '))},Buffer,URL,FormData,AbortSignal,fetch:async(url,options)=>{if(url.endsWith('/responses')){calls.push({url,request:JSON.parse(options.body)});return {ok:true,json:async()=>({output_text:JSON.stringify({scores:{},overall:45,readiness:'High Concern',biggestWeakness:'Test',feedback:'Test feedback',nextStep:'Practice'})})};}calls.push({url,session:JSON.parse(options.body.get('session'))});return {ok:true,status:200,headers:{get:()=>'/v1/realtime/calls/rtc_test'},text:async()=> 'test-sdp-answer'}}});
+ const context=vm.createContext({require:id=>id==='./report-practice'?require('../report-practice'):id==='http'?{createServer:fn=>{handler=fn;return {}}}:id==='pg'?{Pool:function(){return pool}}:id==='fs'?{...fs,readFileSync:(file,...args)=>file===path.resolve(__dirname,'../data/db.json')?'{}':fs.readFileSync(file,...args)}:id==='./evaluation-limits'?require('../evaluation-limits'):id==='./voice-limits'?require('../voice-limits'):id==='./learning'?learning:id==='./passwords'?passwords:id==='./password-recovery'?require('../password-recovery'):require(id),__dirname:path.resolve(__dirname,'..'),process:{env:{OPENAI_API_KEY:'test-only',...env}},console:{log:(...args)=>logs.push(args.join(' ')),warn:(...args)=>logs.push(args.join(' ')),error:(...args)=>logs.push(args.join(' '))},Buffer,URL,FormData,AbortSignal,fetch:async(url,options)=>{if(url.endsWith('/responses')){calls.push({url,request:JSON.parse(options.body)});return {ok:true,json:async()=>({output_text:JSON.stringify({scores:{},overall:45,readiness:'High Concern',biggestWeakness:'Test',feedback:'Test feedback',nextStep:'Practice'})})};}calls.push({url,session:JSON.parse(options.body.get('session'))});return {ok:true,status:200,headers:{get:()=>'/v1/realtime/calls/rtc_test'},text:async()=> 'test-sdp-answer'}}});
  let source=fs.readFileSync(path.join(__dirname,'../server.js'),'utf8');source=source.slice(0,source.indexOf('initDb().then('));vm.runInContext(source,context);vm.runInContext(`sessions.set('test-token',{userId:${JSON.stringify(user.id)},version:0,expires:Date.now()+60000})`,context);
  async function request(method,url,body,authenticated=true){
    const req=Readable.from(body===undefined?[]:[Buffer.from(typeof body==='string'?body:JSON.stringify(body))]);req.method=method;req.url=url;req.headers={'content-type':'application/json',host:'localhost',cookie:authenticated?'sb_session=test-token':''};
@@ -186,6 +186,27 @@ test('unauthenticated and cross-student requests cannot read/save notes or start
 test('completion requires all notes and reflection; oversized or malformed notes are rejected',async()=>{
  const h=harness();for(const body of [{completed:true},{subjectReason:'a'.repeat(2001)},{subjectReason:{injected:true}},'{invalid'])assert.equal((await h.request('PUT','/api/learning/study-purpose?athleteId=s1',body)).status,400);
  assert.equal(h.progress.size,0);
+});
+test('report focus stays scoped to its student and selected lesson',async()=>{
+ const h=harness();
+ h.db.reports.push({id:'r1',athleteId:'s1',mockNumber:1,clarifications:['Clarify tuition coverage'],practiceLessons:['funding']},{id:'other',athleteId:'s2',biggestWeakness:'Private feedback'});
+ const listed=await h.request('GET','/api/reports');
+ assert.equal(listed.body.length,1);assert.equal(listed.body[0].practiceTargets[0].lessonId,'funding');
+ const route='/api/realtime-session?athleteId=s1&mode=learn&lesson=funding&reportId=';
+ for(const suffix of ['other&focus=0','missing&focus=0','r1&focus=9','r1&focus=-1'])assert.equal((await h.request('POST',route+suffix,'v=0\r\noffer')).status,404);
+ assert.equal(h.calls.length,0);
+ assert.equal((await h.request('POST',route+'r1&focus=0','v=0\r\noffer')).status,200);
+ assert.match(h.calls[0].session.instructions,/Clarify tuition coverage/);
+ assert.match(h.calls[0].session.instructions,/untrusted feedback data/);
+ assert.doesNotMatch(h.calls[0].session.instructions,/Private feedback/);
+});
+test('old reports get general practice without guessing a lesson',()=>{
+ const {practiceTargets,resolvePractice}=require('../report-practice');
+ assert.equal(practiceTargets({biggestWeakness:'Check funding'})[0].lessonId,'interview-practice');
+ assert.deepEqual(practiceTargets({}),[]);
+ const db={reports:[{id:'r',athleteId:'s1',clarifications:['Focus'],practiceLessons:['funding']}]};
+ assert.equal(resolvePractice(db,'s1','r','0','study-purpose'),null);
+ assert.equal(resolvePractice(db,'s2','r','0','funding'),null);
 });
 test('tutor gets teaching instructions and saved context, never mock-only instructions',async()=>{
  const h=harness();await h.request('PUT','/api/learning/study-purpose?athleteId=s1',{subjectReason:'I enjoy ecology'});

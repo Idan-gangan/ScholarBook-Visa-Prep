@@ -128,7 +128,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
       <div class="card course-overview"><img class="course-photo" src="/assets/atlas-study.webp" width="600" height="400" alt="" loading="lazy"><div class="course-feature-copy"><div class="course-feature-top"><span class="eyebrow">YOUR NEXT LESSON</span><span class="pill blue" id="featuredModuleNumber">Module 1 of 6</span></div><h2 id="featuredModuleTitle">Your study plans</h2><p id="featuredModuleSummary">Connect your country, school, and study choices.</p><button class="btn primary" id="continueLearningBtn" onclick="continueLearning()">Continue lesson <span aria-hidden="true">→</span></button></div></div>
       <h2 class="course-section-title">Your learning path</h2><p class="small muted">Completion tracks your learning, not visa approval or interview readiness.</p>
       <div id="moduleCards" class="module-grid" aria-label="Learning modules"></div>
-      <div id="activeLesson" class="lesson-heading lesson-block"><div><p class="small muted" id="moduleNumber">MODULE 1</p><h2 id="moduleTitle">Your study plans</h2><p id="moduleSummary"></p></div><span id="lessonBadge" class="pill blue">Not completed</span></div>
+      <div id="practiceFocus" class="card hidden"><h3>Focused practice</h3><p id="practiceFocusText"></p><p class="muted small">Review this feedback with your tutor. Starting this lesson does not mark the issue as resolved.</p><button class="btn secondary" onclick="clearReportPractice()">Return to regular lesson</button></div><div id="activeLesson" class="lesson-heading lesson-block"><div><p class="small muted" id="moduleNumber">MODULE 1</p><h2 id="moduleTitle">Your study plans</h2><p id="moduleSummary"></p></div><span id="lessonBadge" class="pill blue">Not completed</span></div>
       <div class="grid g2 lesson-grid">
         <div class="card lesson-content">
           <h2>1. Understand the question</h2>
@@ -233,7 +233,7 @@ function returnToSignIn(message=sessionMessage){
  sessionVersion++;
  if(voice)stopVoice('Session ended. Please sign in again.');
  me=null;athletes=[];reports=[];transcript=[];learningTranscript=[];mockStudentId=null;
- courseSaved={};activeLessonId="study-purpose";$("moduleCards").replaceChildren();$("courseProgress").textContent="";lessonVersion++;lessonStudentId=null;lessonDirty=false;lessonCompleted=false;
+ lessonPractice=null;renderPracticeFocus();courseSaved={};activeLessonId="study-purpose";$("moduleCards").replaceChildren();$("courseProgress").textContent="";lessonVersion++;lessonStudentId=null;lessonDirty=false;lessonCompleted=false;
  clearPasswordForm();
  lessonFields.forEach(field=>$('learn_'+field).value='');$('learn_reflected').checked=false;
  for(const id of ['profileForm','reportsList','athleteTable','managerTable','dashCards','nav','transcript','learn_transcript','athleteSelect','learn_athleteSelect'])$(id).replaceChildren();
@@ -341,14 +341,35 @@ function reportSections(r){
  }
  return `<div class="report-legacy"><h4>Focus first</h4><p>${escapeHtml(r.biggestWeakness)}</p><h4>Interview feedback</h4><p>${escapeHtml(r.feedback)}</p><h4>Next step</h4><p>${escapeHtml(r.nextStep)}</p></div>`;
 }
+function reportPractice(r){
+ return (r.practiceTargets||[]).length?'<section class="report-section"><h4>What to work on next</h4>'+r.practiceTargets.map((target,index)=>`<div class="card"><p>${escapeHtml(target.focus)}</p><button class="btn secondary" data-practice-report="${escapeHtml(r.id)}" data-focus="${index}">Practise this · ${escapeHtml(target.title)}</button></div>`).join('')+'</section>':'';
+}
+async function openReportPractice(reportId,index){
+ if(lessonSaving || lessonLoading)return;
+ const report=reports.find(item=>item.id===reportId), target=report?.practiceTargets?.[index];
+ if(!target || !curriculum.some(item=>item.id===target.lessonId) || !athletes.some(item=>item.id===report.athleteId))return;
+ if(lessonDirty && !confirm('Open report practice without saving these notes?'))return;
+ if(voice)stopVoice();
+ lessonPractice={reportId,index,studentId:report.athleteId,...target};
+ $('learn_athleteSelect').value=report.athleteId;activeLessonId=target.lessonId;show('learning');await loadLesson();
+ $('activeLesson').scrollIntoView?.({behavior:'smooth',block:'start'});
+}
+function clearReportPractice(){if(voice?.mode==='learn')stopVoice();lessonPractice=null;renderPracticeFocus()}
+function renderPracticeFocus(){
+ let box=$('practiceFocus');
+ box.classList.toggle('hidden',!lessonPractice);
+ $('practiceFocusText').textContent=lessonPractice?'From your mock report: '+lessonPractice.focus:'';
+}
+function reportPracticeQuery(){return lessonPractice && lessonPractice.studentId===lessonStudentId && lessonPractice.lessonId===activeLessonId?'&reportId='+encodeURIComponent(lessonPractice.reportId)+'&focus='+lessonPractice.index:''}
 function renderReports(){
  $("reportsList").innerHTML=reports.slice().reverse().map(r=>{
    const a=athletes.find(x=>x.id===r.athleteId)||{};
    const h=r.humanReview?`<div class="card" style="margin-top:10px"><b>Human review — ${escapeHtml(r.humanReview.reviewer)}</b><p>Adjusted score: <b>${escapeHtml(r.humanReview.score)}/100</b></p><p>${escapeHtml(r.humanReview.note)}</p></div>`:"";
    const reviewBtn=(me.role==="coach"||me.role==="supervisor")?`<button class="btn secondary" data-report-id="${escapeHtml(r.id)}" data-report-score="${escapeHtml(r.overall)}">Add human review</button>`:"";
-   return `<article class="card report-card" style="margin-bottom:16px"><div class="report-header"><div><h3>${escapeHtml(a.name||"Student")} · Mock #${escapeHtml(r.mockNumber)}</h3><div class="muted small">${new Date(r.createdAt).toLocaleString()}</div></div><div class="report-score"><div class="muted small">Practice readiness</div><span class="kpi">${escapeHtml(r.overall)}/100</span> ${pill(r.overall)}</div></div><p class="muted small">Feedback on this practice interview, not a prediction of visa approval.</p>${reportSections(r)}${reviewBtn}${h}</article>`
+   return `<article class="card report-card" style="margin-bottom:16px"><div class="report-header"><div><h3>${escapeHtml(a.name||"Student")} · Mock #${escapeHtml(r.mockNumber)}</h3><div class="muted small">${new Date(r.createdAt).toLocaleString()}</div></div><div class="report-score"><div class="muted small">Practice readiness</div><span class="kpi">${escapeHtml(r.overall)}/100</span> ${pill(r.overall)}</div></div><p class="muted small">Feedback on this practice interview, not a prediction of visa approval.</p>${reportSections(r)}${reportPractice(r)}${reviewBtn}${h}</article>`
  }).join("")||'<div class="card">No reports yet.</div>';
  $("reportsList").querySelectorAll('[data-report-id]').forEach(button=>button.addEventListener('click',()=>humanReview(button.dataset.reportId,button.dataset.reportScore)));
+ $("reportsList").querySelectorAll('[data-practice-report]').forEach(button=>button.addEventListener('click',()=>openReportPractice(button.dataset.practiceReport,Number(button.dataset.focus))));
 }
 async function humanReview(reportId,current){
  const score=prompt("Coach-adjusted readiness score (0-100):",current);if(score===null)return;
@@ -459,7 +480,7 @@ async function startVoice(mode="mock"){
     const offer=await peer.createOffer();if(voice!==v)return;
     await peer.setLocalDescription(offer);if(voice!==v)return;
     v.abort=new AbortController();
-    const r=await fetch("/api/realtime-session?athleteId="+encodeURIComponent(v.athleteId)+"&mode="+mode+(mode==="learn"?"&lesson="+encodeURIComponent(activeLessonId)+"":""),{method:"POST",body:offer.sdp,headers:{"Content-Type":"application/sdp"},signal:v.abort.signal});
+    const r=await fetch("/api/realtime-session?athleteId="+encodeURIComponent(v.athleteId)+"&mode="+mode+(mode==="learn"?"&lesson="+encodeURIComponent(activeLessonId)+reportPracticeQuery():""),{method:"POST",body:offer.sdp,headers:{"Content-Type":"application/sdp"},signal:v.abort.signal});
     const answer=await r.text();if(voice!==v)return;
     if(!r.ok){let message=answer;try{message=JSON.parse(answer).error||answer}catch{}if(r.status===401 && message==="Unauthorized"){returnToSignIn();return}throw new Error(message)}
     const seconds=Number(r.headers.get('X-Voice-Limit-Seconds'));
@@ -496,7 +517,7 @@ async function generateReport(){
 }
 
 const curriculum=window.VisaAtlasCurriculum;
-let activeLessonId="study-purpose", courseSaved={};
+let activeLessonId="study-purpose", courseSaved={}, lessonPractice=null;
 function renderCourse(){
  const done=curriculum.filter(m=>courseSaved[m.id]?.completed).length;
  $("courseProgress").textContent=done+" of "+curriculum.length+" modules completed";
@@ -537,7 +558,7 @@ function renderCourse(){
 async function selectLearningModule(id){
  if(lessonSaving || lessonLoading || !curriculum.some(m=>m.id===id))return;
  if(lessonDirty && !confirm("Switch modules without saving these notes?"))return;
- if(voice)stopVoice();activeLessonId=id;await loadLesson();
+ if(voice)stopVoice();lessonPractice=null;activeLessonId=id;await loadLesson();
  $("activeLesson").scrollIntoView?.({behavior:"smooth",block:"start"});
 }
 function continueLearning(){return selectLearningModule((curriculum.find(m=>!courseSaved[m.id]?.completed)||curriculum[0]).id)}
@@ -554,10 +575,12 @@ $("learn_reflected").addEventListener("change",lessonEdited);
 window.addEventListener("beforeunload",e=>{if(lessonDirty){e.preventDefault();e.returnValue=""}});
 async function changeLearningStudent(){
  if(lessonDirty && !confirm("Switch students without saving these notes?")){$("learn_athleteSelect").value=lessonStudentId;return}
- if(voice)stopVoice();courseSaved={};activeLessonId="study-purpose";await loadLesson();
+ if(voice)stopVoice();lessonPractice=null;courseSaved={};activeLessonId="study-purpose";await loadLesson();
 }
 async function loadLesson(){
  const version=++lessonVersion;lessonStudentId=$("learn_athleteSelect").value;lessonDirty=false;lessonCompleted=false;lessonLoading=true;
+ if(lessonPractice && (lessonPractice.studentId!==lessonStudentId || lessonPractice.lessonId!==activeLessonId))lessonPractice=null;
+ renderPracticeFocus();
  lessonFields.forEach(field=>$("learn_"+field).value="");$("learn_reflected").checked=false;
  $("learn_transcript").replaceChildren();learningTranscript=[];
  lessonControls(true);$("retryLessonBtn").classList.add("hidden");lessonFields.forEach(field=>$("learn_"+field).disabled=true);$("learn_reflected").disabled=true;setLessonStatus("Loading your notes…");
