@@ -126,12 +126,12 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
         <div class="card lesson-content">
           <h2>1. Understand the question</h2>
           <p id="moduleIntro"></p>
-          <h3>Learn what matters</h3><ol id="modulePoints"></ol>
-          <div class="stepnote"><b>A useful way to think about it</b><p id="moduleExample"></p></div>
+          <h3>2. Structure your answer</h3><p id="moduleStructure"></p><ol id="modulePoints"></ol>
+          <div class="stepnote"><h3>3. See an example</h3><p id="moduleExample"></p><p class="small muted" id="moduleExampleNotice"></p></div>
           <p class="small muted">Use your actual facts. Note anything you still need to check.</p>
         </div>
         <div class="card">
-          <h2>2. Connect it to your situation</h2>
+          <h2>Your preparation notes</h2>
           <p class="muted">Use these prompts to connect the lesson to your plans. Notes are optional before speaking; your tutor also uses your saved profile.</p>
           <div class="field"><label for="learn_subjectReason">What do you want to study, and why does it interest you?</label><textarea id="learn_subjectReason" rows="3" maxlength="2000" placeholder="Use your own experience and interests."></textarea></div>
           <div class="field"><label for="learn_studyOpportunity">What specific learning opportunity have you checked?</label><textarea id="learn_studyOpportunity" rows="3" maxlength="2000" placeholder="Name what you found, why it matters, and what still needs checking."></textarea></div>
@@ -142,7 +142,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
         </div>
       </div>
       <div class="card lesson-block">
-        <h2>3. Learn with your tutor</h2>
+        <h2>Learn with your tutor</h2>
         <p>Your tutor teaches the selected module in short steps. Ask for an explanation, try a practice answer, or say “next”. Say “quick review” to review the course topics.</p>
         <div id="learn_voiceStatus" role="status" aria-live="polite">Not connected</div>
         <div id="learn_voiceLimitNotice" class="small muted" role="status" aria-live="polite"></div>
@@ -152,7 +152,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
         <p class="small muted">Your conversation is for learning, with no readiness score. Save the points you want to keep in your notes below; the conversation itself is not saved.</p>
       </div>
       <div class="card lesson-block">
-        <h2>4. Try a short answer</h2>
+        <h2>4. Your turn</h2>
         <ul id="moduleQuestions" class="lesson-content"></ul>
         <div class="field"><label for="learn_draftAnswer">Your practice answer or takeaway</label><textarea id="learn_draftAnswer" rows="4" maxlength="2000" placeholder="Choose one practice question below. Save a brief answer using your actual facts, then revise it after feedback."></textarea></div>
         <label class="lesson-check"><input id="learn_reflected" type="checkbox"> I reviewed this module, noted what still needs checking, and tried a short answer. For topics that do not apply, I recorded “Not applicable.”</label>
@@ -500,12 +500,13 @@ function renderCourse(){
  });
  const module=curriculum.find(m=>m.id===activeLessonId);
  $("moduleTitle").textContent=module.title;$("moduleNumber").textContent="MODULE "+(curriculum.indexOf(module)+1);
- $("moduleSummary").textContent=module.summary;$("moduleIntro").textContent=module.intro;$("moduleExample").textContent=module.example;
+ $("moduleSummary").textContent=module.summary;
  const student=athletes.find(a=>a.id===lessonStudentId)||{};
+ const guidance=curriculum.forStudent(student,module.id);
+ $("moduleIntro").textContent=guidance.intro;$("moduleStructure").textContent=guidance.structure;
+ $("moduleExample").textContent=guidance.example;$("moduleExampleNotice").textContent=guidance.exampleNotice;
  const path=curriculum.resolveLevel(student.academicLevel);
- const levelTip=curriculum.levelTopics[path][curriculum.indexOf(module)];
- const points=path==="high-school" && module.id==="academic-journey"?[levelTip,"Describe your current subjects and recent results accurately. Use your actual school experiences to explain the move.","If there is a gap or change in schooling, explain the real timeline. You do not need a completed degree."]:levelTip?[levelTip,...module.points]:module.points;
- for(const [id,values] of [["modulePoints",points],["moduleQuestions",curriculum.levelQuestions[path]?.[curriculum.indexOf(module)]||module.questions]]){
+ for(const [id,values] of [["modulePoints",guidance.points],["moduleQuestions",guidance.questions]]){
   $(id).replaceChildren();values.forEach(value=>{if(path==="high-school" && id==="modulePoints" && /For graduate study/.test(value))return;const li=document.createElement("li");li.textContent=value;$(id).appendChild(li)});
  }
  const prompts=path==="high-school" && module.id==="academic-journey"?["What grade and subjects are you studying now?","What recent results and school experiences are relevant?","Why is this school the next step for you?"]:module.prompts;
