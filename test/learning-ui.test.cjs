@@ -201,3 +201,20 @@ test('lesson cards show a profile-specific structure and example as safe text',a
  assert.match(f.elements.get('moduleExample').textContent,/secondary education/);
  assert.doesNotMatch(f.elements.get('moduleExample').textContent,/Water systems|PhD/);
 });
+
+test('redesigned overview uses saved progress and the next incomplete lesson',async()=>{
+ const f=fixture();await f.run('boot()');
+ assert.equal(f.elements.get('learningGreeting').textContent,'Welcome back, Test');
+ f.run(`courseSaved={'study-purpose':{completed:true},'academic-journey':{completed:true}};renderCourse()`);
+ assert.equal(f.elements.get('courseMeter').value,2);
+ assert.equal(f.elements.get('featuredModuleTitle').textContent,'Your funding');
+ assert.equal(f.elements.get('featuredModuleNumber').textContent,'Module 3 of 6');
+ f.run(`courseSaved={};renderCourse()`);assert.equal(f.elements.get('courseMeter').value,0);
+ assert.equal(f.elements.get('featuredModuleTitle').textContent,'Your study plans');
+});
+
+test('password visibility is optional and resets when leaving sign in',()=>{
+ const f=fixture();f.run('backToLogin()');f.elements.get('password').value='test-only';
+ f.run('toggleLoginPassword()');assert.equal(f.elements.get('password').type,'text');
+ f.run('showWelcome()');assert.equal(f.elements.get('password').value,'');assert.equal(f.elements.get('password').type,'password');
+});

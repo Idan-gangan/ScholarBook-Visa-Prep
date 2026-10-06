@@ -183,7 +183,7 @@ async function requireUser(req,res){
 }
 function contentType(file){
   const ext=path.extname(file);
-  return ({".html":"text/html",".css":"text/css",".js":"application/javascript",".json":"application/json",".svg":"image/svg+xml"}[ext]||"application/octet-stream");
+  return ({".html":"text/html",".css":"text/css",".js":"application/javascript",".json":"application/json",".svg":"image/svg+xml",".png":"image/png",".webp":"image/webp"}[ext]||"application/octet-stream");
 }
 function serveStatic(req,res){
   let rel=req.url.split("?")[0];
