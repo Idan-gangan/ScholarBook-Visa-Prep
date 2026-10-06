@@ -28,3 +28,7 @@ Registration and profiles offer High school, Undergraduate, Master’s, PhD / Do
 The shared curriculum provides level-specific guidance in all six modules and high-school/PhD practice questions. The same academic-path instructions are sent to the tutor, mock interviewer, and report evaluator. Student-facing roles and labels use Student. Internal athlete role values, endpoint names, IDs, and stored data remain compatible; no migration is needed. Athletics remains optional and must be established by the profile or conversation. No eligibility rules are introduced.
 
 After deployment, select High school or PhD / Doctorate in My Profile, save, and check the matching lesson questions and a fresh voice session. Live generated responses still require verification.
+
+## Teaching with examples
+
+The voice tutor now pairs each teaching point with a short first-person example before optional practice. Examples use supplied facts or explicit placeholders; level-specific patterns cover high school, undergraduate, master’s, PhD, and relevant athletic funding. An incomplete attempt gets specific feedback and a revised example before moving on. “Next” continues teaching without requiring an answer. Target turns are 35–65 words so the explanation and example fit together. Live generated speech still needs a listening check for brevity, factual grounding, and useful feedback; automated tests verify session instruction wiring, not model compliance.
