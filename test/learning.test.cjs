@@ -192,7 +192,9 @@ test('tutor gets teaching instructions and saved context, never mock-only instru
  assert.equal((await h.request('POST','/api/realtime-session?athleteId=s1&mode=learn&lesson=study-purpose','v=0\r\noffer')).status,200);
  const session=h.calls[0].session;
  assert.equal(session.max_output_tokens,1024);
- assert.match(session.instructions,/25–45 words/);
+ assert.match(session.instructions,/35–65 words/);
+ assert.match(session.instructions,/EXPLAIN → EXAMPLE → OPTIONAL PRACTICE → FEEDBACK/);
+ assert.match(session.instructions,/Stay on that point for this feedback turn/);
  const context=JSON.parse(session.instructions.slice(session.instructions.lastIndexOf('\n')+1));
  assert.equal(context.profile.scholarshipCoverage,'Tuition only');
  assert.equal(context.profile.remainingSponsor,'Parent');
