@@ -12,7 +12,9 @@ function fixture(){
  const ctx=vm.createContext({document,console,AbortController,URL,Date,JSON,Set,setTimeout,clearTimeout,Option:function(text,value){return {text,value}},window:{VisaAtlasCurriculum:require("../public/curriculum"),addEventListener(){}},location:{reload(){}},confirm:()=>true,navigator:{mediaDevices:{getUserMedia:async()=>{const track={enabled:true,stop(){this.stopped=true}};store.tracks.push(track);return {getTracks:()=>[track],getAudioTracks:()=>[track]}}}},RTCPeerConnection:class{addTrack(){}createDataChannel(){return {readyState:'open',addEventListener(){},send(){},close(){}}}async createOffer(){return {sdp:'offer'}}async setLocalDescription(){}async setRemoteDescription(){}close(){}},fetch:async(url,opt={})=>{
    store.requests.push({url,...opt});let data;const route=new URL(url,'http://local').pathname;
    if(route==='/api/change-password'){if(store.failPassword)return {ok:false,json:async()=>({error:'Current password is incorrect.'})};data={ok:true};}
-   else if(route==='/api/me')data={id:'u1',name:'Test Student',role:'athlete'};
+   else if(route==='/api/me')data=store.user||{id:'u1',name:'Test Student',role:'athlete'};
+   else if(route==='/api/owner/accounts')data=store.ownerData;
+   else if(route==='/api/owner/role')data={ok:true};
    else if(route==='/api/athletes')data=[student];else if(route==='/api/reports')data=[];else if(route==='/api/my-profile')data=student;
    else if(route.startsWith('/api/learning/')){
      if(store.failLoad&&!opt.method)return {ok:false,json:async()=>({error:'Unavailable'})};
@@ -26,6 +28,24 @@ function fixture(){
  vm.runInContext(html.match(/<script>([\s\S]*?)<\/script>/)[1].replace('boot().catch(()=>{if(new URLSearchParams(location.search).get("signin")==="1")backToLogin()});',''),ctx);
  return {elements,store,ctx,run:code=>vm.runInContext(code,ctx)};
 }
+test('owner dashboard escapes account details and clears password after role changes',async()=>{
+ const f=fixture();f.store.user={id:'u1',name:'Owner',role:'owner'};
+ f.store.ownerData={counts:{accounts:2,students:1,reports:0},users:[f.store.user,{id:'u2',name:'<img src=x>',email:'<script>@example.com',role:'athlete'}],audit:[]};
+ await f.run('boot()');assert.equal(f.elements.get('role').textContent,'Owner');
+ assert.ok(f.run("navItems().some(x=>x[1]==='owner')"));
+ assert.match(f.elements.get('ownerAccounts').innerHTML,/Owner \(protected\)/);
+ assert.doesNotMatch(f.elements.get('ownerAccounts').innerHTML,/<img|<script>/);
+ f.ctx.testButton={dataset:{ownerUser:'u2'},closest:()=>({querySelector:()=>({value:'coach'}),cells:[{}, {textContent:'student@example.com'}]})};
+ await f.run('saveAccountRole(testButton)');assert.equal(f.store.requests.some(r=>r.url==='/api/owner/role'),false);
+ f.elements.get('ownerPassword').value='current-password';await f.run('saveAccountRole(testButton)');
+ assert.equal(JSON.parse(f.store.requests.find(r=>r.url==='/api/owner/role').body).userId,'u2');
+ assert.equal(f.elements.get('ownerPassword').value,'');
+});
+test('student navigation excludes owner tools and does not fetch accounts',async()=>{
+ const f=fixture();await f.run('boot()');await f.run('loadOwner()');
+ assert.equal(f.run("navItems().some(x=>x[1]==='owner')"),false);
+ assert.equal(f.store.requests.some(r=>r.url.startsWith('/api/owner/')),false);
+});
 test('report practice opens the matched lesson and clears on module change',async()=>{
  const f=fixture();await f.run('boot()');
  f.run(`reports=[{id:'r1',athleteId:'s1',practiceTargets:[{lessonId:'funding',title:'Your funding',focus:'Clarify tuition coverage'}]}]`);

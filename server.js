@@ -7,6 +7,7 @@ const {hashPassword,verifyPassword,validPassword,legacyHash}=require('./password
 const { Pool } = require("pg");
 const { studyLevelInstructions, LESSONS, LESSON_ID, canAccessStudent, normalizeProgress, tutorInstructions } = require("./learning");
 const { practiceTargets, resolvePractice, practiceInstructions } = require('./report-practice');
+const {isStaff, isOwner, changeRole} = require('./owner-access');
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
@@ -322,10 +323,44 @@ const server=http.createServer(async (req,res)=>{
       return json(res,200,{id:u.id,name:u.name,role:u.role,email:u.email});
     }
 
+    if(url.pathname.startsWith('/api/owner/')){
+      const u=await requireUser(req,res); if(!u)return;
+      if(!isOwner(u))return json(res,403,{error:'Owner access required.'});
+      if(req.method==='GET' && url.pathname==='/api/owner/accounts'){
+        const db=await loadDb();
+        return json(res,200,{
+          users:db.users.map(({id,name,email,role})=>({id,name,email,role})),
+          audit:(db.securityAudit||[]).slice(-100).reverse(),
+          counts:{accounts:db.users.length,students:db.athletes.length,reports:db.reports.length},
+          limits:{voiceStartsPerDay:6,reportAttemptsPerDay:6}
+        });
+      }
+      if(req.method==='POST' && url.pathname==='/api/owner/role'){
+        if(!allowAuth('owner-role:'+u.id))return json(res,429,{error:'Too many attempts. Try again in one minute.'});
+        if(!(req.headers['content-type']||'').toLowerCase().startsWith('application/json'))return json(res,415,{error:'JSON required.'});
+        let body;
+        try{body=JSON.parse((await readBody(req,4096)).toString());}catch(error){if(error.status===413)throw error;return json(res,400,{error:'Invalid JSON.'});}
+        if(!body || Array.isArray(body) || typeof body!=='object')return json(res,400,{error:'Invalid request.'});
+        const saved=await credential(u.id);
+        if(!saved || !await verifyPassword(body.currentPassword,saved.password_hash))return json(res,403,{error:'Your current password is required.'});
+        const updated=await mutateDb(async(db,client)=>{
+          // Recheck identity/role and credential version under the state lock.
+          const current=(await client.query('SELECT password_hash, version FROM user_credentials WHERE user_id=$1 FOR UPDATE',[u.id])).rows[0];
+          if(!current || current.version!==saved.version || current.password_hash!==saved.password_hash)throw stateError(401,'Sign in again.');
+          const target=changeRole(db,u.id,body.userId,body.role);
+          await client.query('UPDATE user_credentials SET version=version+1 WHERE user_id=$1',[target.id]);
+          return target;
+        });
+        for(const [token,session] of sessions)if(session.userId===updated.id)sessions.delete(token);
+        return json(res,200,{ok:true,user:updated});
+      }
+      return json(res,404,{error:'Unknown owner action.'});
+    }
+
 
     if(req.method==="GET" && url.pathname==="/api/my-profile"){
       const u=await requireUser(req,res); if(!u) return;
-      if(u.role!=="athlete") return json(res,403,{error:"Student access required"});
+      if(u.role!=="athlete" && !isOwner(u)) return json(res,403,{error:"Student access required"});
       const db=await loadDb(); const athlete=db.athletes.find(a=>a.userId===u.id);
       if(!athlete) return json(res,404,{error:"Student profile not found"});
       return json(res,200,athlete);
@@ -333,7 +368,7 @@ const server=http.createServer(async (req,res)=>{
 
     if(req.method==="PUT" && url.pathname==="/api/my-profile"){
       const u=await requireUser(req,res); if(!u) return;
-      if(u.role!=="athlete") return json(res,403,{error:"Student access required"});
+      if(u.role!=="athlete" && !isOwner(u)) return json(res,403,{error:"Student access required"});
       const body=JSON.parse((await readBody(req)).toString()||"{}");
       const updated=await mutateDb(async(db)=>{
       const athlete=db.athletes.find(a=>a.userId===u.id);
@@ -350,6 +385,7 @@ const server=http.createServer(async (req,res)=>{
       const u=await requireUser(req,res); if(!u) return;
       const db=await loadDb();
       let athletes=db.athletes;
+      if(u.role!=="athlete" && !isStaff(u))return json(res,403,{error:'Access denied.'});
       if(u.role==="athlete") athletes=athletes.filter(a=>a.userId===u.id);
       return json(res,200,athletes);
     }
@@ -358,6 +394,7 @@ const server=http.createServer(async (req,res)=>{
       const u=await requireUser(req,res); if(!u) return;
       const db=await loadDb();
       let reports=db.reports;
+      if(u.role!=="athlete" && !isStaff(u))return json(res,403,{error:'Access denied.'});
       if(u.role==="athlete"){
         const athlete=db.athletes.find(a=>a.userId===u.id);
         reports=reports.filter(r=>r.athleteId===athlete?.id);
@@ -367,7 +404,7 @@ const server=http.createServer(async (req,res)=>{
 
     if(req.method==="POST" && url.pathname==="/api/human-review"){
       const u=await requireUser(req,res); if(!u) return;
-      if(!["coach","supervisor"].includes(u.role)) return json(res,403,{error:"Coach or supervisor access required"});
+      if(!["owner","coach","supervisor"].includes(u.role)) return json(res,403,{error:"Owner, coach or supervisor access required"});
       const body=JSON.parse((await readBody(req)).toString()||"{}");
       const updated=await mutateDb(async(db)=>{
       const report=db.reports.find(r=>r.id===body.reportId);

@@ -210,6 +210,22 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
       <h1>Readiness Reports</h1><div id="reportsList"></div>
     </section>
     <section id="manager" class="screen"><h1>Student Manager View</h1><div class="card" style="overflow:auto"><div id="managerTable"></div></div></section>
+    <section id="owner" class="screen">
+      <h1>Owner dashboard</h1>
+      <p class="muted">Manage account permissions and oversee all students, learning and readiness reports.</p>
+      <div id="ownerStats" class="grid g3"></div>
+      <div class="card" style="margin-top:16px">
+        <h2>Account permissions</h2>
+        <p>Staff roles can access every student's profile, learning and reports. Coach and Supervisor can also add human reviews. Only Owner can change account roles. Grant staff access only to trusted team members.</p>
+        <p class="small muted">Role changes require your current password and sign the affected user out. Owner access cannot be assigned or removed here.</p>
+        <div class="field"><label for="ownerPassword">Your current password (required for each role change)</label><input id="ownerPassword" type="password" autocomplete="current-password"></div>
+        <button type="button" class="btn secondary" onclick="loadOwner()">Refresh accounts</button>
+        <p id="ownerStatus" role="status" aria-live="polite"></p>
+        <div style="overflow:auto" id="ownerAccounts"></div>
+      </div>
+      <div class="card" style="margin-top:16px"><h2>Recent permission changes</h2><div style="overflow:auto" id="ownerAudit"></div></div>
+      <div class="notice" style="margin-top:16px">Use Student Manager View, My Learning and Readiness Reports to work with students. Voice and report cost limits still apply to Owner. Hosting, API keys, billing and deployment settings remain in Render/GitHub and are not exposed here.</div>
+    </section>
     <section id="account" class="screen"><h1>Account security</h1>
       <form class="card" style="max-width:560px" onsubmit="event.preventDefault();changePassword()">
         <h2>Change password</h2><p class="muted">Use 15–128 characters. A long, unique passphrase works well. You will sign in again after saving.</p>
@@ -235,6 +251,7 @@ function returnToSignIn(message=sessionMessage){
  me=null;athletes=[];reports=[];transcript=[];learningTranscript=[];mockStudentId=null;
  lessonPractice=null;renderPracticeFocus();courseSaved={};activeLessonId="study-purpose";$("moduleCards").replaceChildren();$("courseProgress").textContent="";lessonVersion++;lessonStudentId=null;lessonDirty=false;lessonCompleted=false;
  clearPasswordForm();
+ clearOwnerView();
  lessonFields.forEach(field=>$('learn_'+field).value='');$('learn_reflected').checked=false;
  for(const id of ['profileForm','reportsList','athleteTable','managerTable','dashCards','nav','transcript','learn_transcript','athleteSelect','learn_athleteSelect'])$(id).replaceChildren();
  $('who').textContent='';$('role').textContent='';
@@ -276,8 +293,9 @@ async function changePassword(){
 }
 function navItems(){
  const base=[["My Learning","learning"],["Dashboard","dashboard"],["Live Mock Interview","interview"],["Readiness Reports","reports"]];
- if(me.role==="athlete") base.splice(1,0,["My Profile","profile"]);
- if(["coach","manager","supervisor"].includes(me.role)) base.push(["Student Manager View","manager"]);
+ if(me.role==="athlete" || (me.role==='owner' && athletes.some(a=>a.userId===me.id))) base.splice(1,0,["My Profile","profile"]);
+ if(["owner","coach","manager","supervisor"].includes(me.role)) base.push(["Student Manager View","manager"]);
+ if(me.role==='owner')base.unshift(['Owner dashboard','owner']);
  base.push(['Account security','account']);return base;
 }
 function navIcon(id){
@@ -285,24 +303,58 @@ function navIcon(id){
  return `<span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="${paths[id]||paths.learning}"/></svg></span>`;
 }
 function show(id,el){
+ if(id==='owner' && me?.role!=='owner')return;
+ if(id!=='owner')$('ownerPassword').value='';
  if(id!=='account'){clearPasswordForm();$('passwordMessage').textContent='';}
  if(voice && id!==(voice.mode==="learn"?"learning":"interview"))stopVoice("Conversation ended when you left this page.");
 document.querySelectorAll(".screen").forEach(x=>x.classList.remove("on"));$(id).classList.add("on");document.querySelectorAll(".nav").forEach(x=>x.classList.remove("on"));document.querySelectorAll(".nav").forEach(x=>{const active=x.dataset.screen===id;x.classList.toggle("on",active);if(active)x.setAttribute("aria-current","page");else x.removeAttribute("aria-current")})}
 function escapeHtml(value){return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 async function boot(){
  me=await api("/api/me"); athletes=await api("/api/athletes"); reports=await api("/api/reports");
- ["welcome","login","registration"].forEach(id=>$(id).classList.add("hidden"));$("password").value="";$("app").classList.remove("hidden");$("who").textContent=me.name;$("role").textContent=me.role==="athlete"?"Student":me.role;
+ ["welcome","login","registration"].forEach(id=>$(id).classList.add("hidden"));$("password").value="";$("app").classList.remove("hidden");$("who").textContent=me.name;$("role").textContent=me.role==="athlete"?"Student":me.role==='owner'?'Owner':me.role;
  $("accountAvatar").textContent=String(me.name||'S').trim().split(/\s+/).slice(0,2).map(part=>part[0]||'').join('').toUpperCase();
  $("nav").innerHTML=navItems().map((x,i)=>`<button type="button" data-screen="${x[1]}" class="nav ${i===0?"on":""}" onclick="show('${x[1]}',this)">${navIcon(x[1])}<span>${x[0]}</span></button>`).join("");
  $("athleteSelect").replaceChildren(...athletes.map(a=>new Option(a.name+" — "+(a.university||""),a.id)));
  $("learn_athleteSelect").replaceChildren(...athletes.map(a=>new Option(a.name+" — "+(a.university||""),a.id)));
- renderAll(); if(me.role==="athlete") await renderProfile(); show(me.role==="athlete"?"learning":"dashboard");
+ renderAll(); if(me.role==="athlete" || (me.role==='owner' && athletes.some(a=>a.userId===me.id))) await renderProfile();
+ if(me.role==='owner')await loadOwner();else clearOwnerView();
+ show(me.role==='owner'?'owner':me.role==="athlete"?"learning":"dashboard");
  await loadLesson();
 }
 function levelOptions(current){
  const values=["",...window.VisaAtlasCurriculum.studyLevels];
  if(current && !values.includes(current))values.push(current);
  return values.map(value=>`<option value="${escapeHtml(value)}"${value===(current||"")?' selected':''}>${escapeHtml(value||"Select academic level")}</option>`).join("");
+}
+function clearOwnerView(){
+ $('ownerPassword').value='';
+ for(const id of ['ownerStats','ownerAccounts','ownerAudit'])$(id).replaceChildren();
+ $('ownerStatus').textContent='';
+}
+async function loadOwner(){
+ if(me?.role!=='owner')return;
+ $('ownerStatus').textContent='Loading accounts…';
+ try{
+  const data=await api('/api/owner/accounts');
+  $('ownerStats').innerHTML=Object.entries(data.counts).map(([label,value])=>`<div class="card"><div class="muted">${escapeHtml(label)}</div><div class="kpi">${escapeHtml(value)}</div></div>`).join('');
+  const roles=[['athlete','Student'],['coach','Coach'],['supervisor','Supervisor'],['manager','Manager']];
+  $('ownerAccounts').innerHTML='<table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Action</th></tr></thead><tbody>'+data.users.map(u=>`<tr><td>${escapeHtml(u.name)}</td><td>${escapeHtml(u.email)}</td><td>${u.role==='owner'?'Owner (protected)':`<select aria-label="Role for ${escapeHtml(u.email)}">${roles.map(([value,label])=>`<option value="${value}"${u.role===value?' selected':''}>${label}</option>`).join('')}</select>`}</td><td>${u.role==='owner'?'—':`<button type="button" class="btn secondary" data-owner-user="${escapeHtml(u.id)}">Save role</button>`}</td></tr>`).join('')+'</tbody></table>';
+  $('ownerAccounts').querySelectorAll('[data-owner-user]').forEach(button=>button.addEventListener('click',()=>saveAccountRole(button)));
+  const label=id=>data.users.find(u=>u.id===id)?.email||id;
+  $('ownerAudit').innerHTML=data.audit.length?'<table><thead><tr><th>When</th><th>Account</th><th>Change</th><th>By</th></tr></thead><tbody>'+data.audit.map(entry=>`<tr><td>${escapeHtml(entry.at)}</td><td>${escapeHtml(label(entry.targetId))}</td><td>${escapeHtml(entry.previousRole)} → ${escapeHtml(entry.role)}</td><td>${escapeHtml(label(entry.actorId))}</td></tr>`).join('')+'</tbody></table>':'<p>No permission changes recorded.</p>';
+  $('ownerStatus').textContent='Accounts loaded.';
+ }catch(error){$('ownerStatus').textContent=error.message;}
+}
+async function saveAccountRole(button){
+ const row=button.closest('tr'), role=row.querySelector('select').value, currentPassword=$('ownerPassword').value;
+ if(!currentPassword){$('ownerStatus').textContent='Enter your current password first.';return;}
+ if(!confirm('Change '+row.cells[1].textContent+' to '+(role==='athlete'?'Student':role)+'? Staff can access all students.'))return;
+ button.disabled=true;$('ownerStatus').textContent='Saving…';
+ try{
+  await api('/api/owner/role',{method:'POST',body:JSON.stringify({userId:button.dataset.ownerUser,role,currentPassword})});
+  await loadOwner();$('ownerStatus').textContent='Role saved. The affected user must sign in again.';
+ }catch(error){$('ownerStatus').textContent=error.message;}
+ finally{$('ownerPassword').value='';button.disabled=false;}
 }
 async function renderProfile(){
  const p=await api("/api/my-profile");
@@ -365,7 +417,7 @@ function renderReports(){
  $("reportsList").innerHTML=reports.slice().reverse().map(r=>{
    const a=athletes.find(x=>x.id===r.athleteId)||{};
    const h=r.humanReview?`<div class="card" style="margin-top:10px"><b>Human review — ${escapeHtml(r.humanReview.reviewer)}</b><p>Adjusted score: <b>${escapeHtml(r.humanReview.score)}/100</b></p><p>${escapeHtml(r.humanReview.note)}</p></div>`:"";
-   const reviewBtn=(me.role==="coach"||me.role==="supervisor")?`<button class="btn secondary" data-report-id="${escapeHtml(r.id)}" data-report-score="${escapeHtml(r.overall)}">Add human review</button>`:"";
+   const reviewBtn=(["owner","coach","supervisor"].includes(me.role))?`<button class="btn secondary" data-report-id="${escapeHtml(r.id)}" data-report-score="${escapeHtml(r.overall)}">Add human review</button>`:"";
    return `<article class="card report-card" style="margin-bottom:16px"><div class="report-header"><div><h3>${escapeHtml(a.name||"Student")} · Mock #${escapeHtml(r.mockNumber)}</h3><div class="muted small">${new Date(r.createdAt).toLocaleString()}</div></div><div class="report-score"><div class="muted small">Practice readiness</div><span class="kpi">${escapeHtml(r.overall)}/100</span> ${pill(r.overall)}</div></div><p class="muted small">Feedback on this practice interview, not a prediction of visa approval.</p>${reportSections(r)}${reportPractice(r)}${reviewBtn}${h}</article>`
  }).join("")||'<div class="card">No reports yet.</div>';
  $("reportsList").querySelectorAll('[data-report-id]').forEach(button=>button.addEventListener('click',()=>humanReview(button.dataset.reportId,button.dataset.reportScore)));
