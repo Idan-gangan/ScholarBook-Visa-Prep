@@ -14,6 +14,7 @@ function harness(user={id:'u1',role:'athlete'},env={}){
    if(sql.trim().startsWith('CREATE TABLE') || sql.trim().startsWith('INSERT INTO app_state'))return {rows:[]};
    if(sql.startsWith('INSERT INTO user_credentials')){if(!credentials.has(args[0]))credentials.set(args[0],{password_hash:args[1],version:0});return {rows:[]};}
    if(sql.startsWith('SELECT password_hash'))return {rows:credentials.has(args[0])?[structuredClone(credentials.get(args[0]))]:[]};
+   if(sql==='UPDATE user_credentials SET version=version+1 WHERE user_id=$1'){const c=credentials.get(args[0]);if(c)c.version++;return {rows:[]};}
    if(sql.startsWith('UPDATE user_credentials')){const c=credentials.get(args[1]);if(!c||c.password_hash!==args[2]||c.version!==args[3])return {rows:[]};c.password_hash=args[0];c.version++;return {rows:[{version:c.version}]};}
    if(sql.startsWith('UPDATE app_state SET data=jsonb_set')){for(const u of db.users)delete u.passwordHash;return {rows:[]};}
    if(sql.includes('FROM app_state'))return {rows:[{data:structuredClone(db)}]};
@@ -34,7 +35,7 @@ function harness(user={id:'u1',role:'athlete'},env={}){
    let unlock,snapshot,credentialSnapshot;
    return {query:async(sql,args)=>{
      if(sql==='BEGIN')return {rows:[]};
-     if(sql.includes('FOR UPDATE')){
+     if(sql.includes('FROM app_state') && sql.includes('FOR UPDATE')){
        const previous=queue;queue=new Promise(resolve=>unlock=resolve);await previous;
        snapshot=structuredClone(db);credentialSnapshot=structuredClone(credentials);
        return {rows:[{data:structuredClone(db)}]};
@@ -47,7 +48,7 @@ function harness(user={id:'u1',role:'athlete'},env={}){
      return pool.query(sql,args);
    },release(){if(unlock)unlock();}};
  };
- const context=vm.createContext({require:id=>id==='./report-practice'?require('../report-practice'):id==='http'?{createServer:fn=>{handler=fn;return {}}}:id==='pg'?{Pool:function(){return pool}}:id==='fs'?{...fs,readFileSync:(file,...args)=>file===path.resolve(__dirname,'../data/db.json')?'{}':fs.readFileSync(file,...args)}:id==='./evaluation-limits'?require('../evaluation-limits'):id==='./voice-limits'?require('../voice-limits'):id==='./learning'?learning:id==='./passwords'?passwords:id==='./password-recovery'?require('../password-recovery'):require(id),__dirname:path.resolve(__dirname,'..'),process:{env:{OPENAI_API_KEY:'test-only',...env}},console:{log:(...args)=>logs.push(args.join(' ')),warn:(...args)=>logs.push(args.join(' ')),error:(...args)=>logs.push(args.join(' '))},Buffer,URL,FormData,AbortSignal,fetch:async(url,options)=>{if(url.endsWith('/responses')){calls.push({url,request:JSON.parse(options.body)});return {ok:true,json:async()=>({output_text:JSON.stringify({scores:{},overall:45,readiness:'High Concern',biggestWeakness:'Test',feedback:'Test feedback',nextStep:'Practice'})})};}calls.push({url,session:JSON.parse(options.body.get('session'))});return {ok:true,status:200,headers:{get:()=>'/v1/realtime/calls/rtc_test'},text:async()=> 'test-sdp-answer'}}});
+ const context=vm.createContext({require:id=>id==='./owner-access'?require('../owner-access'):id==='./report-practice'?require('../report-practice'):id==='http'?{createServer:fn=>{handler=fn;return {}}}:id==='pg'?{Pool:function(){return pool}}:id==='fs'?{...fs,readFileSync:(file,...args)=>file===path.resolve(__dirname,'../data/db.json')?'{}':fs.readFileSync(file,...args)}:id==='./evaluation-limits'?require('../evaluation-limits'):id==='./voice-limits'?require('../voice-limits'):id==='./learning'?learning:id==='./passwords'?passwords:id==='./password-recovery'?require('../password-recovery'):require(id),__dirname:path.resolve(__dirname,'..'),process:{env:{OPENAI_API_KEY:'test-only',...env}},console:{log:(...args)=>logs.push(args.join(' ')),warn:(...args)=>logs.push(args.join(' ')),error:(...args)=>logs.push(args.join(' '))},Buffer,URL,FormData,AbortSignal,fetch:async(url,options)=>{if(url.endsWith('/responses')){calls.push({url,request:JSON.parse(options.body)});return {ok:true,json:async()=>({output_text:JSON.stringify({scores:{},overall:45,readiness:'High Concern',biggestWeakness:'Test',feedback:'Test feedback',nextStep:'Practice'})})};}calls.push({url,session:JSON.parse(options.body.get('session'))});return {ok:true,status:200,headers:{get:()=>'/v1/realtime/calls/rtc_test'},text:async()=> 'test-sdp-answer'}}});
  let source=fs.readFileSync(path.join(__dirname,'../server.js'),'utf8');source=source.slice(0,source.indexOf('initDb().then('));vm.runInContext(source,context);vm.runInContext(`sessions.set('test-token',{userId:${JSON.stringify(user.id)},version:0,expires:Date.now()+60000})`,context);
  async function request(method,url,body,authenticated=true){
    const req=Readable.from(body===undefined?[]:[Buffer.from(typeof body==='string'?body:JSON.stringify(body))]);req.method=method;req.url=url;req.headers={'content-type':'application/json',host:'localhost',cookie:authenticated?'sb_session=test-token':''};
@@ -55,6 +56,65 @@ function harness(user={id:'u1',role:'athlete'},env={}){
  }
  return {request,progress,calls,db,logs,credentials,init:()=>vm.runInContext('initDb()',context),run:code=>vm.runInContext(code,context)};
 }
+test('owner routes reject anonymous, student and staff accounts',async()=>{
+ for(const role of ['athlete','coach','supervisor','manager','unknown']){
+  const h=harness({id:'u1',role});
+  assert.equal((await h.request('GET','/api/owner/accounts')).status,403);
+  assert.equal((await h.request('POST','/api/owner/role',{userId:'u1',role:'owner'})).status,403);
+ }
+ assert.equal((await harness().request('GET','/api/owner/accounts',undefined,false)).status,401);
+});
+test('owner sees accounts without credentials, all students and reports, and own profile',async()=>{
+ const h=harness({id:'u1',role:'owner',email:'owner@example.test',secret:'never-expose'});
+ h.db.reports.push({id:'r2',athleteId:'s2'});
+ assert.equal((await h.request('GET','/api/athletes')).body.length,2);
+ assert.equal((await h.request('GET','/api/reports')).body.length,1);
+ assert.equal((await h.request('GET','/api/my-profile')).body.id,'s1');
+ const overview=await h.request('GET','/api/owner/accounts');
+ assert.equal(overview.status,200);assert.doesNotMatch(overview.text,/password|never-expose|fixture-unusable/);
+ assert.equal((await h.request('PUT','/api/my-profile',{major:'Updated'})).status,200);
+ assert.equal((await h.request('POST','/api/human-review',{reportId:'r2',score:60,note:'Reviewed'})).status,200);
+ assert.equal((await h.request('GET','/api/learning/funding?athleteId=s2')).status,200);
+ const bad=harness({id:'u1',role:'unknown'});
+ for(const route of ['/api/athletes','/api/reports'])assert.equal((await bad.request('GET',route)).status,403);
+ assert.equal(learning.canAccessStudent({id:'u1',role:'unknown'},student),false);
+});
+test('owner role changes need current password, preserve profiles, audit and invalidate target sessions',async()=>{
+ const h=harness({id:'u1',role:'owner',email:'owner@example.test'});
+ const currentPassword='owner-current-long-password';
+ h.credentials.get('u1').password_hash=await passwords.hashPassword(currentPassword);
+ h.db.users.push({id:'u2',role:'athlete',email:'student@example.test'});
+ h.credentials.set('u2',{password_hash:'keep-password',version:0});
+ h.run("sessions.set('student-session',{userId:'u2',version:0,expires:Date.now()+60000})");
+ const before=structuredClone(h.db.athletes);
+ assert.equal((await h.request('POST','/api/owner/role',{userId:'u2',role:'coach',currentPassword:'wrong'})).status,403);
+ for(const body of [{userId:'u1',role:'coach'},{userId:'u2',role:'owner'},{userId:'missing',role:'coach'}]){
+  assert.ok((await h.request('POST','/api/owner/role',{...body,currentPassword})).status>=400);
+ }
+ assert.equal(h.db.users[1].role,'athlete');
+ const changed=await h.request('POST','/api/owner/role',{userId:'u2',role:'coach',currentPassword});
+ assert.equal(changed.status,200);assert.equal(h.db.users[1].role,'coach');
+ assert.equal(h.credentials.get('u2').version,1);assert.equal(h.credentials.get('u2').password_hash,'keep-password');
+ assert.equal(h.run("sessions.has('student-session')"),false);
+ assert.deepEqual(h.db.athletes,before);assert.equal(h.db.securityAudit[0].actorId,'u1');
+ assert.equal(h.db.securityAudit[0].targetId,'u2');
+ assert.equal((await h.request('POST','/api/owner/role',{userId:'u2',role:'athlete',currentPassword})).status,200);
+ assert.equal(h.credentials.get('u2').version,2);
+ assert.doesNotMatch(JSON.stringify(h.db),/owner-current-long-password/);
+});
+test('owner activation is exact, preserves data, rejects ambiguity and another owner',()=>{
+ const {selectOwnerTarget,changeRole}=require('../owner-access');
+ const db={users:[{id:'one',email:'owner@example.test',role:'athlete'}],athletes:[]};
+ assert.equal(selectOwnerTarget(db,' OWNER@example.test ').id,'one');
+ assert.equal(db.users[0].role,'athlete');
+ assert.throws(()=>selectOwnerTarget(db,'missing@example.test'));
+ db.users.push({id:'other',email:'OWNER@example.test',role:'athlete'});
+ assert.throws(()=>selectOwnerTarget(db,'owner@example.test'));
+ db.users[1]={id:'other',email:'other@example.test',role:'owner'};
+ assert.throws(()=>selectOwnerTarget(db,'owner@example.test'));
+ assert.throws(()=>changeRole(db,'one','other','coach'));
+ assert.throws(()=>changeRole(db,'other','one','athlete'));
+});
 test('recovery routes reject malformed bodies, hide internal errors and revoke local sessions on success',async()=>{
  const h=harness({id:'u1',role:'athlete',email:'student@example.test'});
  for(const route of ['/api/forgot-password','/api/reset-password']){
