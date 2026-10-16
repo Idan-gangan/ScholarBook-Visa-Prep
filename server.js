@@ -14,7 +14,7 @@ const pool = new Pool({
 
 const PORT = process.env.PORT || 3000;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
-const {POLICY,createVoiceLimits}=require('./voice-limits');
+const {POLICY,createVoiceLimits,dailyLimit}=require('./voice-limits');
 const voiceLimits=createVoiceLimits(pool,OPENAI_API_KEY);
 const {EVALUATION_POLICY,normalizeTranscript,createEvaluationLimits}=require("./evaluation-limits");
 const evaluationLimits=createEvaluationLimits(pool);
@@ -323,19 +323,23 @@ const server=http.createServer(async (req,res)=>{
       return json(res,200,{id:u.id,name:u.name,role:u.role,email:u.email});
     }
 
+    if(req.method==='GET' && url.pathname==='/api/voice-usage'){
+      const u=await requireUser(req,res);if(!u)return;
+      return json(res,200,await voiceLimits.status(u.id,dailyLimit(u)));
+    }
     if(url.pathname.startsWith('/api/owner/')){
       const u=await requireUser(req,res); if(!u)return;
       if(!isOwner(u))return json(res,403,{error:'Owner access required.'});
       if(req.method==='GET' && url.pathname==='/api/owner/accounts'){
         const db=await loadDb();
         return json(res,200,{
-          users:db.users.map(({id,name,email,role})=>({id,name,email,role})),
+          users:db.users.map(({id,name,email,role,voiceTester})=>({id,name,email,role,voiceTester:voiceTester===true})),
           audit:(db.securityAudit||[]).slice(-100).reverse(),
           counts:{accounts:db.users.length,students:db.athletes.length,reports:db.reports.length},
           limits:{voiceStartsPerDay:6,reportAttemptsPerDay:6}
         });
       }
-      if(req.method==='POST' && url.pathname==='/api/owner/role'){
+      if(req.method==='POST' && ['/api/owner/role','/api/owner/voice-access'].includes(url.pathname)){
         if(!allowAuth('owner-role:'+u.id))return json(res,429,{error:'Too many attempts. Try again in one minute.'});
         if(!(req.headers['content-type']||'').toLowerCase().startsWith('application/json'))return json(res,415,{error:'JSON required.'});
         let body;
@@ -347,11 +351,21 @@ const server=http.createServer(async (req,res)=>{
           // Recheck identity/role and credential version under the state lock.
           const current=(await client.query('SELECT password_hash, version FROM user_credentials WHERE user_id=$1 FOR UPDATE',[u.id])).rows[0];
           if(!current || current.version!==saved.version || current.password_hash!==saved.password_hash)throw stateError(401,'Sign in again.');
+          if(url.pathname==='/api/owner/voice-access'){
+            if(!isOwner(db.users.find(user=>user.id===u.id)))throw stateError(403,'Owner access required.');
+            if(typeof body.enabled!=='boolean')throw stateError(400,'Choose whether tester access is enabled.');
+            const target=db.users.find(user=>user.id===body.userId);
+            if(!target)throw stateError(404,'Account not found.');
+            const previous=target.voiceTester===true;
+            target.voiceTester=body.enabled;
+            db.securityAudit=[...(db.securityAudit||[]),{action:'voice-access',actorId:u.id,targetId:target.id,previousRole:previous?'18 voice starts':'6 voice starts',role:body.enabled?'18 voice starts':'6 voice starts',at:new Date().toISOString()}].slice(-1000);
+            return {id:target.id,voiceTester:target.voiceTester};
+          }
           const target=changeRole(db,u.id,body.userId,body.role);
           await client.query('UPDATE user_credentials SET version=version+1 WHERE user_id=$1',[target.id]);
           return target;
         });
-        for(const [token,session] of sessions)if(session.userId===updated.id)sessions.delete(token);
+        if(url.pathname==='/api/owner/role')for(const [token,session] of sessions)if(session.userId===updated.id)sessions.delete(token);
         return json(res,200,{ok:true,user:updated});
       }
       return json(res,404,{error:'Unknown owner action.'});
@@ -595,7 +609,7 @@ Use only information in the supplied profile and transcript. Do not reward inven
       }
       const sdp=(await readBody(req)).toString();
       if(!sdp.startsWith('v=0') || sdp.length>64000)return json(res,400,{error:'Invalid voice connection offer.'});
-      if(!await voiceLimits.reserve(u.id))return json(res,429,{error:'Daily voice limit reached (6 starts per account). Try again after midnight UTC. Your learning notes remain available.'});
+      if(!await voiceLimits.reserve(u.id,dailyLimit(u)))return json(res,429,{error:'You have used your '+dailyLimit(u)+' voice starts for today. They reset at midnight UTC. You can still read lessons and save notes.'});
 const embassyKnowledge = loadEmbassyKnowledge(athlete.interviewLocation);
       let instructions=`You are a realistic but fair F-1 student visa mock interviewer for VisaAtlas.
 You are speaking with ${athlete.name}.

@@ -8,8 +8,9 @@ function fixture(){
    if(sql.startsWith('INSERT INTO voice_daily_usage')){
      assert.match(sql,/ON CONFLICT \(user_id\) DO UPDATE/);assert.match(sql,/RETURNING starts/);
      const previous=daily.get(args[0]),n=previous?.day===day?previous.starts+1:1;
-     if(n>6)return {rows:[]};daily.set(args[0],{day,starts:n});return {rows:[{starts:n}]};
+     if(n>args[1])return {rows:[]};daily.set(args[0],{day,starts:n});return {rows:[{starts:n}]};
    }
+   if(sql.startsWith('SELECT starts FROM voice_daily_usage')){const row=daily.get(args[0]);return {rows:row?.day===day?[row]:[]};}
    if(sql.startsWith('INSERT INTO voice_call_limits')){if(failTrack)throw Error('DB unavailable');calls.set(args[0],args[1]);return {rows:[]};}
    if(sql.startsWith('SELECT call_id')){assert.match(sql,/expires_at<=NOW\(\)/);return {rows:[...calls.keys()].map(call_id=>({call_id}))};}
    if(sql.startsWith('DELETE FROM voice_call_limits')){calls.delete(args[0]);return {rows:[]};}
@@ -24,6 +25,18 @@ test('six starts are shared across modes and new limiter instances; next UTC day
  const results=await Promise.all(Array.from({length:8},()=>f.make().reserve('u1')));
  assert.equal(results.filter(Boolean).length,6);assert.equal(await f.make().reserve('u1'),false);
  assert.equal(await f.make().reserve('u2'),true);f.nextDay();assert.equal(await f.make().reserve('u1'),true);
+});
+test('tester allowance is capped at 18 and changing access does not erase usage',async()=>{
+ const f=fixture(),limiter=f.make();
+ const results=await Promise.all(Array.from({length:20},()=>limiter.reserve('tester',18)));
+ assert.equal(results.filter(Boolean).length,18);
+ assert.deepEqual((({limit,used,remaining})=>({limit,used,remaining}))(await limiter.status('tester',18)),{limit:18,used:18,remaining:0});
+ assert.equal(await limiter.reserve('tester',6),false);
+ assert.equal((await limiter.status('tester',6)).remaining,0);
+ await assert.rejects(limiter.reserve('tester',100));
+ f.nextDay();assert.equal((await limiter.status('tester',18)).remaining,18);
+ const {dailyLimit}=require('../voice-limits');
+ assert.equal(dailyLimit({role:'owner'}),6);assert.equal(dailyLimit({voiceTester:true}),18);assert.equal(dailyLimit({voiceTester:'true'}),6);
 });
 test('server stores mode-specific deadlines and can expire a call after restart',async()=>{
  const f=fixture();assert.equal(await f.make().track('https://api.openai.com/v1/realtime/calls/rtc_one','learn'),480);
@@ -43,3 +56,4 @@ test('persistence failure hangs up the call rather than allowing an untracked se
  assert.equal(f.requests.length,1);assert.equal(f.calls.size,0);
  assert.equal(POLICY.learn.tokens,1024);assert.equal(POLICY.mock.tokens,512);
 });
+

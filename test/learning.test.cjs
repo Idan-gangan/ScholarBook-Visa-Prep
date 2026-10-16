@@ -26,7 +26,8 @@ function harness(user={id:'u1',role:'athlete'},env={}){
      if(row.token||row.attempts>=6)return {rows:[]};row.attempts++;row.token=args[1];evaluationUsage.set(args[0],row);return {rows:[{attempts:row.attempts}]};
    }
    if(sql.startsWith('UPDATE evaluation_daily_usage')){const row=evaluationUsage.get(args[0]);if(row?.token===args[1])row.token=null;return {rows:[]};}
-   if(sql.startsWith('INSERT INTO voice_daily_usage'))return {rows:++starts<=6?[{starts}]:[]};
+   if(sql.startsWith('INSERT INTO voice_daily_usage'))return {rows:starts<args[1]?[{starts:++starts}]:[]};
+   if(sql.startsWith('SELECT starts FROM voice_daily_usage'))return {rows:[{starts}]};
    if(sql.startsWith('INSERT INTO voice_call_limits'))return {rows:[]};
    throw new Error('Unexpected query: '+sql);
  }};
@@ -61,8 +62,24 @@ test('owner routes reject anonymous, student and staff accounts',async()=>{
   const h=harness({id:'u1',role});
   assert.equal((await h.request('GET','/api/owner/accounts')).status,403);
   assert.equal((await h.request('POST','/api/owner/role',{userId:'u1',role:'owner'})).status,403);
+  assert.equal((await h.request('POST','/api/owner/voice-access',{userId:'u1',enabled:true})).status,403);
  }
  assert.equal((await harness().request('GET','/api/owner/accounts',undefined,false)).status,401);
+});
+test('owner can grant extra voice starts without changing permissions; password and boolean are required',async()=>{
+ const password='Test-owner-passphrase-123';
+ const h=harness({id:'u1',role:'owner',passwordHash:await passwords.hashPassword(password)});
+ h.db.users.push({id:'u2',role:'athlete'});
+ const route='/api/owner/voice-access';
+ assert.equal((await h.request('POST',route,{userId:'u2',enabled:true,currentPassword:'wrong'})).status,403);
+ assert.equal((await h.request('POST',route,{userId:'u2',enabled:'true',currentPassword:password})).status,400);
+ assert.equal((await h.request('POST',route,{userId:'u2',enabled:true,currentPassword:password})).status,200);
+ assert.equal(h.db.users[1].voiceTester,true);assert.equal(h.db.users[1].role,'athlete');
+ assert.equal(h.db.securityAudit.at(-1).action,'voice-access');
+ assert.equal((await h.request('GET','/api/voice-usage',undefined,false)).status,401);
+ assert.equal((await h.request('GET','/api/voice-usage')).body.limit,6);
+ h.db.users[0].voiceTester=true;
+ assert.equal((await h.request('GET','/api/voice-usage')).body.limit,18);
 });
 test('owner sees accounts without credentials, all students and reports, and own profile',async()=>{
  const h=harness({id:'u1',role:'owner',email:'owner@example.test',secret:'never-expose'});
@@ -243,9 +260,12 @@ test('unauthenticated and cross-student requests cannot read/save notes or start
  for(const method of ['GET','PUT'])assert.equal((await h.request(method,'/api/learning/study-purpose?athleteId=s2',{})).status,403);
  assert.equal((await h.request('POST','/api/realtime-session?athleteId=s2&mode=learn&lesson=study-purpose','v=0\r\noffer')).status,403);assert.equal(h.calls.length,0);
 });
-test('completion requires all notes and reflection; oversized or malformed notes are rejected',async()=>{
+test('completion requires reflection but no notes; oversized or malformed notes are rejected',async()=>{
  const h=harness();for(const body of [{completed:true},{subjectReason:'a'.repeat(2001)},{subjectReason:{injected:true}},'{invalid'])assert.equal((await h.request('PUT','/api/learning/study-purpose?athleteId=s1',body)).status,400);
  assert.equal(h.progress.size,0);
+ assert.equal((await h.request('PUT','/api/learning/study-purpose?athleteId=s1',{completed:true,reflected:true})).status,200);
+ assert.equal((await h.request('GET','/api/learning/study-purpose?athleteId=s1')).body.progress.completed,true);
+ assert.equal(h.db.reports.length,0);
 });
 test('report focus stays scoped to its student and selected lesson',async()=>{
  const h=harness();
