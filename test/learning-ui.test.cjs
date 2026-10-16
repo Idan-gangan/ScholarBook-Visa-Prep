@@ -32,6 +32,16 @@ function fixture(){
  vm.runInContext(html.match(/<script>([\s\S]*?)<\/script>/)[1].replace('boot().catch(()=>{if(new URLSearchParams(location.search).get("signin")==="1")backToLogin()});',''),ctx);
  return {elements,store,ctx,run:code=>vm.runInContext(code,ctx)};
 }
+test('student dashboard uses latest feedback and omits staff-only columns',()=>{
+ const f=fixture();f.run(`me={id:'u1',role:'athlete'};athletes=[{id:'s1',userId:'u1',name:'Test',mocks:2,currentScore:0,mainConcern:'New student — not yet assessed'}];reports=[{id:'old',athleteId:'s1',createdAt:'2026-01-01',overall:45},{id:'new',athleteId:'s1',createdAt:'2026-02-01',overall:75,feedback:'Clear study plans',nextStep:'Check your funding details'}];renderAll()`);
+ assert.match(f.elements.get('dashCards').innerHTML,/75\/100/);
+ assert.match(f.elements.get('dashCards').innerHTML,/Building confidence/);
+ assert.match(f.elements.get('athleteTable').innerHTML,/Clear study plans/);
+ assert.match(f.elements.get('athleteTable').innerHTML,/Check your funding details/);
+ assert.doesNotMatch(f.elements.get('athleteTable').innerHTML,/Human sessions|New student|<table>/);
+ f.run(`reports=[];renderAll()`);assert.match(f.elements.get('dashCards').innerHTML,/Start your first practice/);assert.doesNotMatch(f.elements.get('dashCards').innerHTML,/0\/100/);
+ f.run(`reports=[{id:'r',athleteId:'s1',overall:null}];renderAll()`);assert.match(f.elements.get('dashCards').innerHTML,/More answers needed/);
+});
 test('owner dashboard escapes account details and clears password after role changes',async()=>{
  const f=fixture();f.store.user={id:'u1',name:'Owner',role:'owner'};
  f.store.ownerData={counts:{accounts:2,students:1,reports:0},users:[f.store.user,{id:'u2',name:'<img src=x>',email:'<script>@example.com',role:'athlete'}],audit:[]};
@@ -254,7 +264,8 @@ test('module switch respects unsaved notes and stops an active tutor',async()=>{
 test('student labels and study-level choices preserve legacy profile values safely',async()=>{
  const f=fixture();await f.run('boot()');
  assert.equal(f.elements.get('role').textContent,'Student');
- assert.match(f.elements.get('athleteTable').innerHTML,/<th>Student<\/th>/);
+ assert.match(f.elements.get('athleteTable').innerHTML,/Latest feedback/);
+ assert.match(f.elements.get('managerTable').innerHTML,/<th>Student<\/th>/);
  const options=f.run('levelOptions("Graduate")');
  for(const name of ['High school','Undergraduate','Master’s','PhD / Doctorate'])assert.ok(options.includes(name));
  assert.match(options,/value="Graduate" selected/);
