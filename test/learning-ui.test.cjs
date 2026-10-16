@@ -16,7 +16,7 @@ function fixture(){
    else if(route==='/api/owner/accounts')data=store.ownerData;
    else if(route==='/api/owner/role')data={ok:true};
    else if(route==='/api/owner/voice-access')data={ok:true};
-   else if(route==='/api/voice-usage')data={limit:6,used:2,remaining:4,resetsAt:'2026-10-17T00:00:00.000Z'};
+   else if(route==='/api/voice-usage')data={learn:{limit:12,used:2,remaining:10,resetsAt:'2026-10-17T00:00:00.000Z'},mock:{limit:6,used:1,remaining:5,resetsAt:'2026-10-17T00:00:00.000Z'},reports:{limit:6,used:1,remaining:5,attemptsRemaining:11,resetsAt:'2026-10-17T00:00:00.000Z'}};
    else if(route==='/api/profile-options')data=JSON.parse(JSON.stringify(require('../profile-options')));
    else if(route==='/api/athletes')data=[student];else if(route==='/api/reports')data=[];else if(route==='/api/my-profile')data=student;
    else if(route.startsWith('/api/learning/')){
@@ -53,7 +53,7 @@ test('student navigation excludes owner tools and does not fetch accounts',async
 test('overview hides lesson details until selection and allows return without losing saved completion',async()=>{
  const f=fixture();await f.run('boot()');
  assert.equal(f.elements.get('lessonDetails').classList.contains('hidden'),true);
- assert.match(f.elements.get('learningVoiceUsage').textContent,/4 of 6 voice starts left/);
+ assert.match(f.elements.get('learningVoiceUsage').textContent,/10 of 12 tutoring starts left/);
  await f.run("selectLearningModule('funding')");
  assert.equal(f.elements.get('lessonDetails').classList.contains('hidden'),false);
  f.elements.get('learn_reflected').checked=true;await f.run('saveLesson(true)');

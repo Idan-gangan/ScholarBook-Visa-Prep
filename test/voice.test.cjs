@@ -6,7 +6,7 @@ const code=html.slice(html.indexOf('// Voice lifecycle:'),html.indexOf('async fu
 function setup(){
  const els=new Map(),sent=[],lines=[],timers=new Map();let next=0;
  const track={enabled:false,stop(){this.stopped=true}};
- const ctx=vm.createContext({console,AbortController,JSON,refreshVoiceUsage(){},navigator:{},RTCPeerConnection:function(){},setTimeout:fn=>{timers.set(++next,fn);return next},clearTimeout:id=>timers.delete(id),$:id=>{if(!els.has(id))els.set(id,{value:'athlete1',replaceChildren(){}});return els.get(id)},addLine:(role,text)=>lines.push({role,text}),fetch(){}});
+ const ctx=vm.createContext({console,AbortController,JSON,refreshVoiceUsage(){},navigator:{},RTCPeerConnection:function(){},setTimeout:fn=>{timers.set(++next,fn);return next},clearTimeout:id=>timers.delete(id),$:id=>{if(!els.has(id))els.set(id,{value:'athlete1',dataset:{},replaceChildren(){}});return els.get(id)},addLine:(role,text)=>lines.push({role,text}),fetch(){}});
  vm.runInContext('let pc=null,dc=null,stream=null,transcript=[];'+code,ctx);
  ctx.channel={readyState:'open',send:s=>sent.push(JSON.parse(s)),close(){}};ctx.mic={getAudioTracks:()=>[track],getTracks:()=>[track]};
  vm.runInContext('voice={connected:true,busy:false,playing:false,waiting:false,pendingItem:null};dc=channel;stream=mic',ctx);
@@ -76,3 +76,11 @@ test('browser script parses and manual answer controls are removed',()=>{
  new vm.Script(html.match(/<script>([\s\S]*?)<\/script>/)[1]);assert.doesNotMatch(html,/answerBtn|voiceMode|toggleAnswer|Tap to answer|Finish answer/);
 });
 
+
+test('portrait speaking indicator follows playback events and resets on stop',()=>{
+ const s=setup();s.run("voice.mode='mock';voiceRespond(voice)");assert.equal(s.els.get('interviewerStage').dataset.state,'thinking');
+ s.event({type:'output_audio_buffer.started'});assert.equal(s.els.get('interviewerStage').dataset.state,'speaking');
+ s.event({type:'response.done',response:{output:[{content:[{type:'audio'}]}]}});assert.equal(s.els.get('interviewerStage').dataset.state,'speaking');
+ s.event({type:'output_audio_buffer.stopped'});assert.equal(s.els.get('interviewerStage').dataset.state,'listening');
+ s.run('stopVoice()');assert.equal(s.els.get('interviewerStage').dataset.state,'ended');
+});
