@@ -7,6 +7,7 @@
     "start": "node server.js"
   },
   "dependencies": {
+    "flag-icons": "7.6.0",
     "libphonenumber-js": "1.13.15",
     "pg": "^8.16.3"
   },

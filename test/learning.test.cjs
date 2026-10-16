@@ -4,12 +4,12 @@ const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const {Readable}=require('node:stream');
 const learning=require('../learning');
 const passwords=require('../passwords');
-const student={id:'s1',userId:'u1',name:'Test student',major:'Biology',university:'Example University',scholarship:'Merit award',scholarshipCoverage:'Tuition only',remainingSponsor:'Parent',postGradPlan:'Environmental research',email:'private@example.test'};
+const student={id:'s1',userId:'u1',name:'Test student',major:'Biology',university:'Example University',scholarship:'Merit award',scholarshipCoverage:'Tuition only',remainingSponsor:'Parent',postGradPlan:'Environmental research',email:'private@example.test',country:'Nigeria',phoneCountry:'NG',phone:'+2348031234567',interviewCountry:'Nigeria',interviewCity:'Lagos',studyStatus:'Not started yet',previousRefusal:'No',previousTravel:'No',previousAttempts:0,fundingSources:'Family / guardian'};
 function harness(user={id:'u1',role:'athlete'},env={}){
  let handler;let starts=0;const progress=new Map(),calls=[],logs=[];
  const credentials=new Map([[user.id,{password_hash:user.passwordHash||'fixture-unusable',version:0}]]);
  const evaluationUsage=new Map();
- const db={users:[user],athletes:[student,{id:'s2',userId:'u2'}],reports:[],transcripts:[]};
+ const db={users:[user],athletes:[{academicLevel:'Undergraduate',...structuredClone(student)},{id:'s2',userId:'u2'}],reports:[],transcripts:[]};
  const pool={query:async(sql,args)=>{
    if(sql.trim().startsWith('CREATE TABLE') || sql.trim().startsWith('INSERT INTO app_state'))return {rows:[]};
    if(sql.startsWith('INSERT INTO user_credentials')){if(!credentials.has(args[0]))credentials.set(args[0],{password_hash:args[1],version:0});return {rows:[]};}
@@ -49,7 +49,7 @@ function harness(user={id:'u1',role:'athlete'},env={}){
      return pool.query(sql,args);
    },release(){if(unlock)unlock();}};
  };
- const context=vm.createContext({require:id=>id==='./email-verification'?require('../email-verification'):id==='./profile-options'?require('../profile-options'):id==='./owner-access'?require('../owner-access'):id==='./report-practice'?require('../report-practice'):id==='http'?{createServer:fn=>{handler=fn;return {}}}:id==='pg'?{Pool:function(){return pool}}:id==='fs'?{...fs,readFileSync:(file,...args)=>file===path.resolve(__dirname,'../data/db.json')?'{}':fs.readFileSync(file,...args)}:id==='./evaluation-limits'?require('../evaluation-limits'):id==='./voice-limits'?require('../voice-limits'):id==='./learning'?learning:id==='./passwords'?passwords:id==='./password-recovery'?require('../password-recovery'):require(id),__dirname:path.resolve(__dirname,'..'),process:{env:{OPENAI_API_KEY:'test-only',...env}},console:{log:(...args)=>logs.push(args.join(' ')),warn:(...args)=>logs.push(args.join(' ')),error:(...args)=>logs.push(args.join(' '))},Buffer,URL,FormData,AbortSignal,fetch:async(url,options)=>{if(url.endsWith('/responses')){calls.push({url,request:JSON.parse(options.body)});return {ok:true,json:async()=>({output_text:JSON.stringify({scores:{},overall:45,readiness:'High Concern',biggestWeakness:'Test',feedback:'Test feedback',nextStep:'Practice'})})};}calls.push({url,session:JSON.parse(options.body.get('session'))});return {ok:true,status:200,headers:{get:()=>'/v1/realtime/calls/rtc_test'},text:async()=> 'test-sdp-answer'}}});
+ const context=vm.createContext({require:id=>id==='./public/profile-requirements'?require('../public/profile-requirements'):id==='./interview-posts.json'?require('../interview-posts.json'):id==='./email-verification'?require('../email-verification'):id==='./profile-options'?require('../profile-options'):id==='./owner-access'?require('../owner-access'):id==='./report-practice'?require('../report-practice'):id==='http'?{createServer:fn=>{handler=fn;return {}}}:id==='pg'?{Pool:function(){return pool}}:id==='fs'?{...fs,readFileSync:(file,...args)=>file===path.resolve(__dirname,'../data/db.json')?'{}':fs.readFileSync(file,...args)}:id==='./evaluation-limits'?require('../evaluation-limits'):id==='./voice-limits'?require('../voice-limits'):id==='./learning'?learning:id==='./passwords'?passwords:id==='./password-recovery'?require('../password-recovery'):require(id),__dirname:path.resolve(__dirname,'..'),process:{env:{OPENAI_API_KEY:'test-only',...env}},console:{log:(...args)=>logs.push(args.join(' ')),warn:(...args)=>logs.push(args.join(' ')),error:(...args)=>logs.push(args.join(' '))},Buffer,URL,FormData,AbortSignal,fetch:async(url,options)=>{if(url.endsWith('/responses')){calls.push({url,request:JSON.parse(options.body)});return {ok:true,json:async()=>({output_text:JSON.stringify({scores:{},overall:45,readiness:'High Concern',biggestWeakness:'Test',feedback:'Test feedback',nextStep:'Practice'})})};}calls.push({url,session:JSON.parse(options.body.get('session'))});return {ok:true,status:200,headers:{get:()=>'/v1/realtime/calls/rtc_test'},text:async()=> 'test-sdp-answer'}}});
  let source=fs.readFileSync(path.join(__dirname,'../server.js'),'utf8');source=source.slice(0,source.indexOf('initDb().then('));vm.runInContext(source,context);vm.runInContext(`sessions.set('test-token',{userId:${JSON.stringify(user.id)},version:0,expires:Date.now()+60000})`,context);
  async function request(method,url,body,authenticated=true){
    const req=Readable.from(body===undefined?[]:[Buffer.from(typeof body==='string'?body:JSON.stringify(body))]);req.method=method;req.url=url;req.headers={'content-type':'application/json',host:'localhost',cookie:authenticated?'sb_session=test-token':''};
@@ -323,6 +323,14 @@ test('tutor gets teaching instructions and saved context, never mock-only instru
  assert.equal(context.notes.subjectReason,'I enjoy ecology');
  assert.equal(context.profile.email,undefined);
  assert.match(session.instructions,/learning tutor/);assert.match(session.instructions,/I enjoy ecology/);assert.doesNotMatch(session.instructions,/Do not coach during the interview/);assert.equal(session.audio.input.turn_detection.create_response,false);assert.equal(session.audio.input.turn_detection.interrupt_response,false);
+});
+test('incomplete profile blocks mock before spending; learning remains accessible and drafts save',async()=>{
+ const h=harness();h.db.athletes[0].phone='';
+ const blocked=await h.request('POST','/api/realtime-session?athleteId=s1','v=0\r\noffer');assert.equal(blocked.status,422);assert.match(blocked.body.error,/Phone number/);assert.equal(h.calls.length,0);
+ assert.equal((await h.request('POST','/api/realtime-session?athleteId=s1&mode=learn&lesson=study-purpose','v=0\r\noffer')).status,200);
+ const saved=await h.request('PUT','/api/my-profile',{interviewCountry:'Nigeria',interviewCity:'Lagos',previousAttempts:''});assert.equal(saved.status,200);assert.equal(saved.body.profileStatus,'Incomplete');assert.equal(saved.body.interviewLocation,'Lagos, Nigeria');
+ assert.equal((await h.request('PUT','/api/my-profile',{previousAttempts:-1})).status,400);
+ assert.equal((await h.request('PUT','/api/my-profile',{previousAttempts:'abc'})).status,400);
 });
 test('mock role stays separate and unknown lesson/mode makes no API call',async()=>{
  const h=harness();for(const query of ['mode=other','mode=learn&lesson=missing'])assert.equal((await h.request('POST','/api/realtime-session?athleteId=s1&'+query,'v=0\r\noffer')).status,400);

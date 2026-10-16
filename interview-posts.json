@@ -1,0 +1,1212 @@
+{
+  "source": "https://travel.state.gov/content/travel/en/us-visas/visa-information-resources/global-visa-wait-times.html",
+  "checkedAt": "2026-10-16",
+  "sourceUpdated": "2026-09-17",
+  "posts": [
+    {
+      "city": "Abidjan",
+      "studentWaitReported": true,
+      "countryCode": "CI"
+    },
+    {
+      "city": "Abu Dhabi",
+      "studentWaitReported": true,
+      "countryCode": "AE"
+    },
+    {
+      "city": "Abuja",
+      "studentWaitReported": false,
+      "countryCode": "NG"
+    },
+    {
+      "city": "Accra",
+      "studentWaitReported": true,
+      "countryCode": "GH"
+    },
+    {
+      "city": "Adana",
+      "studentWaitReported": false,
+      "countryCode": "TR"
+    },
+    {
+      "city": "Addis Ababa",
+      "studentWaitReported": true,
+      "countryCode": "ET"
+    },
+    {
+      "city": "Algiers",
+      "studentWaitReported": true,
+      "countryCode": "DZ"
+    },
+    {
+      "city": "Almaty",
+      "studentWaitReported": true,
+      "countryCode": "KZ"
+    },
+    {
+      "city": "Amman",
+      "studentWaitReported": true,
+      "countryCode": "JO"
+    },
+    {
+      "city": "Amsterdam",
+      "studentWaitReported": true,
+      "countryCode": "NL"
+    },
+    {
+      "city": "Ankara",
+      "studentWaitReported": true,
+      "countryCode": "TR"
+    },
+    {
+      "city": "Antananarivo",
+      "studentWaitReported": false,
+      "countryCode": "MG"
+    },
+    {
+      "city": "Apia",
+      "studentWaitReported": true,
+      "countryCode": "WS"
+    },
+    {
+      "city": "Ashgabat",
+      "studentWaitReported": true,
+      "countryCode": "TM"
+    },
+    {
+      "city": "Asmara",
+      "studentWaitReported": false,
+      "countryCode": "ER"
+    },
+    {
+      "city": "Astana",
+      "studentWaitReported": false,
+      "countryCode": "KZ"
+    },
+    {
+      "city": "Asuncion",
+      "studentWaitReported": true,
+      "countryCode": "PY"
+    },
+    {
+      "city": "Athens",
+      "studentWaitReported": true,
+      "countryCode": "GR"
+    },
+    {
+      "city": "Auckland",
+      "studentWaitReported": true,
+      "countryCode": "NZ"
+    },
+    {
+      "city": "Baghdad",
+      "studentWaitReported": true,
+      "countryCode": "IQ"
+    },
+    {
+      "city": "Baku",
+      "studentWaitReported": true,
+      "countryCode": "AZ"
+    },
+    {
+      "city": "Bamako",
+      "studentWaitReported": false,
+      "countryCode": "ML"
+    },
+    {
+      "city": "Bandar Seri Begawan",
+      "studentWaitReported": true,
+      "countryCode": "BN"
+    },
+    {
+      "city": "Bangkok",
+      "studentWaitReported": true,
+      "countryCode": "TH"
+    },
+    {
+      "city": "Bangui",
+      "studentWaitReported": false,
+      "countryCode": "CF"
+    },
+    {
+      "city": "Banjul",
+      "studentWaitReported": false,
+      "countryCode": "GM"
+    },
+    {
+      "city": "Barcelona",
+      "studentWaitReported": false,
+      "countryCode": "ES"
+    },
+    {
+      "city": "Beijing",
+      "studentWaitReported": true,
+      "countryCode": "CN"
+    },
+    {
+      "city": "Beirut",
+      "studentWaitReported": true,
+      "countryCode": "LB"
+    },
+    {
+      "city": "Belfast",
+      "studentWaitReported": true,
+      "countryCode": "GB"
+    },
+    {
+      "city": "Belgrade",
+      "studentWaitReported": true,
+      "countryCode": "RS"
+    },
+    {
+      "city": "Belmopan",
+      "studentWaitReported": true,
+      "countryCode": "BZ"
+    },
+    {
+      "city": "Berlin",
+      "studentWaitReported": true,
+      "countryCode": "DE"
+    },
+    {
+      "city": "Bern",
+      "studentWaitReported": true,
+      "countryCode": "CH"
+    },
+    {
+      "city": "Bishkek",
+      "studentWaitReported": true,
+      "countryCode": "KG"
+    },
+    {
+      "city": "Bogota",
+      "studentWaitReported": true,
+      "countryCode": "CO"
+    },
+    {
+      "city": "Brasilia",
+      "studentWaitReported": true,
+      "countryCode": "BR"
+    },
+    {
+      "city": "Bratislava",
+      "studentWaitReported": true,
+      "countryCode": "SK"
+    },
+    {
+      "city": "Brazzaville",
+      "studentWaitReported": false,
+      "countryCode": "CG"
+    },
+    {
+      "city": "Bridgetown",
+      "studentWaitReported": true,
+      "countryCode": "BB"
+    },
+    {
+      "city": "Brussels",
+      "studentWaitReported": true,
+      "countryCode": "BE"
+    },
+    {
+      "city": "Bucharest",
+      "studentWaitReported": true,
+      "countryCode": "RO"
+    },
+    {
+      "city": "Budapest",
+      "studentWaitReported": true,
+      "countryCode": "HU"
+    },
+    {
+      "city": "Buenos Aires",
+      "studentWaitReported": true,
+      "countryCode": "AR"
+    },
+    {
+      "city": "Bujumbura",
+      "studentWaitReported": false,
+      "countryCode": "BI"
+    },
+    {
+      "city": "Cairo",
+      "studentWaitReported": true,
+      "countryCode": "EG"
+    },
+    {
+      "city": "Calgary",
+      "studentWaitReported": true,
+      "countryCode": "CA"
+    },
+    {
+      "city": "Canberra",
+      "studentWaitReported": false,
+      "countryCode": "AU"
+    },
+    {
+      "city": "Cape Town",
+      "studentWaitReported": true,
+      "countryCode": "ZA"
+    },
+    {
+      "city": "Caracas",
+      "studentWaitReported": false,
+      "countryCode": "VE"
+    },
+    {
+      "city": "Casablanca",
+      "studentWaitReported": true,
+      "countryCode": "MA"
+    },
+    {
+      "city": "Chengdu",
+      "studentWaitReported": false,
+      "countryCode": "CN"
+    },
+    {
+      "city": "Chennai (Madras)",
+      "studentWaitReported": true,
+      "countryCode": "IN"
+    },
+    {
+      "city": "Chiang Mai",
+      "studentWaitReported": false,
+      "countryCode": "TH"
+    },
+    {
+      "city": "Chisinau",
+      "studentWaitReported": true,
+      "countryCode": "MD"
+    },
+    {
+      "city": "Ciudad Juarez",
+      "studentWaitReported": true,
+      "countryCode": "MX"
+    },
+    {
+      "city": "Colombo",
+      "studentWaitReported": true,
+      "countryCode": "LK"
+    },
+    {
+      "city": "Conakry",
+      "studentWaitReported": false,
+      "countryCode": "GN"
+    },
+    {
+      "city": "Copenhagen",
+      "studentWaitReported": true,
+      "countryCode": "DK"
+    },
+    {
+      "city": "Cotonou",
+      "studentWaitReported": false,
+      "countryCode": "BJ"
+    },
+    {
+      "city": "Curacao",
+      "studentWaitReported": true,
+      "countryCode": "CW"
+    },
+    {
+      "city": "Dakar",
+      "studentWaitReported": true,
+      "countryCode": "SN"
+    },
+    {
+      "city": "Damascus",
+      "studentWaitReported": false,
+      "countryCode": "SY"
+    },
+    {
+      "city": "Dar Es Salaam",
+      "studentWaitReported": true,
+      "countryCode": "TZ"
+    },
+    {
+      "city": "Dhahran",
+      "studentWaitReported": true,
+      "countryCode": "SA"
+    },
+    {
+      "city": "Dhaka",
+      "studentWaitReported": true,
+      "countryCode": "BD"
+    },
+    {
+      "city": "Dili",
+      "studentWaitReported": true,
+      "countryCode": "TL"
+    },
+    {
+      "city": "Djibouti",
+      "studentWaitReported": true,
+      "countryCode": "DJ"
+    },
+    {
+      "city": "Doha",
+      "studentWaitReported": true,
+      "countryCode": "QA"
+    },
+    {
+      "city": "Dubai",
+      "studentWaitReported": true,
+      "countryCode": "AE"
+    },
+    {
+      "city": "Dublin",
+      "studentWaitReported": true,
+      "countryCode": "IE"
+    },
+    {
+      "city": "Durban",
+      "studentWaitReported": false,
+      "countryCode": "ZA"
+    },
+    {
+      "city": "Dushanbe",
+      "studentWaitReported": true,
+      "countryCode": "TJ"
+    },
+    {
+      "city": "Edinburgh",
+      "studentWaitReported": false,
+      "countryCode": "GB"
+    },
+    {
+      "city": "Erbil",
+      "studentWaitReported": true,
+      "countryCode": "IQ"
+    },
+    {
+      "city": "Florence",
+      "studentWaitReported": true,
+      "countryCode": "IT"
+    },
+    {
+      "city": "Frankfurt",
+      "studentWaitReported": true,
+      "countryCode": "DE"
+    },
+    {
+      "city": "Freetown",
+      "studentWaitReported": false,
+      "countryCode": "SL"
+    },
+    {
+      "city": "Fukuoka",
+      "studentWaitReported": false,
+      "countryCode": "JP"
+    },
+    {
+      "city": "Gaborone",
+      "studentWaitReported": false,
+      "countryCode": "BW"
+    },
+    {
+      "city": "Georgetown",
+      "studentWaitReported": true,
+      "countryCode": "GY"
+    },
+    {
+      "city": "Guadalajara",
+      "studentWaitReported": true,
+      "countryCode": "MX"
+    },
+    {
+      "city": "Guangzhou",
+      "studentWaitReported": true,
+      "countryCode": "CN"
+    },
+    {
+      "city": "Guatemala City",
+      "studentWaitReported": true,
+      "countryCode": "GT"
+    },
+    {
+      "city": "Guayaquil",
+      "studentWaitReported": true,
+      "countryCode": "EC"
+    },
+    {
+      "city": "Halifax",
+      "studentWaitReported": true,
+      "countryCode": "CA"
+    },
+    {
+      "city": "Hamilton",
+      "studentWaitReported": true,
+      "countryCode": "BM"
+    },
+    {
+      "city": "Hanoi",
+      "studentWaitReported": true,
+      "countryCode": "VN"
+    },
+    {
+      "city": "Harare",
+      "studentWaitReported": false,
+      "countryCode": "ZW"
+    },
+    {
+      "city": "Havana",
+      "studentWaitReported": false,
+      "countryCode": "CU"
+    },
+    {
+      "city": "Helsinki",
+      "studentWaitReported": true,
+      "countryCode": "FI"
+    },
+    {
+      "city": "Hermosillo",
+      "studentWaitReported": true,
+      "countryCode": "MX"
+    },
+    {
+      "city": "Ho Chi Minh City",
+      "studentWaitReported": true,
+      "countryCode": "VN"
+    },
+    {
+      "city": "Hong Kong",
+      "studentWaitReported": true,
+      "countryCode": "HK"
+    },
+    {
+      "city": "Hyderabad",
+      "studentWaitReported": true,
+      "countryCode": "IN"
+    },
+    {
+      "city": "Islamabad",
+      "studentWaitReported": true,
+      "countryCode": "PK"
+    },
+    {
+      "city": "Istanbul",
+      "studentWaitReported": true,
+      "countryCode": "TR"
+    },
+    {
+      "city": "Jakarta",
+      "studentWaitReported": true,
+      "countryCode": "ID"
+    },
+    {
+      "city": "Jeddah",
+      "studentWaitReported": true,
+      "countryCode": "SA"
+    },
+    {
+      "city": "Jerusalem",
+      "studentWaitReported": true,
+      "countryCode": "IL"
+    },
+    {
+      "city": "Johannesburg",
+      "studentWaitReported": true,
+      "countryCode": "ZA"
+    },
+    {
+      "city": "Juba",
+      "studentWaitReported": false,
+      "countryCode": "SS"
+    },
+    {
+      "city": "Kabul",
+      "studentWaitReported": false,
+      "countryCode": "AF"
+    },
+    {
+      "city": "Kampala",
+      "studentWaitReported": false,
+      "countryCode": "UG"
+    },
+    {
+      "city": "Kaohsiung",
+      "studentWaitReported": false,
+      "countryCode": "TW"
+    },
+    {
+      "city": "Karachi",
+      "studentWaitReported": true,
+      "countryCode": "PK"
+    },
+    {
+      "city": "Kathmandu",
+      "studentWaitReported": true,
+      "countryCode": "NP"
+    },
+    {
+      "city": "Khartoum",
+      "studentWaitReported": false,
+      "countryCode": "SD"
+    },
+    {
+      "city": "Kigali",
+      "studentWaitReported": true,
+      "countryCode": "RW"
+    },
+    {
+      "city": "Kingston",
+      "studentWaitReported": true,
+      "countryCode": "JM"
+    },
+    {
+      "city": "Kinshasa",
+      "studentWaitReported": false,
+      "countryCode": "CD"
+    },
+    {
+      "city": "Kolkata",
+      "studentWaitReported": true,
+      "countryCode": "IN"
+    },
+    {
+      "city": "Kolonia",
+      "studentWaitReported": true,
+      "countryCode": "FM"
+    },
+    {
+      "city": "Koror",
+      "studentWaitReported": true,
+      "countryCode": "PW"
+    },
+    {
+      "city": "Krakow",
+      "studentWaitReported": true,
+      "countryCode": "PL"
+    },
+    {
+      "city": "Kuala Lumpur",
+      "studentWaitReported": true,
+      "countryCode": "MY"
+    },
+    {
+      "city": "Kuwait",
+      "studentWaitReported": true,
+      "countryCode": "KW"
+    },
+    {
+      "city": "Kyiv",
+      "studentWaitReported": false,
+      "countryCode": "UA"
+    },
+    {
+      "city": "La Paz",
+      "studentWaitReported": true,
+      "countryCode": "BO"
+    },
+    {
+      "city": "Lagos",
+      "studentWaitReported": true,
+      "countryCode": "NG"
+    },
+    {
+      "city": "Lahore",
+      "studentWaitReported": false,
+      "countryCode": "PK"
+    },
+    {
+      "city": "Libreville",
+      "studentWaitReported": true,
+      "countryCode": "GA"
+    },
+    {
+      "city": "Lilongwe",
+      "studentWaitReported": true,
+      "countryCode": "MW"
+    },
+    {
+      "city": "Lima",
+      "studentWaitReported": true,
+      "countryCode": "PE"
+    },
+    {
+      "city": "Lisbon",
+      "studentWaitReported": true,
+      "countryCode": "PT"
+    },
+    {
+      "city": "Ljubljana",
+      "studentWaitReported": true,
+      "countryCode": "SI"
+    },
+    {
+      "city": "Lome",
+      "studentWaitReported": true,
+      "countryCode": "TG"
+    },
+    {
+      "city": "London",
+      "studentWaitReported": true,
+      "countryCode": "GB"
+    },
+    {
+      "city": "Luanda",
+      "studentWaitReported": true,
+      "countryCode": "AO"
+    },
+    {
+      "city": "Lusaka",
+      "studentWaitReported": false,
+      "countryCode": "ZM"
+    },
+    {
+      "city": "Luxembourg",
+      "studentWaitReported": true,
+      "countryCode": "LU"
+    },
+    {
+      "city": "Madrid",
+      "studentWaitReported": true,
+      "countryCode": "ES"
+    },
+    {
+      "city": "Majuro",
+      "studentWaitReported": true,
+      "countryCode": "MH"
+    },
+    {
+      "city": "Malabo",
+      "studentWaitReported": true,
+      "countryCode": "GQ"
+    },
+    {
+      "city": "Managua",
+      "studentWaitReported": true,
+      "countryCode": "NI"
+    },
+    {
+      "city": "Manama",
+      "studentWaitReported": true,
+      "countryCode": "BH"
+    },
+    {
+      "city": "Manila",
+      "studentWaitReported": true,
+      "countryCode": "PH"
+    },
+    {
+      "city": "Maputo",
+      "studentWaitReported": false,
+      "countryCode": "MZ"
+    },
+    {
+      "city": "Marseille",
+      "studentWaitReported": false,
+      "countryCode": "FR"
+    },
+    {
+      "city": "Maseru",
+      "studentWaitReported": false,
+      "countryCode": "LS"
+    },
+    {
+      "city": "Matamoros",
+      "studentWaitReported": true,
+      "countryCode": "MX"
+    },
+    {
+      "city": "Mbabane",
+      "studentWaitReported": false,
+      "countryCode": "SZ"
+    },
+    {
+      "city": "Melbourne",
+      "studentWaitReported": true,
+      "countryCode": "AU"
+    },
+    {
+      "city": "Merida",
+      "studentWaitReported": true,
+      "countryCode": "MX"
+    },
+    {
+      "city": "Mexicali Tpf",
+      "studentWaitReported": false,
+      "countryCode": "MX"
+    },
+    {
+      "city": "Mexico City",
+      "studentWaitReported": true,
+      "countryCode": "MX"
+    },
+    {
+      "city": "Milan",
+      "studentWaitReported": true,
+      "countryCode": "IT"
+    },
+    {
+      "city": "Minsk",
+      "studentWaitReported": false,
+      "countryCode": "BY"
+    },
+    {
+      "city": "Monrovia",
+      "studentWaitReported": true,
+      "countryCode": "LR"
+    },
+    {
+      "city": "Monterrey",
+      "studentWaitReported": true,
+      "countryCode": "MX"
+    },
+    {
+      "city": "Montevideo",
+      "studentWaitReported": true,
+      "countryCode": "UY"
+    },
+    {
+      "city": "Montreal",
+      "studentWaitReported": false,
+      "countryCode": "CA"
+    },
+    {
+      "city": "Mumbai (Bombay)",
+      "studentWaitReported": true,
+      "countryCode": "IN"
+    },
+    {
+      "city": "Munich",
+      "studentWaitReported": true,
+      "countryCode": "DE"
+    },
+    {
+      "city": "Muscat",
+      "studentWaitReported": true,
+      "countryCode": "OM"
+    },
+    {
+      "city": "N`Djamena",
+      "studentWaitReported": false,
+      "countryCode": "TD"
+    },
+    {
+      "city": "Naha",
+      "studentWaitReported": true,
+      "countryCode": "JP"
+    },
+    {
+      "city": "Nairobi",
+      "studentWaitReported": true,
+      "countryCode": "KE"
+    },
+    {
+      "city": "Naples",
+      "studentWaitReported": true,
+      "countryCode": "IT"
+    },
+    {
+      "city": "Nassau",
+      "studentWaitReported": true,
+      "countryCode": "BS"
+    },
+    {
+      "city": "New Delhi",
+      "studentWaitReported": true,
+      "countryCode": "IN"
+    },
+    {
+      "city": "Niamey",
+      "studentWaitReported": false,
+      "countryCode": "NE"
+    },
+    {
+      "city": "Nicosia",
+      "studentWaitReported": true,
+      "countryCode": "CY"
+    },
+    {
+      "city": "Nogales",
+      "studentWaitReported": true,
+      "countryCode": "MX"
+    },
+    {
+      "city": "Nouakchott",
+      "studentWaitReported": false,
+      "countryCode": "MR"
+    },
+    {
+      "city": "Nuevo Laredo",
+      "studentWaitReported": true,
+      "countryCode": "MX"
+    },
+    {
+      "city": "Osaka/Kobe",
+      "studentWaitReported": true,
+      "countryCode": "JP"
+    },
+    {
+      "city": "Oslo",
+      "studentWaitReported": true,
+      "countryCode": "NO"
+    },
+    {
+      "city": "Ottawa",
+      "studentWaitReported": true,
+      "countryCode": "CA"
+    },
+    {
+      "city": "Ouagadougou",
+      "studentWaitReported": false,
+      "countryCode": "BF"
+    },
+    {
+      "city": "Panama City",
+      "studentWaitReported": true,
+      "countryCode": "PA"
+    },
+    {
+      "city": "Paramaribo",
+      "studentWaitReported": true,
+      "countryCode": "SR"
+    },
+    {
+      "city": "Paris",
+      "studentWaitReported": true,
+      "countryCode": "FR"
+    },
+    {
+      "city": "Perth",
+      "studentWaitReported": true,
+      "countryCode": "AU"
+    },
+    {
+      "city": "Phnom Penh",
+      "studentWaitReported": true,
+      "countryCode": "KH"
+    },
+    {
+      "city": "Podgorica",
+      "studentWaitReported": true,
+      "countryCode": "ME"
+    },
+    {
+      "city": "Ponta Delgada",
+      "studentWaitReported": false,
+      "countryCode": "PT"
+    },
+    {
+      "city": "Port Au Prince",
+      "studentWaitReported": false,
+      "countryCode": "HT"
+    },
+    {
+      "city": "Port Louis",
+      "studentWaitReported": true,
+      "countryCode": "MU"
+    },
+    {
+      "city": "Port Moresby",
+      "studentWaitReported": true,
+      "countryCode": "PG"
+    },
+    {
+      "city": "Port Of Spain",
+      "studentWaitReported": true,
+      "countryCode": "TT"
+    },
+    {
+      "city": "Porto Alegre",
+      "studentWaitReported": true,
+      "countryCode": "BR"
+    },
+    {
+      "city": "Prague",
+      "studentWaitReported": true,
+      "countryCode": "CZ"
+    },
+    {
+      "city": "Praia",
+      "studentWaitReported": true,
+      "countryCode": "CV"
+    },
+    {
+      "city": "Pretoria",
+      "studentWaitReported": false,
+      "countryCode": "ZA"
+    },
+    {
+      "city": "Pristina",
+      "studentWaitReported": true,
+      "countryCode": "XK"
+    },
+    {
+      "city": "Quebec",
+      "studentWaitReported": true,
+      "countryCode": "CA"
+    },
+    {
+      "city": "Quito",
+      "studentWaitReported": true,
+      "countryCode": "EC"
+    },
+    {
+      "city": "Rangoon",
+      "studentWaitReported": true,
+      "countryCode": "MM"
+    },
+    {
+      "city": "Recife",
+      "studentWaitReported": true,
+      "countryCode": "BR"
+    },
+    {
+      "city": "Reykjavik",
+      "studentWaitReported": true,
+      "countryCode": "IS"
+    },
+    {
+      "city": "Riga",
+      "studentWaitReported": true,
+      "countryCode": "LV"
+    },
+    {
+      "city": "Rio De Janeiro",
+      "studentWaitReported": true,
+      "countryCode": "BR"
+    },
+    {
+      "city": "Riyadh",
+      "studentWaitReported": true,
+      "countryCode": "SA"
+    },
+    {
+      "city": "Rome",
+      "studentWaitReported": true,
+      "countryCode": "IT"
+    },
+    {
+      "city": "San Jose",
+      "studentWaitReported": true,
+      "countryCode": "CR"
+    },
+    {
+      "city": "San Salvador",
+      "studentWaitReported": true,
+      "countryCode": "SV"
+    },
+    {
+      "city": "Sanaa",
+      "studentWaitReported": false,
+      "countryCode": "YE"
+    },
+    {
+      "city": "Santiago",
+      "studentWaitReported": true,
+      "countryCode": "CL"
+    },
+    {
+      "city": "Santo Domingo",
+      "studentWaitReported": true,
+      "countryCode": "DO"
+    },
+    {
+      "city": "Sao Paulo",
+      "studentWaitReported": true,
+      "countryCode": "BR"
+    },
+    {
+      "city": "Sapporo",
+      "studentWaitReported": true,
+      "countryCode": "JP"
+    },
+    {
+      "city": "Sarajevo",
+      "studentWaitReported": true,
+      "countryCode": "BA"
+    },
+    {
+      "city": "Seoul",
+      "studentWaitReported": true,
+      "countryCode": "KR"
+    },
+    {
+      "city": "Shanghai",
+      "studentWaitReported": true,
+      "countryCode": "CN"
+    },
+    {
+      "city": "Shenyang",
+      "studentWaitReported": true,
+      "countryCode": "CN"
+    },
+    {
+      "city": "Singapore",
+      "studentWaitReported": true,
+      "countryCode": "SG"
+    },
+    {
+      "city": "Skopje",
+      "studentWaitReported": true,
+      "countryCode": "MK"
+    },
+    {
+      "city": "Sofia",
+      "studentWaitReported": true,
+      "countryCode": "BG"
+    },
+    {
+      "city": "St Georges",
+      "studentWaitReported": false,
+      "countryCode": "GD"
+    },
+    {
+      "city": "St Petersburg",
+      "studentWaitReported": false,
+      "countryCode": "RU"
+    },
+    {
+      "city": "Stockholm",
+      "studentWaitReported": true,
+      "countryCode": "SE"
+    },
+    {
+      "city": "Surabaya",
+      "studentWaitReported": true,
+      "countryCode": "ID"
+    },
+    {
+      "city": "Suva",
+      "studentWaitReported": true,
+      "countryCode": "FJ"
+    },
+    {
+      "city": "Sydney",
+      "studentWaitReported": true,
+      "countryCode": "AU"
+    },
+    {
+      "city": "Taipei",
+      "studentWaitReported": true,
+      "countryCode": "TW"
+    },
+    {
+      "city": "Tallinn",
+      "studentWaitReported": true,
+      "countryCode": "EE"
+    },
+    {
+      "city": "Tashkent",
+      "studentWaitReported": true,
+      "countryCode": "UZ"
+    },
+    {
+      "city": "Tbilisi",
+      "studentWaitReported": true,
+      "countryCode": "GE"
+    },
+    {
+      "city": "Tegucigalpa",
+      "studentWaitReported": true,
+      "countryCode": "HN"
+    },
+    {
+      "city": "Tel Aviv",
+      "studentWaitReported": true,
+      "countryCode": "IL"
+    },
+    {
+      "city": "Tijuana",
+      "studentWaitReported": true,
+      "countryCode": "MX"
+    },
+    {
+      "city": "Tirana",
+      "studentWaitReported": true,
+      "countryCode": "AL"
+    },
+    {
+      "city": "Tokyo",
+      "studentWaitReported": true,
+      "countryCode": "JP"
+    },
+    {
+      "city": "Toronto",
+      "studentWaitReported": true,
+      "countryCode": "CA"
+    },
+    {
+      "city": "Tripoli",
+      "studentWaitReported": false,
+      "countryCode": "LY"
+    },
+    {
+      "city": "Tunis",
+      "studentWaitReported": true,
+      "countryCode": "TN"
+    },
+    {
+      "city": "Ulaanbaatar",
+      "studentWaitReported": true,
+      "countryCode": "MN"
+    },
+    {
+      "city": "Valletta",
+      "studentWaitReported": true,
+      "countryCode": "MT"
+    },
+    {
+      "city": "Vancouver",
+      "studentWaitReported": true,
+      "countryCode": "CA"
+    },
+    {
+      "city": "Vienna",
+      "studentWaitReported": true,
+      "countryCode": "AT"
+    },
+    {
+      "city": "Vientiane",
+      "studentWaitReported": true,
+      "countryCode": "LA"
+    },
+    {
+      "city": "Vilnius",
+      "studentWaitReported": true,
+      "countryCode": "LT"
+    },
+    {
+      "city": "Vladivostok",
+      "studentWaitReported": false,
+      "countryCode": "RU"
+    },
+    {
+      "city": "Warsaw",
+      "studentWaitReported": true,
+      "countryCode": "PL"
+    },
+    {
+      "city": "Windhoek",
+      "studentWaitReported": false,
+      "countryCode": "NA"
+    },
+    {
+      "city": "Wuhan",
+      "studentWaitReported": true,
+      "countryCode": "CN"
+    },
+    {
+      "city": "Yaounde",
+      "studentWaitReported": true,
+      "countryCode": "CM"
+    },
+    {
+      "city": "Yekaterinburg",
+      "studentWaitReported": false,
+      "countryCode": "RU"
+    },
+    {
+      "city": "Yerevan",
+      "studentWaitReported": true,
+      "countryCode": "AM"
+    },
+    {
+      "city": "Zagreb",
+      "studentWaitReported": true,
+      "countryCode": "HR"
+    }
+  ]
+}
