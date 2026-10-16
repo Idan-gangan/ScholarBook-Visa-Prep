@@ -23,6 +23,7 @@ const passwordRecovery=createPasswordRecovery(pool,{env:process.env,diagnostic:a
 const {createEmailVerification,needsVerification}=require('./email-verification');
 const emailVerification=createEmailVerification({mutateDb,env:process.env});
 const profileOptions=require('./profile-options');
+const profileRequirements=require('./public/profile-requirements');
 const EVALUATION_MODEL = process.env.EVALUATION_MODEL || "gpt-5.6";
 const PUBLIC = path.join(__dirname, "public");
 const DATA_FILE = path.join(__dirname, "data", "db.json");
@@ -217,7 +218,12 @@ function outputText(resp){
 const server=http.createServer(async (req,res)=>{
   try{
     const url=new URL(req.url, `http://${req.headers.host}`);
-    if(req.method==='GET' && url.pathname==='/api/profile-options')return json(res,200,{countries:profileOptions.countries,sports:profileOptions.sports,fundingSources:profileOptions.fundingSources});
+    if(req.method==='GET' && url.pathname==='/api/profile-options')return json(res,200,{countries:profileOptions.countries,sports:profileOptions.sports,fundingSources:profileOptions.fundingSources,interviewPosts:require('./interview-posts.json')});
+    if(req.method==='GET' && /^\/flags\/[a-z]{2}\.svg$/.test(url.pathname)){
+      const file=path.join(__dirname,'node_modules/flag-icons/flags/4x3',path.basename(url.pathname));
+      if(!fs.existsSync(file))return json(res,404,{error:'Flag unavailable'});
+      res.writeHead(200,{...RESPONSE_HEADERS,'Content-Type':'image/svg+xml','Cache-Control':'public, max-age=86400'});return fs.createReadStream(file).pipe(res);
+    }
     if(req.method==='POST' && ['/api/verify-email','/api/resend-verification','/api/change-unverified-email'].includes(url.pathname)){
       if(!(req.headers['content-type']||'').toLowerCase().startsWith('application/json'))return json(res,415,{error:'JSON required.'});
       let body;try{body=JSON.parse((await readBody(req,4096)).toString()||'{}');}catch{return json(res,400,{error:'Invalid request.'});}
@@ -277,7 +283,7 @@ const server=http.createServer(async (req,res)=>{
         interviewLocation:clean(body.interviewLocation,120),university:clean(body.university,160),
         major:clean(body.major,160),academicLevel:clean(body.academicLevel,80),sport:clean(body.sport,120),
         scholarship:clean(body.scholarshipType,120),scholarshipCoverage:clean(body.scholarshipCoverage,240),
-        previousRefusal:clean(body.previousRefusal,20),previousAttempts:Number(body.previousAttempts||0),
+        previousRefusal:clean(body.previousRefusal,20),previousAttempts:body.previousAttempts==null?'':Number(body.previousAttempts),
         previousTravel:clean(body.previousTravel,20),remainingSponsor:clean(body.remainingSponsor,160),
         postGradPlan:clean(body.postGradPlan,500),profileStatus:"Incomplete",createdAt:new Date().toISOString(),
         sessions:0,mocks:0,initialScore:0,currentScore:0,mainConcern:"New student — not yet assessed"
@@ -410,12 +416,16 @@ const server=http.createServer(async (req,res)=>{
       const updated=await mutateDb(async(db)=>{
       const athlete=db.athletes.find(a=>a.userId===u.id);
       if(!athlete)throw stateError(404,"Student profile not found");
-      const fields={phone:40,phoneCountry:2,country:80,interviewCountry:80,interviewCity:120,interviewLocation:220,university:160,major:160,academicLevel:80,sport:120,scholarship:120,scholarshipCoverage:240,previousRefusal:20,previousTravel:20,remainingSponsor:160,postGradPlan:500,studyStatus:40,priorEducationStatus:40,priorEducationYear:4,fundingSources:500};
+      const fields={phone:40,phoneCountry:2,country:80,interviewCountry:80,interviewCity:120,interviewLocation:220,university:160,major:160,academicLevel:80,sport:120,sportOther:120,coverageItems:240,scholarship:120,scholarshipCoverage:240,previousRefusal:20,previousTravel:20,remainingSponsor:160,postGradPlan:500,studyStatus:40,priorEducationStatus:40,priorEducationYear:4,fundingSources:500};
       if(body.phone && body.phone!==athlete.phone)body.phone=profileOptions.normalizePhone(clean(body.phone,40),clean(body.phoneCountry,2));
       if(body.priorEducationYear && !/^(19|20|21)\d{2}$/.test(body.priorEducationYear))throw stateError(400,'Enter a four-digit completion or expected completion year.');
       for(const [k,max] of Object.entries(fields)) if(k in body) athlete[k]=clean(body[k],max);
-      if("previousAttempts" in body) athlete.previousAttempts=Math.max(0,Number(body.previousAttempts||0));
-      athlete.profileStatus=['country','university','major','academicLevel'].every(key=>athlete[key])?'Complete':'Incomplete';
+      if("previousAttempts" in body){
+        if(body.previousAttempts!==''&&(!Number.isInteger(Number(body.previousAttempts))||Number(body.previousAttempts)<0))throw stateError(400,'Enter a whole number of previous applications, starting at 0.');
+        athlete.previousAttempts=body.previousAttempts===''?'':Number(body.previousAttempts);
+      }
+      if('interviewCity' in body||'interviewCountry' in body)athlete.interviewLocation=athlete.interviewCity==='Not booked yet'?'Not booked yet':[athlete.interviewCity,athlete.interviewCountry].filter(Boolean).join(', ');
+      athlete.profileStatus=profileRequirements.missing(athlete).length?'Incomplete':'Complete';
       athlete.updatedAt=new Date().toISOString(); return athlete;
       });
       return json(res,200,updated);
@@ -629,6 +639,11 @@ Use only information in the supplied profile and transcript. Do not reward inven
       if(!canAccessStudent(u,athlete)) return json(res,403,{error:"You cannot start a session for this student."});
       const mode=url.searchParams.get("mode") || "mock";
       if(!["mock","learn"].includes(mode)) return json(res,400,{error:"Unknown session mode"});
+      if(mode==='mock'){
+        const missing=profileRequirements.missing(athlete);
+        if(missing.length)return json(res,422,{error:'Complete the student profile before the mock interview: '+missing.join(', '),missing});
+        try{profileOptions.normalizePhone(athlete.phone,athlete.phoneCountry);}catch{return json(res,422,{error:'Check the phone number in My Profile before starting the mock interview.'});}
+      }
       if(mode==="learn" && !LESSONS.some(lesson=>lesson.id===url.searchParams.get("lesson"))) return json(res,400,{error:"Unknown lesson"});
       let practiceContext=null;
       if(mode==='learn' && url.searchParams.has('reportId')){

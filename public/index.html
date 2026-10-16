@@ -47,6 +47,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
 </style>
 <link rel="stylesheet" href="/atlas.css">
 <meta name="theme-color" content="#0750cf">
+<link rel="stylesheet" href="/profile.css">
 </head>
 <body>
 <div id="welcome" class="welcome">
@@ -239,6 +240,8 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
 </div>
 
 <script src="/curriculum.js"></script>
+<script src="/profile-requirements.js"></script>
+<script src="/country-picker.js"></script>
 <script>
 let me=null, athletes=[], reports=[], pc=null, dc=null, stream=null, transcript=[];
 const $=id=>document.getElementById(id);
@@ -383,13 +386,15 @@ async function saveAccountRole(button){
  finally{$('ownerPassword').value='';button.disabled=false;}
 }
 let profileChoices={countries:[],sports:[],fundingSources:[]};
-function selectOptions(values,current,placeholder='Choose or skip'){
+function selectOptions(values,current,placeholder='Choose an option'){
  const list=['',...values];if(current&&!list.includes(current))list.push(current);
  return list.map(v=>`<option value="${escapeHtml(v)}"${v===(current||'')?' selected':''}>${escapeHtml(v||placeholder)}</option>`).join('');
 }
 function countryFlag(code){return Array.from(code).map(c=>String.fromCodePoint(127397+c.charCodeAt(0))).join('');}
 async function renderProfile(){
  const p=await api("/api/my-profile");profileChoices=await api('/api/profile-options');
+ // Preserve an older location in the single city field until the student confirms it.
+ if(!p.interviewCity&&p.interviewLocation)p.interviewCity=p.interviewLocation;
  const field=(key,label,type='text',extra='')=>`<div class="field"><label for="p_${key}">${label}</label><input id="p_${key}" type="${type}" value="${escapeHtml(p[key])}" ${extra}></div>`;
  const select=(key,label,values)=>`<div class="field"><label for="p_${key}">${label}</label><select id="p_${key}">${selectOptions(values,p[key])}</select></div>`;
  const countryList='<datalist id="countryChoices">'+profileChoices.countries.map(c=>`<option value="${escapeHtml(c.name)}">${countryFlag(c.code)} ${escapeHtml(c.name)}</option>`).join('')+'</datalist>';
@@ -397,31 +402,35 @@ async function renderProfile(){
  const funding=String(p.fundingSources||'').split('; ').filter(Boolean);
  const sources=[...profileChoices.fundingSources,...funding.filter(v=>!profileChoices.fundingSources.includes(v))];
  $('profileForm').innerHTML=countryList+
- '<div class="wide"><h2>Your study plans</h2><p>These details help your tutor teach you. Save what you know; you can add the rest later.</p></div>'+
+ '<div class="wide"><h2>Your study plans</h2><p>Save your progress anytime. Complete the required details before your mock interview. You can still use My Learning.</p></div>'+
  field('country','Home country','text','list="countryChoices" placeholder="Search countries"')+
- field('university','School / University')+field('major','Subjects / Program / Research area')+
+ field('university','Full school / university name','text','placeholder="e.g. University of Alabama, not just Alabama"')+field('major','Subjects / Program / Research area')+
  `<div class="field"><label for="p_academicLevel">Study level you are going for</label><select id="p_academicLevel">${levelOptions(p.academicLevel)}</select></div>`+
  select('studyStatus','Have you started at this school yet?',['Not started yet','Already studying there','Transferring to this school','Not sure yet'])+
  '<div class="wide" id="educationHistory"><h3 id="educationHistoryTitle">Previous education — optional</h3><div class="formgrid">'+
  select('priorEducationStatus','Have you completed that stage?',['Completed','Still studying','Not sure'])+
  field('priorEducationYear','Completion or expected completion year','number','min="1900" max="2199" placeholder="e.g. 2025"')+'</div></div>'+
- '<div class="wide"><h2>Your funding</h2><p>Select any that apply. Leave blank if you are still confirming.</p><div class="formgrid">'+sources.map((source,i)=>`<label class="lesson-check"><input type="checkbox" name="fundingSource" value="${escapeHtml(source)}"${funding.includes(source)?' checked':''}> ${escapeHtml(source)}</label>`).join('')+'</div></div>'+
- field('scholarship','Scholarship name or type — if applicable')+field('scholarshipCoverage','What does the award actually cover?')+field('remainingSponsor','Who covers any remaining costs?')+
- '<details class="wide"><summary>Contact, interview and other details — optional</summary><div class="formgrid">'+
+ '<div class="wide"><h2>Your funding</h2><p>Select all that apply, or choose “Not decided yet” if you are still confirming.</p><div class="formgrid">'+sources.map((source,i)=>`<label class="lesson-check"><input type="checkbox" name="fundingSource" value="${escapeHtml(source)}"${funding.includes(source)?' checked':''}> ${escapeHtml(source)}</label>`).join('')+'</div></div>'+
+ select('sport','Sport — required for athletic scholarships; otherwise optional',profileChoices.sports)+field('sportOther','If Other, name your sport')+
+ '<div class="wide"><h3>What does your scholarship cover?</h3><p>Select only items confirmed in your award. Leave unconfirmed items unchecked.</p>'+['Tuition','Housing','Meals','Books','Health insurance','Travel','Other confirmed expenses'].map(item=>`<label class="lesson-check"><input type="checkbox" name="coverageItem" value="${escapeHtml(item)}"${String(p.coverageItems||'').split('; ').includes(item)?' checked':''}> ${escapeHtml(item)}</label>`).join('')+'</div>'+
+ field('scholarship','Scholarship name or type — if applicable')+field('scholarshipCoverage','Award details / amounts — if applicable')+field('remainingSponsor','Who covers any remaining costs?')+
+ '<section class="wide"><h2>Contact and interview details</h2><p>Required before your mock interview. Choose “Not booked yet” if you have no appointment location.</p><div class="formgrid">'+
  `<div class="field"><label for="p_phoneCountry">Phone calling country</label><select id="p_phoneCountry">${phoneOptions}</select></div>`+
- field('phone','Phone number — optional','tel','autocomplete="tel" placeholder="Your number or full + international number"')+
+ field('phone','Phone number — required','tel','autocomplete="tel" placeholder="Your number or full + international number"')+
  field('interviewCountry','Interview country','text','list="countryChoices" placeholder="Search countries"')+
  field('interviewCity','Embassy / consulate city','text','list="interviewCities" placeholder="e.g. Lagos — use your appointment location"')+
  '<datalist id="interviewCities"><option value="Not booked yet"></option><option value="Other / enter city"></option></datalist>'+
- field('interviewLocation','Interview location — existing or custom entry','text','placeholder="Not booked yet, or your exact appointment location"')+
- select('sport','Sport — optional',profileChoices.sports)+
- select('previousRefusal','Previous U.S. visa refusal?',['No','Yes','Prefer to discuss with tutor'])+
+ '<p class="wide small">Choose your actual appointment city. Suggestions are not a guarantee of visa services or appointments. <a href="https://travel.state.gov/content/travel/en/us-visas/visa-information-resources/global-visa-wait-times.html" target="_blank" rel="noopener noreferrer">Check official post information</a>.</p>'+
+ 
+ select('previousRefusal','Previous U.S. visa refusal?',['No','Yes'])+
  field('previousAttempts','Number of previous applications','number','min="0"')+
  select('previousTravel','Previous U.S. travel?',['No','Yes'])+
- `<div class="field wide"><label for="p_postGradPlan">Plans after your studies — optional</label><textarea id="p_postGradPlan" rows="3" placeholder="It is okay if you are still deciding.">${escapeHtml(p.postGradPlan)}</textarea></div>`+
- '</div></details>';
+ `<div class="field wide"><label for="p_postGradPlan">Plans after your studies — required</label><textarea id="p_postGradPlan" rows="3" placeholder="You can write: I’m still deciding.">${escapeHtml(p.postGradPlan)}</textarea></div>`+
+ '</div></section>';
  $('p_academicLevel').addEventListener('change',updateEducationFields);updateEducationFields();
- $('p_interviewCountry').addEventListener('change',updateInterviewCities);updateInterviewCities();
+ $('p_interviewCountry').addEventListener('change',()=>{$('p_interviewCity').value='';updateInterviewCities()});updateInterviewCities();
+ window.VisaAtlasCountries?.enhance(profileChoices.countries);
+ $('p_sport').addEventListener('change',()=>{$('p_sportOther').required=$('p_sport').value==='Other'});
 }
 function updateEducationFields(){
  const level=window.VisaAtlasCurriculum.resolveLevel($('p_academicLevel').value);
@@ -430,15 +439,17 @@ function updateEducationFields(){
 }
 function updateInterviewCities(){
  // Suggestions are not a claim of appointment availability. Other cities remain editable.
- const cities=$('p_interviewCountry').value==='Nigeria'?['Lagos','Abuja']:$('p_interviewCountry').value==='Kenya'?['Nairobi']:[];
- $('interviewCities').innerHTML=['Not booked yet',...cities].map(city=>`<option value="${escapeHtml(city)}"></option>`).join('');
+ const country=profileChoices.countries.find(c=>c.name===$('p_interviewCountry').value);
+ const posts=(profileChoices.interviewPosts?.posts||[]).filter(p=>p.countryCode===country?.code);
+ $('interviewCities').innerHTML='<option value="Not booked yet"></option>'+posts.map(p=>`<option value="${escapeHtml(p.city)}">${p.studentWaitReported?'Confirm services with this post':'Student visa wait data unavailable — check official services'}</option>`).join('');
 }
 async function saveProfile(){
- const keys=["phone","phoneCountry","country","interviewCountry","interviewCity","interviewLocation","sport","university","major","academicLevel","scholarship","scholarshipCoverage","previousRefusal","previousAttempts","previousTravel","remainingSponsor","postGradPlan","studyStatus","priorEducationStatus","priorEducationYear"];
+ const keys=["phone","phoneCountry","country","interviewCountry","interviewCity","sport","sportOther","university","major","academicLevel","scholarship","scholarshipCoverage","previousRefusal","previousAttempts","previousTravel","remainingSponsor","postGradPlan","studyStatus","priorEducationStatus","priorEducationYear"];
  const body={};keys.forEach(k=>body[k]=$("p_"+k).value);
+ body.coverageItems=Array.from(document.querySelectorAll('input[name="coverageItem"]:checked')).map(el=>el.value).join('; ');
  body.fundingSources=Array.from(document.querySelectorAll('input[name="fundingSource"]:checked')).map(el=>el.value).join('; ');
  if(body.interviewCity)body.interviewLocation=body.interviewCity==='Not booked yet'?'Not booked yet':[body.interviewCity,body.interviewCountry].filter(Boolean).join(', ');
- try{ $("profileStatus").textContent="Saving…"; await api("/api/my-profile",{method:"PUT",body:JSON.stringify(body)}); athletes=await api("/api/athletes");renderAll();$("profileStatus").textContent="Saved. You can continue to My Learning."; }
+ try{ $("profileStatus").textContent="Saving…"; const saved=await api("/api/my-profile",{method:"PUT",body:JSON.stringify(body)}); athletes=await api("/api/athletes");renderAll();const missing=window.VisaAtlasProfile?.missing(saved)||[];$("profileStatus").textContent=missing.length?'Saved. Before your mock interview, complete: '+missing.join(', '):'Saved. Your profile is ready for mock practice.'; }
  catch(e){ $("profileStatus").textContent=e.message; }
 }
 function readiness(score){return score>=85?"Ready":score>=70?"Almost Ready":score>=55?"Needs Significant Prep":"High Concern"}
@@ -577,6 +588,7 @@ async function startVoice(mode="mock"){
   if(voice)return;
   voiceScreen=mode;
   if(!voiceEl("athleteSelect").value){voiceEl("voiceStatus").textContent="Select a student first.";return}
+  if(mode==='mock'&&typeof window!=='undefined'&&window.VisaAtlasProfile){const p=athletes.find(a=>a.id===voiceEl("athleteSelect").value);const missing=window.VisaAtlasProfile.missing(p);if(missing.length){voiceEl("voiceStatus").textContent='Complete My Profile first: '+missing.join(', ');return}}
   const v={mode,athleteId:voiceEl("athleteSelect").value,busy:false,playing:false,waiting:false,pendingItem:null,connected:false};voice=v;
   if(mode==="learn")learningTranscript=[];
   else {transcript=[];mockStudentId=v.athleteId;$("evalStatus").textContent=""}
