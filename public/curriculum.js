@@ -206,7 +206,7 @@ lessons.forStudent = function(student, lessonId){
  const value=key=>{
   const raw=student[key];
   const text=raw==null?'':String(raw).trim();
-  return /^(?:|no|none|false|0|n\/a|not applicable|not provided|unknown)$/i.test(text)?'':text;
+  return /^(?:|no|none|nil|nill|null|false|0|n\/a|not applicable|not provided|unknown)$/i.test(text)?'':text;
  };
  const level=lessons.resolveLevel(student.academicLevel), index=lessons.indexOf(lesson);
  const school=value('university')||'[school]', subject=value('major')||'[subject or research field]';
@@ -221,21 +221,30 @@ lessons.forStudent = function(student, lessonId){
   const study=level==='high-school'?'continue my secondary education':level==='undergraduate'?`study for a bachelor’s degree in ${subject}`:level==='masters'?`study for a master’s degree in ${subject}`:level==='phd'?`study for a PhD in ${subject}`:`study ${subject}`;
   example=`I’m going to ${school} to ${study}.`;
   if(award)example+=` I have been offered ${award}.`;
+  if(sport)points.push(`Your profile lists ${sport}. You can mention it when explaining your school choice. Only say you will join a team or have a sports scholarship if you know that is confirmed.`);
  }else if(lessonId==='academic-journey'){
   structure='Say what you studied, when, and what you did next. Use your real dates and results.';
   example=level==='high-school'?`I’m currently in [grade], studying [subjects], and plan to continue at ${school}.`:`I completed [qualification] in [year]. Since then, I have [actual activity], and my next step is studying ${subject} at ${school}.`;
+  if(/\b(freshman|first[ -]year)\b/i.test(value('academicLevel'))){
+   example=`I’m going to begin my bachelor’s degree in ${subject} at ${school}. Before this, I [your actual education history].`;
+   points.push('First year describes the level you plan to start. Only say you are currently studying there if you have already started.');
+  }
   if(level==='high-school')points=[lessons.levelTopics[level][index],'Describe your current subjects and recent results accurately.','Explain any actual gap or school change without assuming you have finished secondary school.'];
   else if(level!=='masters'&&level!=='phd')points=points.filter(p=>!p.startsWith('For graduate study'));
   else if(level==='phd')points=points.filter(p=>!p.startsWith('For graduate study'));
  }else if(lessonId==='funding'){
   structure='Say who pays, what they cover, and who pays any costs left over. Check the amounts and conditions.';
-  example=award?`My funding includes ${award}. ${coverage?`It covers ${coverage}.`:'I need to check exactly what it covers.'}`:coverage?`My funding covers ${coverage}. I need to confirm the funding source and any remaining costs.`:sponsor?`My education will be supported by ${sponsor}. I need to confirm the exact costs and support arranged.`:'My education will be paid for by [actual funding source], covering [confirmed costs].';
+  example=award?`My funding includes ${award}. ${coverage?`It covers ${coverage}.`:'I need to check exactly what it covers.'}`:coverage?`My funding covers ${coverage}. I need to confirm the funding source and any remaining costs.`:sponsor?`${sponsor} will help with remaining costs. I need to confirm the full funding arrangement and amounts.`:'My education will be paid for by [actual funding source], covering [confirmed costs].';
   if((award||coverage)&&sponsor)example+=` ${sponsor} will support the remaining costs.`;
   if(!award&&!coverage){points=points.filter(p=>!p.startsWith('For a scholarship'));questions=questions.filter(q=>!q.includes('scholarship'));}
   points.push('Check whether your funding pays for travel, summer expenses, and insurance. Do not assume these are included.');
+  if(award)points.push('How did you receive this award? Explain the real process. Playing a sport does not by itself mean your scholarship is athletic.');
+  if(/full[ -]?(ride|scholarship)|fully funded/i.test(award))points.push('Check what “full” means in your award. Does it cover tuition as well as living costs? Explain any costs left over without guessing.');
  }else if(lessonId==='future-plans'){
   structure='Say what you want to do next and how your studies will help. Explain what is planned and what is already arranged.';
   example=value('postGradPlan')?`My current plan is: ${value('postGradPlan')}. My course will help me learn [skills for that goal].`:level==='high-school'?'After secondary school, I’m considering [your study plans or interests]. I’m still exploring the specific path.':'After my studies, I hope to [your real goal], using [relevant skills].';
+  if(!value('postGradPlan')){points.push('You have not supplied a future plan yet. What would you like to do after your studies? It is okay if you are still deciding.');questions.unshift('What would you like to do after your studies?');}
+  if(sport)points.push(`If ${sport} is part of your future plans, explain how. Coaching, competing, or sports development are possibilities to discuss, not goals we assume you have.`);
  }else if(lessonId==='circumstances'){
   structure='Choose a topic that applies to you. Say what happened, what changed, and what you know now.';
   points=points.filter(p=>(refusal||!p.startsWith('Previous refusals:'))&&(athletic||!p.startsWith('Athletics,')));
