@@ -173,7 +173,7 @@ test('structured reports show actionable sections and escape every list item',as
  const f=fixture();await f.run('boot()');
  f.run(`reports=[{id:'r1',athleteId:'s1',formatVersion:2,overall:60,feedback:'A short summary',biggestWeakness:'Clarify funding',strengths:['<img src=x onerror=alert(1)>'],clarifications:['Explain the amount'],nextSteps:['Check your award','Explain the gap','Practise aloud']}];renderReports()`);
  const markup=f.elements.get('reportsList').innerHTML;
- for(const heading of ['What went well','Points to clarify','Your next three steps','Practice readiness'])assert.ok(markup.includes(heading));
+ for(const heading of ['What went well','Points to clarify','Your next steps','Practice readiness'])assert.ok(markup.includes(heading));
  assert.match(markup,/<ol>/);assert.doesNotMatch(markup,/<img/);assert.match(markup,/&lt;img/);
  f.run('reports[0].strengths=[];renderReports()');assert.match(f.elements.get('reportsList').innerHTML,/not enough evidence/);
 });
@@ -182,7 +182,7 @@ test('older reports retain all feedback without inventing structured strengths',
  f.run(`reports=[{id:'old',overall:42,feedback:'Original full feedback',biggestWeakness:'Original concern',nextStep:'Original action'}];renderReports()`);
  const markup=f.elements.get('reportsList').innerHTML;
  for(const text of ['Original full feedback','Original concern','Original action'])assert.ok(markup.includes(text));
- assert.doesNotMatch(markup,/Your next three steps|What went well/);
+ assert.doesNotMatch(markup,/Your next steps|What went well/);
 });
 
 test('expired protected requests clear private state and stop an active microphone',async()=>{
@@ -290,4 +290,10 @@ test('password visibility is optional and resets when leaving sign in',()=>{
  const f=fixture();f.run('backToLogin()');f.elements.get('password').value='test-only';
  f.run('toggleLoginPassword()');assert.equal(f.elements.get('password').type,'text');
  f.run('showWelcome()');assert.equal(f.elements.get('password').value,'');assert.equal(f.elements.get('password').type,'password');
+});
+
+test('incomplete reports show mode and uncovered topics without a misleading numeric score',async()=>{
+ const f=fixture();await f.run('boot()');
+ f.run(`reports=[{id:'r1',athleteId:'s1',formatVersion:3,difficulty:'intensive',overall:null,coverage:{assessed:5,required:7},notCovered:['Previous applications and travel','<img src=x>'],feedback:'Your answers covered five areas.',biggestWeakness:'Explain your school choice.',strengths:[],clarifications:['Explain your school choice.'],nextSteps:['Research one course at your school.']}];renderReports()`);
+ const markup=f.elements.get('reportsList').innerHTML;assert.match(markup,/Intensive/);assert.match(markup,/Not enough information to score/);assert.match(markup,/Not covered — not counted against you/);assert.doesNotMatch(markup,/null\/100|High Concern|<img src=x>/);assert.match(markup,/&lt;img/);
 });

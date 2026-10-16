@@ -50,7 +50,7 @@ function harness(user={id:'u1',role:'athlete'},env={}){
      return pool.query(sql,args);
    },release(){if(unlock)unlock();}};
  };
- const context=vm.createContext({require:id=>id==='./public/profile-requirements'?require('../public/profile-requirements'):id==='./interview-posts.json'?require('../interview-posts.json'):id==='./email-verification'?require('../email-verification'):id==='./profile-options'?require('../profile-options'):id==='./owner-access'?require('../owner-access'):id==='./report-practice'?require('../report-practice'):id==='http'?{createServer:fn=>{handler=fn;return {}}}:id==='pg'?{Pool:function(){return pool}}:id==='fs'?{...fs,readFileSync:(file,...args)=>file===path.resolve(__dirname,'../data/db.json')?'{}':fs.readFileSync(file,...args)}:id==='./evaluation-limits'?require('../evaluation-limits'):id==='./voice-limits'?require('../voice-limits'):id==='./learning'?learning:id==='./passwords'?passwords:id==='./password-recovery'?require('../password-recovery'):require(id),__dirname:path.resolve(__dirname,'..'),process:{env:{OPENAI_API_KEY:'test-only',...env}},console:{log:(...args)=>logs.push(args.join(' ')),warn:(...args)=>logs.push(args.join(' ')),error:(...args)=>logs.push(args.join(' '))},Buffer,URL,FormData,AbortSignal,fetch:async(url,options)=>{if(url.endsWith('/responses')){calls.push({url,request:JSON.parse(options.body)});return {ok:true,json:async()=>({output_text:JSON.stringify({scores:{},overall:45,readiness:'High Concern',biggestWeakness:'Test',feedback:'Test feedback',nextStep:'Practice'})})};}calls.push({url,session:JSON.parse(options.body.get('session'))});return {ok:true,status:200,headers:{get:()=>'/v1/realtime/calls/rtc_test'},text:async()=> 'test-sdp-answer'}}});
+ const context=vm.createContext({require:id=>id==='./interview-design'?require('../interview-design'):id==='./public/profile-requirements'?require('../public/profile-requirements'):id==='./interview-posts.json'?require('../interview-posts.json'):id==='./email-verification'?require('../email-verification'):id==='./profile-options'?require('../profile-options'):id==='./owner-access'?require('../owner-access'):id==='./report-practice'?require('../report-practice'):id==='http'?{createServer:fn=>{handler=fn;return {}}}:id==='pg'?{Pool:function(){return pool}}:id==='fs'?{...fs,readFileSync:(file,...args)=>file===path.resolve(__dirname,'../data/db.json')?'{}':fs.readFileSync(file,...args)}:id==='./evaluation-limits'?require('../evaluation-limits'):id==='./voice-limits'?require('../voice-limits'):id==='./learning'?learning:id==='./passwords'?passwords:id==='./password-recovery'?require('../password-recovery'):require(id),__dirname:path.resolve(__dirname,'..'),process:{env:{OPENAI_API_KEY:'test-only',...env}},console:{log:(...args)=>logs.push(args.join(' ')),warn:(...args)=>logs.push(args.join(' ')),error:(...args)=>logs.push(args.join(' '))},Buffer,URL,FormData,AbortSignal,fetch:async(url,options)=>{if(url.endsWith('/responses')){calls.push({url,request:JSON.parse(options.body)});return {ok:true,json:async()=>({output_text:JSON.stringify(JSON.parse(options.body).input.includes('VISAATLAS_EVIDENCE_REPORT_V3')?{summary:'Only limited answers were captured.',strengths:[],assessments:require('../interview-design').TOPICS.map(([topic])=>({topic,status:'not_covered'}))}:{scores:{},overall:45,readiness:'High Concern',biggestWeakness:'Test',feedback:'Test feedback',nextStep:'Practice'})})};}calls.push({url,session:JSON.parse(options.body.get('session'))});return {ok:true,status:200,headers:{get:()=>'/v1/realtime/calls/rtc_test'},text:async()=> 'test-sdp-answer'}}});
  let source=fs.readFileSync(path.join(__dirname,'../server.js'),'utf8');source=source.slice(0,source.indexOf('initDb().then('));vm.runInContext(source,context);vm.runInContext(`sessions.set('test-token',{userId:${JSON.stringify(user.id)},version:0,expires:Date.now()+60000})`,context);
  async function request(method,url,body,authenticated=true){
    // Existing evaluation fixtures represent distinct server-issued mock sessions.
@@ -483,4 +483,28 @@ test('failed reports can retry without consuming the successful report allowance
  for(let i=0;i<12;i++)assert.equal((await h.request('POST','/api/evaluate',body)).status,504);
  assert.equal((await h.request('POST','/api/evaluate',body)).status,429);
  const usage=(await h.request('GET','/api/voice-usage')).body.reports;assert.equal(usage.remaining,6);assert.equal(usage.attemptsRemaining,0);
+});
+
+test('mock modes are validated before spending, persisted, and passed to interviewer',async()=>{
+ const h=harness();
+ assert.equal((await h.request('POST','/api/realtime-session?athleteId=s1&difficulty=unknown','v=0\r\noffer')).status,400);assert.equal(h.calls.length,0);
+ for(const difficulty of ['standard','challenging','intensive']){
+  const response=await h.request('POST','/api/realtime-session?athleteId=s1&difficulty='+difficulty,'v=0\r\noffer');assert.equal(response.status,200);
+  const session=h.db.mockSessions.at(-1);assert.equal(session.difficulty,difficulty);assert.equal(session.evaluationVersion,3);assert.equal(session.profile.phone,undefined);
+  assert.ok(h.calls.at(-1).session.instructions.includes(require('../interview-design').MODES[difficulty]+' mode'));
+ }
+});
+test('ending a mock saves question history without generating a paid report; repeat context is scoped',async()=>{
+ const h=harness(),body={athleteId:'s1'};
+ const start=await h.request('POST','/api/realtime-session?athleteId=s1','v=0\r\noffer');
+ const id=start.headers['X-Mock-Session-Id'],transcript=[{role:'assistant',text:'Why this particular school?'},{role:'athlete',text:'The research course fits my interests.'}];
+ assert.equal((await h.request('POST','/api/mock-session/end',{mockSessionId:id,transcript},false)).status,401);
+ assert.equal((await h.request('POST','/api/mock-session/end',{mockSessionId:'wrong',transcript})).status,403);
+ assert.equal((await h.request('POST','/api/mock-session/end',{mockSessionId:id,transcript})).status,200);
+ assert.equal(h.db.reports.length,0);assert.equal(h.calls.length,1);
+ h.db.athletes[0].university='Changed after session';
+ const report=await h.request('POST','/api/evaluate',{...body,mockSessionId:id,transcript,difficulty:'intensive'});assert.equal(report.status,200);assert.equal(report.body.overall,null);assert.equal(report.body.difficulty,'standard');
+ assert.match(h.calls.at(-1).request.input,/Example University/);assert.doesNotMatch(h.calls.at(-1).request.input,/Changed after session/);
+ await h.request('POST','/api/realtime-session?athleteId=s1','v=0\r\noffer');assert.match(h.calls.at(-1).session.instructions,/Why this particular school/);
+ h.db.mockSessions[0].userId='other';assert.equal((await h.request('POST','/api/mock-session/end',{mockSessionId:id,transcript})).status,403);
 });

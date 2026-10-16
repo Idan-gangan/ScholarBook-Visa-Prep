@@ -84,3 +84,18 @@ test('portrait speaking indicator follows playback events and resets on stop',()
  s.event({type:'output_audio_buffer.stopped'});assert.equal(s.els.get('interviewerStage').dataset.state,'listening');
  s.run('stopVoice()');assert.equal(s.els.get('interviewerStage').dataset.state,'ended');
 });
+
+test('mock closing waits until both response generation and playback finish, then stops microphone',()=>{
+ for(const order of ['audio-first','response-first']){
+  const s=setup();s.run("voice.mode='mock';voiceRespond(voice)");
+  s.event({type:'output_audio_buffer.started'});
+  s.event({type:'response.output_audio_transcript.done',transcript:require('../interview-design').CLOSE});
+  assert.notEqual(s.run('voice'),null);assert.equal(s.track.enabled,false);
+  const done={type:'response.done',response:{output:[{content:[{type:'audio'}]}]}},stopped={type:'output_audio_buffer.stopped'};
+  s.event(order==='audio-first'?stopped:done);assert.notEqual(s.run('voice'),null);
+  s.event(order==='audio-first'?done:stopped);assert.equal(s.run('voice'),null);assert.equal(s.track.stopped,true);
+ }
+});
+test('tutor transcript cannot trigger the mock closing behaviour',()=>{
+ const s=setup();s.run("voice.mode='learn';voiceRespond(voice)");s.event({type:'response.output_audio_transcript.done',transcript:require('../interview-design').CLOSE});assert.notEqual(s.run('voice'),null);assert.equal(s.run('voice.closing'),undefined);
+});
