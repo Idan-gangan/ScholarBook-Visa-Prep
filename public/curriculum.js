@@ -4,105 +4,105 @@ const lessons=[
   {
     "id": "study-purpose",
     "title": "Your study plans",
-    "summary": "Connect your country, school, and study choices.",
-    "intro": "Questions about the U.S., your school, and your studies ask you to explain the reasons behind your study plan.",
+    "summary": "Explain what you want to study and why.",
+    "intro": "You may be asked why you chose the U.S., your school, or your course.",
     "points": [
-      "Connect your subject or research interest to a genuine interest or experience and a skill you want to develop.",
-      "Explain why studying in the U.S. fits that goal. A broad claim about quality needs a specific, researched connection.",
-      "Compare your actual school options. Use a verified course or program feature to explain your choice; do not invent rankings or facilities."
+      "Say what interests you about your subject. You can mention a class, an experience, or something you want to learn.",
+      "Why the U.S., and why is it the right choice for you? Give one reason based on what you have learned about your course or school.",
+      "Explain why you chose this school. Mention a course, project, or other feature you have checked. Only compare schools you actually considered."
     ],
     "prompts": [
-      "What interests you about your subject?",
-      "What U.S. study opportunity and school feature have you checked?",
-      "How does this choice connect to your learning goals?"
+      "Why does this subject interest you?",
+      "What do you like about this school or course?",
+      "What would you like to learn?"
     ],
     "questions": [
       "Why do you want to study in the United States?",
       "Why this school rather than your other options?",
       "Why did you choose these studies?"
     ],
-    "example": "A useful explanation connects interest → learning opportunity → goal. “The education is good” needs a specific connection to your own plan."
+    "example": "Start with what you want to study and where. Then give your real reason for choosing it."
   },
   {
     "id": "academic-journey",
     "title": "Your academic journey",
-    "summary": "Explain your education, grades, gaps, and next step.",
-    "intro": "Academic-history questions explore how your previous education and activities connect to the program you chose.",
+    "summary": "Talk about your studies and what you have done since.",
+    "intro": "These questions are about your education so far and why you want to continue studying.",
     "points": [
-      "Build a short timeline: when you finished school or your degree, what you studied, and what you have done since.",
-      "Describe your grades accurately. If asked about a weak result or study gap, explain the real circumstances and relevant activities without inventing improvements.",
-      "For graduate study, connect your bachelor’s degree and experience to the new program. If changing fields, explain the actual reason and preparation."
+      "Say what you studied and when. Then explain what you have done since.",
+      "Be honest about your grades. If there was a break in your studies, explain what happened and what you did during that time.",
+      "For graduate study, explain how your earlier degree or experience relates to your new course. If you are changing subjects, say why."
     ],
     "prompts": [
-      "What is your education timeline and academic background?",
-      "What have you done since finishing, including any gaps?",
-      "Why is this program the next step, including any change of field?"
+      "What have you studied, and when?",
+      "What have you done since then?",
+      "Why do you want to take this course now?"
     ],
     "questions": [
       "When did you finish high school or your previous degree?",
       "What have you been doing since graduation?",
       "How does this program connect to your previous studies?"
     ],
-    "example": "For a timeline, use: qualification and date → actual activities since then → reason for the next step. Dates and results should match your records."
+    "example": "Say what you studied, when you finished, and what you did next. Check that your dates and grades match your records."
   },
   {
     "id": "funding",
     "title": "Your funding",
-    "summary": "Understand costs, scholarships, and sponsor support.",
-    "intro": "Funding questions ask how your tuition and living expenses will be paid and what remains uncovered.",
+    "summary": "Explain who pays and what their support covers.",
+    "intro": "You may be asked who will pay your school fees and living costs.",
     "points": [
-      "Review your school’s cost figures and award documents. Separate tuition, housing, living expenses, and other listed costs; use a consistent time period.",
-      "For a scholarship, explain how you obtained it and exactly what it covers. “Full scholarship” should not replace checking the award’s actual terms.",
-      "For remaining costs, explain who pays, your relationship, their actual work or source of funds, and the support arranged. If details are missing, identify what you need to confirm."
+      "Check the costs listed by your school. Include school fees, housing, food, and other expenses. Compare amounts for the same period, such as one year.",
+      "For a scholarship, say how you received it and what it pays for. Check your award letter before saying it covers everything.",
+      "Explain who will pay any costs left over. Say how you know them and where the money comes from. Check any details you do not know."
     ],
     "prompts": [
-      "What are the documented costs and exact award coverage, if any?",
-      "How did you obtain the award or arrange your funding?",
-      "Who pays any remaining costs, and what do you know about that support?"
+      "How much will it cost, and what does your funding cover?",
+      "How did you get your scholarship or other support?",
+      "Who will pay any costs left over?"
     ],
     "questions": [
       "Who is paying for your education?",
       "How did you receive your scholarship and what does it cover?",
       "How will the remaining tuition and living expenses be paid?"
     ],
-    "example": "Hypothetical calculation: if annual costs are 30,000 and a confirmed award covers 20,000, explain the remaining 10,000. These figures are an example, never your personal facts."
+    "example": "For example only: if one year costs 30,000 and a scholarship pays 20,000, you still need 10,000. Use your own confirmed amounts."
   },
   {
     "id": "future-plans",
     "title": "Your future plans",
-    "summary": "Connect the degree to your genuine goals.",
-    "intro": "Future-plan questions ask how you expect to use your education after graduation.",
+    "summary": "Talk about what you want to do after your studies.",
+    "intro": "These questions ask how your studies will help with your plans for the future.",
     "points": [
-      "Connect skills from the degree to an actual career interest or next step. Explain the connection rather than listing an impressive job title.",
-      "Separate a confirmed arrangement from an aspiration. Developing plans can be described honestly as developing.",
-      "Keep your explanation consistent with your study choices and actual intentions. Do not invent an employer, family obligation, or promise to return home."
+      "Say what you want to do after studying and how your course can help.",
+      "Explain what you have already arranged and what you are still hoping to do. It is okay if some plans are not decided yet.",
+      "Use your real plans. Do not invent a job offer, family duty, or promise to return home."
     ],
     "prompts": [
-      "What are your actual goals after graduation?",
-      "Which skills from this degree would support those goals?",
-      "What is decided, and what is still developing?"
+      "What would you like to do after your studies?",
+      "How will your course help you do that?",
+      "What have you decided, and what are you still considering?"
     ],
     "questions": [
       "What are your plans after graduation?",
       "How will this degree help with those plans?",
       "What would you like to do after completing your studies?"
     ],
-    "example": "Connect a goal to a skill you expect to learn. Describe an ambition as an ambition; do not present it as a guaranteed job."
+    "example": "Explain your goal and what you hope to learn. A job you want is different from a job you have already been offered."
   },
   {
     "id": "circumstances",
     "title": "Your circumstances",
-    "summary": "Prepare for relevant follow-ups about your history.",
-    "intro": "Some follow-ups depend on your own history. Review the topics that apply, and mark the others “Not applicable.”",
+    "summary": "Talk about past applications or changes in your plans.",
+    "intro": "Only practise the topics that apply to you. You can skip the others.",
     "points": [
-      "Previous refusals: accurately describe your application history and only changes that really occurred. A new school or document does not guarantee a different decision.",
-      "School changes and timing: explain your actual reason for changing schools. Know your program start date and any confirmed deferral or late-arrival arrangement; check unknown details with the school.",
-      "Athletics, when relevant: describe your sport, event, results, recruitment process, and schools that genuinely recruited you. Explain how study and sport fit together. Non-athletes can skip this topic."
+      "Previous refusals: explain what happened and what has changed, if anything. A new school or document does not guarantee approval.",
+      "School changes and timing: say why you changed schools, if you did. Know your start date. If it changed, check the new arrangements with your school.",
+      "Athletics, when relevant: talk about your sport, results, and how you were recruited. Explain how you will combine school and sport. Skip this if it does not apply."
     ],
     "prompts": [
-      "What previous application history and real changes apply, if any?",
-      "Have your school or start-date arrangements changed?",
-      "If relevant, what are your athletic and recruitment facts? Otherwise write “Not applicable.”"
+      "Have you applied before? What has changed, if anything?",
+      "Have your school or start date changed?",
+      "If you play a sport, how were you recruited?"
     ],
     "questions": [
       "What has changed since your previous application?",
@@ -110,22 +110,22 @@ const lessons=[
       "When does your program start?",
       "How were you recruited, and which schools recruited you?"
     ],
-    "example": "Describe a change using: what happened → what changed → what is now confirmed. If nothing changed, do not create a story."
+    "example": "Explain what happened, what changed, and what is confirmed now. If nothing changed, say so."
   },
   {
     "id": "interview-practice",
     "title": "Interview practice",
-    "summary": "Bring the topics together before your mock.",
-    "intro": "Interview practice helps you explain your own plans clearly when questions arrive in different orders.",
+    "summary": "Practise short answers before your mock interview.",
+    "intro": "Practise explaining your plans even when questions come in a different order.",
     "points": [
-      "Listen for the exact question and answer it directly first. Add a relevant detail, then pause instead of delivering a memorized speech.",
-      "Practise switching between study plans, academics, funding, and future goals. A differently worded follow-up should still match your actual facts.",
-      "Ask for clarification if you did not understand. If you do not know a detail, say so and identify what needs checking. Use mock feedback to choose what to revisit."
+      "Listen to the question. Answer it first, add one useful detail, then pause. You do not need a memorized speech.",
+      "Practise questions about your studies, funding, and future plans. Use the same facts even when a question is worded differently.",
+      "If you do not understand, ask the person to repeat or explain. If you do not know a detail, say so. Use your mock feedback to choose what to practise next."
     ],
     "prompts": [
-      "Which study, funding, and timeline facts can you explain clearly?",
-      "Which topic still needs research or practice?",
-      "What will you focus on during your mock interview?"
+      "Which questions can you answer clearly?",
+      "What do you still need to check or practise?",
+      "What do you want to improve in your mock interview?"
     ],
     "questions": [
       "Why this program?",
@@ -133,7 +133,7 @@ const lessons=[
       "What have you done since your last studies?",
       "How does the degree support your plans?"
     ],
-    "example": "Practise a direct answer plus one relevant supporting detail. Clear, truthful explanations matter more than sounding polished or rehearsed."
+    "example": "Give a short, honest answer and one useful detail. Use words you would normally say."
   }
 ];
 // These paths describe preparation topics, not visa eligibility rules.
@@ -148,34 +148,34 @@ lessons.resolveLevel = function(value){
 };
 lessons.levelTopics = {
  'high-school': [
-  'Explain why this secondary school and its subjects fit your interests and next stage of education. A high-school student does not need a university major.',
+  'Why did you choose this school? Talk about the subjects you want to learn. You do not need a university major for high school.',
   'Describe your current grade, subjects, recent results, and why you are moving to this school. Do not assume you have already finished high school.',
   'Explain who will pay school fees and living costs. Know the actual parent, guardian, or other sponsor arrangement and what is still being confirmed.',
-  'Discuss your genuine interests and possible further education. You do not need a fixed career or university admission already arranged.',
+  'Talk about what interests you and what you might study next. It is okay if you have not chosen a career or university yet.',
   'Review confirmed accommodation, responsible adult or school support arrangements, and your school start date. Do not invent a guardian or treat these topics as an eligibility checklist.',
   'Practise explaining your school choice, subjects, funding, and living arrangements in age-appropriate language.'
  ],
  'undergraduate': [
-  'Connect your intended major and school choice to your interests and learning goals; do not assume a particular year of study.',
+  'Say what you want to study, why it interests you, and why you chose this school.',
   'Explain your secondary education and any college study, results, gaps, or transfer history that actually apply.',
   'Separate confirmed scholarships from remaining tuition and living costs, and explain the actual funding source.',
-  'Connect the degree to your genuine next steps; distinguish aspirations from confirmed arrangements.',
+  'Explain what you hope to do after your degree. Say which plans are confirmed and which are still ideas.',
   'Review relevant transfers, previous applications, timing, and athletics only when they apply.',
   'Practise connecting your major, school, academic history, costs, and future plans.'
  ],
  'masters': [
-  'Explain the specialization you want and why this master’s program fits, using school information you have checked.',
+  'What do you want to learn in your master’s? Explain why you chose this course. Use details you checked about the school.',
   'Connect your bachelor’s degree and any work or research experience to the master’s program. Explain a change of field honestly.',
   'Explain your actual funding package, including any confirmed scholarship or assistantship, its terms, and remaining costs.',
-  'Connect the advanced skills to a genuine professional or academic goal without inventing a job offer.',
-  'Review relevant work-to-study transitions, field changes, previous applications, and start-date arrangements.',
+  'Explain how what you learn could help with your work or further study. Only mention a job offer if you have one.',
+  'If relevant, explain why you are returning to study or changing subjects. Check your past applications and course start date.',
   'Practise explaining why a master’s now, how it builds on your background, and how it is funded.'
  ],
  'phd': [
-  'Explain your research interests, why doctoral study fits, and the program or supervisor fit you have actually researched. A possible supervisor is not a confirmed appointment.',
-  'Connect prior degrees, projects, research methods, and experience to the proposed research. Do not invent publications or assume a master’s degree is required or already held.',
-  'Explain the confirmed stipend, tuition support, assistantship or other funding, duration and conditions, plus any uncovered costs. Do not assume every PhD is fully funded.',
-  'Discuss genuine research, teaching, industry, or other goals and how doctoral training supports them. Uncertain plans can remain uncertain.',
+  'What do you want to research, and why a PhD? Explain what you checked about this course or supervisor. Say if a supervisor is only someone you hope to work with.',
+  'Talk about studies, projects, or research you have done. Explain how they prepared you. Only mention degrees and published work you actually have.',
+  'Say what your funding covers and how long it lasts. Explain any work required for it and who pays costs left over. Do not assume every PhD is fully funded.',
+  'What would you like to do after your PhD? You might want to research, teach, or work elsewhere. Explain your own plan; it is okay if some details are undecided.',
   'Review any confirmed supervisor or research arrangements, changes of field, previous applications, and program timing. Do not invent a research topic or lab acceptance.',
   'Practise explaining your research in plain language, why the program fits, your relevant experience, and the actual funding terms.'
  ],
@@ -191,9 +191,9 @@ lessons.levelQuestions = {
   ['Why this school?', 'Who is supporting your education?', 'What are your living arrangements?']
  ],
  'phd': [
-  ['What are your research interests?', 'Why this doctoral program?', 'What supervisor or program fit have you researched?'],
+  ['What do you want to research?', 'Why this PhD program?', 'What did you find out about this program or supervisor?'],
   ['How has your prior study prepared you?', 'What research or projects have you actually done?', 'Why doctoral study now?'],
-  ['What does your confirmed funding cover?', 'What are its duration and conditions?', 'How will uncovered costs be paid?'],
+  ['What does your funding cover?', 'How long does it last, and what must you do to keep it?', 'Who pays any costs left over?'],
   ['How does doctoral training support your goals?', 'What research or career directions interest you?', 'Which plans remain uncertain?'],
   ['What research arrangements are confirmed?', 'Have your field or school plans changed?', 'When does your program start?'],
   ['Explain your research interests in plain language.', 'Why is this program a good fit?', 'How is your doctoral study funded?']
@@ -217,36 +217,36 @@ lessons.forStudent = function(student, lessonId){
  let questions=[...(lessons.levelQuestions[level]?.[index]||lesson.questions)];
  let structure='', example='';
  if(lessonId==='study-purpose'){
-  structure='State your study purpose, name the school, then add one relevant reason if asked. A country-choice follow-up needs your genuine reason for choosing the U.S.';
-  const study=level==='high-school'?'continue my secondary education':level==='undergraduate'?`pursue a bachelor’s degree in ${subject}`:level==='masters'?`pursue a master’s degree in ${subject}`:level==='phd'?`pursue a PhD in ${subject}`:`study ${subject}`;
+  structure='Say what you will study and where. If asked why the U.S., explain your own reason for choosing it.';
+  const study=level==='high-school'?'continue my secondary education':level==='undergraduate'?`study for a bachelor’s degree in ${subject}`:level==='masters'?`study for a master’s degree in ${subject}`:level==='phd'?`study for a PhD in ${subject}`:`study ${subject}`;
   example=`I’m going to ${school} to ${study}.`;
   if(award)example+=` I have been offered ${award}.`;
  }else if(lessonId==='academic-journey'){
-  structure='Describe your current or most recent education, the actual timeline, and the next step. Use only real activities and results.';
+  structure='Say what you studied, when, and what you did next. Use your real dates and results.';
   example=level==='high-school'?`I’m currently in [grade], studying [subjects], and plan to continue at ${school}.`:`I completed [qualification] in [year]. Since then, I have [actual activity], and my next step is studying ${subject} at ${school}.`;
   if(level==='high-school')points=[lessons.levelTopics[level][index],'Describe your current subjects and recent results accurately.','Explain any actual gap or school change without assuming you have finished secondary school.'];
   else if(level!=='masters'&&level!=='phd')points=points.filter(p=>!p.startsWith('For graduate study'));
   else if(level==='phd')points=points.filter(p=>!p.startsWith('For graduate study'));
  }else if(lessonId==='funding'){
-  structure='Name the actual funding source, explain its stated coverage, then identify remaining costs and who pays them. Check exact amounts and award terms.';
-  example=award?`My funding includes ${award}. ${coverage?`The stated coverage is ${coverage}.`:'I need to confirm the exact coverage.'}`:coverage?`My stated funding coverage is ${coverage}. I need to confirm the funding source and any remaining costs.`:sponsor?`My education will be supported by ${sponsor}. I need to confirm the exact costs and support arranged.`:'My education will be paid for by [actual funding source], covering [confirmed costs].';
+  structure='Say who pays, what they cover, and who pays any costs left over. Check the amounts and conditions.';
+  example=award?`My funding includes ${award}. ${coverage?`It covers ${coverage}.`:'I need to check exactly what it covers.'}`:coverage?`My funding covers ${coverage}. I need to confirm the funding source and any remaining costs.`:sponsor?`My education will be supported by ${sponsor}. I need to confirm the exact costs and support arranged.`:'My education will be paid for by [actual funding source], covering [confirmed costs].';
   if((award||coverage)&&sponsor)example+=` ${sponsor} will support the remaining costs.`;
   if(!award&&!coverage){points=points.filter(p=>!p.startsWith('For a scholarship'));questions=questions.filter(q=>!q.includes('scholarship'));}
-  points.push('Full funding does not automatically establish coverage of travel, summer costs, insurance, or other unlisted expenses. Check the actual terms; missing details are not a contradiction.');
+  points.push('Check whether your funding pays for travel, summer expenses, and insurance. Do not assume these are included.');
  }else if(lessonId==='future-plans'){
-  structure='State your genuine next step and how your education supports it. Separate an aspiration from a confirmed arrangement.';
-  example=value('postGradPlan')?`My current plan is: ${value('postGradPlan')}. My studies will help me develop [relevant skills].`:level==='high-school'?'After secondary school, I’m considering [genuine further study or interest]. I’m still exploring the specific path.':'After my studies, I hope to [genuine goal], using [relevant skills].';
+  structure='Say what you want to do next and how your studies will help. Explain what is planned and what is already arranged.';
+  example=value('postGradPlan')?`My current plan is: ${value('postGradPlan')}. My course will help me learn [skills for that goal].`:level==='high-school'?'After secondary school, I’m considering [your study plans or interests]. I’m still exploring the specific path.':'After my studies, I hope to [your real goal], using [relevant skills].';
  }else if(lessonId==='circumstances'){
-  structure='Select only a circumstance that applies. Explain what happened, any real change, and what is now confirmed.';
+  structure='Choose a topic that applies to you. Say what happened, what changed, and what you know now.';
   points=points.filter(p=>(refusal||!p.startsWith('Previous refusals:'))&&(athletic||!p.startsWith('Athletics,')));
   questions=questions.filter(q=>(refusal||!q.includes('previous application'))&&(athletic||!q.includes('recruited')));
   example=refusal?'Since my previous application, [actual change, if any]. The confirmed details are [facts].':`My program at ${school} starts on [confirmed date].`;
-  if(!refusal)points.push('Previous-refusal history is not established here. Do not assume a refusal; discuss it only if it applies.');
+  if(!refusal)points.push('Only discuss a previous refusal if you have had one.');
  }else{
-  structure='Answer the exact question directly, add one relevant fact, then pause. Ask for clarification instead of guessing.';
-  example=`I chose ${school} because [genuine reason]. One feature I checked is [relevant school or program detail].`;
+  structure='Answer the question, add one useful detail, then pause. Ask if you do not understand.';
+  example=`I chose ${school} because [your real reason]. One feature I checked is [relevant school or program detail].`;
  }
- return {id:lessonId,level,athletic,refusal,intro:lesson.intro,points,questions,structure,example,exampleNotice:'Illustrative wording from your profile, not verified facts. Replace brackets with your actual details; do not memorize or add unsupported claims.'};
+ return {id:lessonId,level,athletic,refusal,intro:lesson.intro,points,questions,structure,example,exampleNotice:'This example uses details you entered. Replace anything in brackets with your own facts. Use it to practise, not to memorize.'};
 };
 if(typeof module!=="undefined" && module.exports)module.exports=lessons;
 else root.VisaAtlasCurriculum=lessons;

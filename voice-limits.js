@@ -1,5 +1,6 @@
 // Persistent admission limits and server-side call expiry. No transcripts stored here.
 const POLICY = Object.freeze({learn: {seconds:480,tokens:1024},mock: {seconds:720,tokens:512}});
+function dailyLimit(user){return user?.voiceTester === true ? 18 : 6;}
 function createVoiceLimits(pool, apiKey, request=fetch) {
   async function init() {
     await pool.query(`CREATE TABLE IF NOT EXISTS voice_daily_usage (
@@ -7,15 +8,22 @@ function createVoiceLimits(pool, apiKey, request=fetch) {
     await pool.query(`CREATE TABLE IF NOT EXISTS voice_call_limits (
       call_id TEXT PRIMARY KEY, expires_at TIMESTAMPTZ NOT NULL)`);
   }
-  async function reserve(userId) {
+  async function status(userId,limit=6) {
+    const result=await pool.query(`SELECT starts FROM voice_daily_usage WHERE user_id=$1 AND usage_day=(NOW() AT TIME ZONE 'UTC')::date`,[userId]);
+    const used=Number(result.rows[0]?.starts||0);
+    const reset=new Date();reset.setUTCHours(24,0,0,0);
+    return {limit,used,remaining:Math.max(0,limit-used),resetsAt:reset.toISOString()};
+  }
+  async function reserve(userId,limit=6) {
+    if(![6,18].includes(limit))throw new Error('Invalid daily voice limit');
     // A single row per account: atomic across tabs, processes and redeployments.
     const result=await pool.query(`INSERT INTO voice_daily_usage (user_id,usage_day,starts)
       VALUES ($1,(NOW() AT TIME ZONE 'UTC')::date,1)
       ON CONFLICT (user_id) DO UPDATE SET
         usage_day=EXCLUDED.usage_day,
         starts=CASE WHEN voice_daily_usage.usage_day=EXCLUDED.usage_day THEN voice_daily_usage.starts+1 ELSE 1 END
-      WHERE voice_daily_usage.usage_day<>EXCLUDED.usage_day OR voice_daily_usage.starts<6
-      RETURNING starts`,[userId]);
+      WHERE voice_daily_usage.usage_day<>EXCLUDED.usage_day OR voice_daily_usage.starts<$2
+      RETURNING starts`,[userId,limit]);
     return result.rows.length>0;
   }
   function callId(location) {
@@ -59,6 +67,7 @@ function createVoiceLimits(pool, apiKey, request=fetch) {
     const tick=()=>sweep().catch(()=>console.error('[voice] CALL_EXPIRY_CHECK_FAILED'));
     tick();const timer=setInterval(tick,15000);timer.unref();return timer;
   }
-  return {init,reserve,track,sweep,start};
+  return {init,reserve,status,track,sweep,start};
 }
-module.exports={POLICY,createVoiceLimits};
+module.exports={POLICY,createVoiceLimits,dailyLimit};
+

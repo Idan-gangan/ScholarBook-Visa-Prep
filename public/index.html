@@ -125,9 +125,12 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
     <section id="learning" class="screen">
       <div class="learning-welcome"><div><h1 id="learningGreeting">Welcome back</h1><p>Continue your preparation for your F-1 interview.</p></div><div class="course-status"><p id="courseProgress" role="status">Loading progress…</p><progress id="courseMeter" class="course-meter" max="6" value="0" aria-label="Modules completed"></progress></div></div>
       <div class="field learning-student-picker" id="learningStudentPicker"><label for="learn_athleteSelect">Student</label><select id="learn_athleteSelect" onchange="changeLearningStudent()"></select></div>
-      <div class="card course-overview"><img class="course-photo" src="/assets/atlas-study.webp" width="600" height="400" alt="" loading="lazy"><div class="course-feature-copy"><div class="course-feature-top"><span class="eyebrow">YOUR NEXT LESSON</span><span class="pill blue" id="featuredModuleNumber">Module 1 of 6</span></div><h2 id="featuredModuleTitle">Your study plans</h2><p id="featuredModuleSummary">Connect your country, school, and study choices.</p><button class="btn primary" id="continueLearningBtn" onclick="continueLearning()">Continue lesson <span aria-hidden="true">→</span></button></div></div>
+      <div class="card course-overview hidden"><img class="course-photo" src="/assets/atlas-study.webp" width="600" height="400" alt="" loading="lazy"><div class="course-feature-copy"><div class="course-feature-top"><span class="eyebrow">YOUR NEXT LESSON</span><span class="pill blue" id="featuredModuleNumber">Module 1 of 6</span></div><h2 id="featuredModuleTitle">Your study plans</h2><p id="featuredModuleSummary">Connect your country, school, and study choices.</p><button class="btn primary" id="continueLearningBtn" onclick="continueLearning()">Continue lesson <span aria-hidden="true">→</span></button></div></div>
       <h2 class="course-section-title">Your learning path</h2><p class="small muted">Completion tracks your learning, not visa approval or interview readiness.</p>
+      <p id="learningVoiceUsage" class="small muted" role="status"></p>
       <div id="moduleCards" class="module-grid" aria-label="Learning modules"></div>
+      <div id="lessonDetails" class="hidden">
+      <button class="btn secondary" onclick="closeLearningModule()">← Back to all modules</button>
       <div id="practiceFocus" class="card hidden"><h3>Focused practice</h3><p id="practiceFocusText"></p><p class="muted small">Review this feedback with your tutor. Starting this lesson does not mark the issue as resolved.</p><button class="btn secondary" onclick="clearReportPractice()">Return to regular lesson</button></div><div id="activeLesson" class="lesson-heading lesson-block"><div><p class="small muted" id="moduleNumber">MODULE 1</p><h2 id="moduleTitle">Your study plans</h2><p id="moduleSummary"></p></div><span id="lessonBadge" class="pill blue">Not completed</span></div>
       <div class="grid g2 lesson-grid">
         <div class="card lesson-content">
@@ -139,7 +142,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
         </div>
         <div class="card">
           <h2>Your preparation notes</h2>
-          <p class="muted">Use these prompts to connect the lesson to your plans. Notes are optional before speaking; your tutor also uses your saved profile.</p>
+          <p class="muted">Use these prompts to connect the lesson to your plans. Writing notes is optional. You can practise aloud and complete the lesson without typing. Your tutor also uses your saved profile.</p>
           <div class="field"><label for="learn_subjectReason">What do you want to study, and why does it interest you?</label><textarea id="learn_subjectReason" rows="3" maxlength="2000" placeholder="Use your own experience and interests."></textarea></div>
           <div class="field"><label for="learn_studyOpportunity">What specific learning opportunity have you checked?</label><textarea id="learn_studyOpportunity" rows="3" maxlength="2000" placeholder="Name what you found, why it matters, and what still needs checking."></textarea></div>
           <div class="field"><label for="learn_futureUse">How could this learning support your plans?</label><textarea id="learn_futureUse" rows="3" maxlength="2000" placeholder="Describe your actual goals; it is okay if they are still developing."></textarea></div>
@@ -153,19 +156,21 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
         <p>Your tutor teaches the selected module in short steps. Ask for an explanation, try a practice answer, or say “next”. Say “quick review” to review the course topics.</p>
         <div id="learn_voiceStatus" role="status" aria-live="polite">Not connected</div>
         <div id="learn_voiceLimitNotice" class="small muted" role="status" aria-live="polite"></div>
-        <p class="small muted">Voice lessons last up to 8 minutes. Six voice starts per account each day (resets at midnight UTC); connection attempts count. Notes remain available.</p>
+        <p id="lessonVoiceUsage" class="small muted" role="status"></p>
+        <p class="small muted">Voice lessons last up to 8 minutes. Lessons and mock interviews share your daily allowance. Starting a connection uses one start, even if it fails. Reading and notes remain available.</p>
         <div class="lesson-actions"><button class="btn primary" id="learn_startBtn" onclick="startLearningTutor()">Start voice lesson</button><button class="btn danger" id="learn_stopBtn" onclick="stopVoice()" disabled>End lesson conversation</button></div>
         <div id="learn_transcript" class="lesson-transcript" aria-label="Tutor conversation"></div>
-        <p class="small muted">Your conversation is for learning, with no readiness score. Save the points you want to keep in your notes below; the conversation itself is not saved.</p>
+        <p class="small muted">Your conversation is for learning, with no readiness score. Save the points you want to keep in your notes; the conversation itself is not saved.</p>
       </div>
       <div class="card lesson-block">
         <h2>4. Your turn</h2>
         <ul id="moduleQuestions" class="lesson-content"></ul>
-        <div class="field"><label for="learn_draftAnswer">Your practice answer or takeaway</label><textarea id="learn_draftAnswer" rows="4" maxlength="2000" placeholder="Choose one practice question below. Save a brief answer using your actual facts, then revise it after feedback."></textarea></div>
-        <label class="lesson-check"><input id="learn_reflected" type="checkbox"> I reviewed this module, noted what still needs checking, and tried a short answer. For topics that do not apply, I recorded “Not applicable.”</label>
+        <div class="field"><label for="learn_draftAnswer">Your practice answer or takeaway</label><textarea id="learn_draftAnswer" rows="4" maxlength="2000" placeholder="Choose one practice question above. Save a brief answer using your actual facts, then revise it after feedback."></textarea></div>
+        <label class="lesson-check"><input id="learn_reflected" type="checkbox"> I reviewed this lesson and practised an answer aloud or in writing. I skipped any topics that do not apply to me.</label>
         <div class="lesson-actions"><button class="btn primary" id="completeLessonBtn" onclick="saveLesson(true)">Mark lesson complete</button><button class="btn secondary" id="nextModuleBtn" onclick="nextLearningModule()">Next module</button><button class="btn secondary" onclick="show('interview')">Go to mock interview</button></div>
         <div id="lessonCompletionStatus" role="status" aria-live="polite" class="small lesson-status"></div>
         <p class="small muted">Completion records your progress through this lesson, not an assessment of readiness. You can revisit it any time.</p>
+      </div>
       </div>
     </section>
     <section id="dashboard" class="screen">
@@ -180,7 +185,8 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
       <div class="voiceBox">
         <div class="card">
           <div id="voiceStatus" class="status">Not connected</div>
-          <p class="small muted">Mock interviews last up to 12 minutes. Six voice starts per account each day, shared with lessons (midnight UTC reset); connection attempts count.</p>
+          <p class="small muted">Mock interviews last up to 12 minutes. Lessons and mock interviews share your daily allowance. Starting a connection uses one start, even if it fails.</p>
+          <p id="mockVoiceUsage" class="small muted" role="status"></p>
           <div id="voiceLimitNotice" class="small muted" role="status" aria-live="polite"></div>
           <h2 style="margin-bottom:4px">AI Consular Interviewer</h2>
           <p class="muted">The interviewer asks one question at a time and follows up based on the student’s spoken answer.</p>
@@ -249,7 +255,7 @@ function returnToSignIn(message=sessionMessage){
  sessionVersion++;
  if(voice)stopVoice('Session ended. Please sign in again.');
  me=null;athletes=[];reports=[];transcript=[];learningTranscript=[];mockStudentId=null;
- lessonPractice=null;renderPracticeFocus();courseSaved={};activeLessonId="study-purpose";$("moduleCards").replaceChildren();$("courseProgress").textContent="";lessonVersion++;lessonStudentId=null;lessonDirty=false;lessonCompleted=false;
+ lessonOpen=false;$('lessonDetails').classList.add('hidden');lessonPractice=null;renderPracticeFocus();courseSaved={};activeLessonId="study-purpose";$("moduleCards").replaceChildren();$("courseProgress").textContent="";lessonVersion++;lessonStudentId=null;lessonDirty=false;lessonCompleted=false;
  clearPasswordForm();
  clearOwnerView();
  lessonFields.forEach(field=>$('learn_'+field).value='');$('learn_reflected').checked=false;
@@ -305,6 +311,7 @@ function navIcon(id){
 function show(id,el){
  if(id==='owner' && me?.role!=='owner')return;
  if(id!=='owner')$('ownerPassword').value='';
+ if(me && ['learning','interview'].includes(id))refreshVoiceUsage();
  if(id!=='account'){clearPasswordForm();$('passwordMessage').textContent='';}
  if(voice && id!==(voice.mode==="learn"?"learning":"interview"))stopVoice("Conversation ended when you left this page.");
 document.querySelectorAll(".screen").forEach(x=>x.classList.remove("on"));$(id).classList.add("on");document.querySelectorAll(".nav").forEach(x=>x.classList.remove("on"));document.querySelectorAll(".nav").forEach(x=>{const active=x.dataset.screen===id;x.classList.toggle("on",active);if(active)x.setAttribute("aria-current","page");else x.removeAttribute("aria-current")})}
@@ -319,7 +326,7 @@ async function boot(){
  renderAll(); if(me.role==="athlete" || (me.role==='owner' && athletes.some(a=>a.userId===me.id))) await renderProfile();
  if(me.role==='owner')await loadOwner();else clearOwnerView();
  show(me.role==='owner'?'owner':me.role==="athlete"?"learning":"dashboard");
- await loadLesson();
+ await loadLesson();await refreshVoiceUsage();
 }
 function levelOptions(current){
  const values=["",...window.VisaAtlasCurriculum.studyLevels];
@@ -338,12 +345,22 @@ async function loadOwner(){
   const data=await api('/api/owner/accounts');
   $('ownerStats').innerHTML=Object.entries(data.counts).map(([label,value])=>`<div class="card"><div class="muted">${escapeHtml(label)}</div><div class="kpi">${escapeHtml(value)}</div></div>`).join('');
   const roles=[['athlete','Student'],['coach','Coach'],['supervisor','Supervisor'],['manager','Manager']];
-  $('ownerAccounts').innerHTML='<table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Action</th></tr></thead><tbody>'+data.users.map(u=>`<tr><td>${escapeHtml(u.name)}</td><td>${escapeHtml(u.email)}</td><td>${u.role==='owner'?'Owner (protected)':`<select aria-label="Role for ${escapeHtml(u.email)}">${roles.map(([value,label])=>`<option value="${value}"${u.role===value?' selected':''}>${label}</option>`).join('')}</select>`}</td><td>${u.role==='owner'?'—':`<button type="button" class="btn secondary" data-owner-user="${escapeHtml(u.id)}">Save role</button>`}</td></tr>`).join('')+'</tbody></table>';
+  $('ownerAccounts').innerHTML='<table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Action</th><th>Daily voice access</th></tr></thead><tbody>'+data.users.map(u=>`<tr><td>${escapeHtml(u.name)}</td><td>${escapeHtml(u.email)}</td><td>${u.role==='owner'?'Owner (protected)':`<select aria-label="Role for ${escapeHtml(u.email)}">${roles.map(([value,label])=>`<option value="${value}"${u.role===value?' selected':''}>${label}</option>`).join('')}</select>`}</td><td>${u.role==='owner'?'—':`<button type="button" class="btn secondary" data-owner-user="${escapeHtml(u.id)}">Save role</button>`}</td><td><button type="button" class="btn secondary" data-voice-user="${escapeHtml(u.id)}" data-enabled="${u.voiceTester===true}">${u.voiceTester?'Tester: 18 starts — remove':'Standard: 6 starts — enable tester'}</button></td></tr>`).join('')+'</tbody></table>';
   $('ownerAccounts').querySelectorAll('[data-owner-user]').forEach(button=>button.addEventListener('click',()=>saveAccountRole(button)));
+  $('ownerAccounts').querySelectorAll('[data-voice-user]').forEach(button=>button.addEventListener('click',()=>saveVoiceAccess(button)));
   const label=id=>data.users.find(u=>u.id===id)?.email||id;
   $('ownerAudit').innerHTML=data.audit.length?'<table><thead><tr><th>When</th><th>Account</th><th>Change</th><th>By</th></tr></thead><tbody>'+data.audit.map(entry=>`<tr><td>${escapeHtml(entry.at)}</td><td>${escapeHtml(label(entry.targetId))}</td><td>${escapeHtml(entry.previousRole)} → ${escapeHtml(entry.role)}</td><td>${escapeHtml(label(entry.actorId))}</td></tr>`).join('')+'</tbody></table>':'<p>No permission changes recorded.</p>';
   $('ownerStatus').textContent='Accounts loaded.';
  }catch(error){$('ownerStatus').textContent=error.message;}
+}
+async function saveVoiceAccess(button){
+ const currentPassword=$('ownerPassword').value, enabled=button.dataset.enabled!=='true';
+ if(!currentPassword){$('ownerStatus').textContent='Enter your current password first.';return;}
+ if(!confirm((enabled?'Allow 18 daily voice starts for this tester? This may increase AI costs.':'Restore the standard 6 daily voice starts?')+' This does not change account permissions.'))return;
+ button.disabled=true;
+ try{await api('/api/owner/voice-access',{method:'POST',body:JSON.stringify({userId:button.dataset.voiceUser,enabled,currentPassword})});await loadOwner();await refreshVoiceUsage();$('ownerStatus').textContent='Voice access updated. Starts already used today still count.';}
+ catch(error){$('ownerStatus').textContent=error.message;}
+ finally{$('ownerPassword').value='';button.disabled=false;}
 }
 async function saveAccountRole(button){
  const row=button.closest('tr'), role=row.querySelector('select').value, currentPassword=$('ownerPassword').value;
@@ -403,7 +420,7 @@ async function openReportPractice(reportId,index){
  if(lessonDirty && !confirm('Open report practice without saving these notes?'))return;
  if(voice)stopVoice();
  lessonPractice={reportId,index,studentId:report.athleteId,...target};
- $('learn_athleteSelect').value=report.athleteId;activeLessonId=target.lessonId;show('learning');await loadLesson();
+ $('learn_athleteSelect').value=report.athleteId;activeLessonId=target.lessonId;lessonOpen=true;show('learning');await loadLesson();
  $('activeLesson').scrollIntoView?.({behavior:'smooth',block:'start'});
 }
 function clearReportPractice(){if(voice?.mode==='learn')stopVoice();lessonPractice=null;renderPracticeFocus()}
@@ -533,7 +550,7 @@ async function startVoice(mode="mock"){
     await peer.setLocalDescription(offer);if(voice!==v)return;
     v.abort=new AbortController();
     const r=await fetch("/api/realtime-session?athleteId="+encodeURIComponent(v.athleteId)+"&mode="+mode+(mode==="learn"?"&lesson="+encodeURIComponent(activeLessonId)+reportPracticeQuery():""),{method:"POST",body:offer.sdp,headers:{"Content-Type":"application/sdp"},signal:v.abort.signal});
-    const answer=await r.text();if(voice!==v)return;
+    const answer=await r.text();refreshVoiceUsage();if(voice!==v)return;
     if(!r.ok){let message=answer;try{message=JSON.parse(answer).error||answer}catch{}if(r.status===401 && message==="Unauthorized"){returnToSignIn();return}throw new Error(message)}
     const seconds=Number(r.headers.get('X-Voice-Limit-Seconds'));
     if(!Number.isFinite(seconds)||seconds<=0)throw new Error('Voice session limit is missing. Please refresh and try again.');
@@ -569,8 +586,9 @@ async function generateReport(){
 }
 
 const curriculum=window.VisaAtlasCurriculum;
-let activeLessonId="study-purpose", courseSaved={}, lessonPractice=null;
+let activeLessonId="study-purpose", courseSaved={}, lessonPractice=null, lessonOpen=false;
 function renderCourse(){
+ $("lessonDetails").classList.toggle("hidden",!lessonOpen);
  const done=curriculum.filter(m=>courseSaved[m.id]?.completed).length;
  $("courseProgress").textContent=done+" of "+curriculum.length+" modules completed";
  $("courseMeter").max=curriculum.length;$("courseMeter").value=done;
@@ -581,8 +599,8 @@ function renderCourse(){
  $("featuredModuleNumber").textContent=done===curriculum.length?'Review your course':"Module "+(curriculum.indexOf(featured)+1)+" of "+curriculum.length;
  $("moduleCards").replaceChildren();
  curriculum.forEach((m,i)=>{
-  const button=document.createElement("button");button.type="button";button.className="card module-card"+(m.id===activeLessonId?" selected":"");
-  button.setAttribute("aria-pressed",String(m.id===activeLessonId));
+  const button=document.createElement("button");button.type="button";button.className="card module-card"+(lessonOpen && m.id===activeLessonId?" selected":"");
+  button.setAttribute("aria-pressed",String(lessonOpen && m.id===activeLessonId));
   const number=document.createElement("span");number.className="small muted";number.textContent="MODULE "+(i+1);
   const title=document.createElement("strong");title.textContent=m.title;
   const summary=document.createElement("span");summary.textContent=m.summary;
@@ -610,8 +628,24 @@ function renderCourse(){
 async function selectLearningModule(id){
  if(lessonSaving || lessonLoading || !curriculum.some(m=>m.id===id))return;
  if(lessonDirty && !confirm("Switch modules without saving these notes?"))return;
- if(voice)stopVoice();lessonPractice=null;activeLessonId=id;await loadLesson();
+ if(voice)stopVoice();lessonPractice=null;lessonOpen=true;activeLessonId=id;await loadLesson();
  $("activeLesson").scrollIntoView?.({behavior:"smooth",block:"start"});
+}
+function closeLearningModule(){
+ if(lessonSaving || lessonLoading)return;
+ if(lessonDirty && !confirm('Return to modules without saving your changes?'))return;
+ if(voice?.mode==='learn')stopVoice();
+ lessonOpen=false;lessonDirty=false;renderCourse();
+ $('moduleCards').scrollIntoView?.({behavior:'smooth',block:'start'});
+}
+async function refreshVoiceUsage(){
+ if(!me)return;
+ const version=sessionVersion;
+ try{
+  const data=await api('/api/voice-usage');
+  const text=data.remaining+' of '+data.limit+' voice starts left today. Resets '+new Date(data.resetsAt).toLocaleString()+ ' (your local time).';
+  for(const id of ['learningVoiceUsage','lessonVoiceUsage','mockVoiceUsage'])$(id).textContent=text;
+ }catch(error){if(me && version===sessionVersion){for(const id of ['learningVoiceUsage','lessonVoiceUsage','mockVoiceUsage'])$(id).textContent='Voice allowance could not be loaded. Try refreshing the page.';}}
 }
 function continueLearning(){return selectLearningModule((curriculum.find(m=>!courseSaved[m.id]?.completed)||curriculum[0]).id)}
 function nextLearningModule(){const next=curriculum[curriculum.findIndex(m=>m.id===activeLessonId)+1];if(next)return selectLearningModule(next.id)}
@@ -627,7 +661,7 @@ $("learn_reflected").addEventListener("change",lessonEdited);
 window.addEventListener("beforeunload",e=>{if(lessonDirty){e.preventDefault();e.returnValue=""}});
 async function changeLearningStudent(){
  if(lessonDirty && !confirm("Switch students without saving these notes?")){$("learn_athleteSelect").value=lessonStudentId;return}
- if(voice)stopVoice();lessonPractice=null;courseSaved={};activeLessonId="study-purpose";await loadLesson();
+ if(voice)stopVoice();lessonPractice=null;lessonOpen=false;courseSaved={};activeLessonId="study-purpose";await loadLesson();
 }
 async function loadLesson(){
  const version=++lessonVersion;lessonStudentId=$("learn_athleteSelect").value;lessonDirty=false;lessonCompleted=false;lessonLoading=true;

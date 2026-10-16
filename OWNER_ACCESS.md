@@ -26,6 +26,7 @@ Sign out and sign back in at https://visaatlasprep.com. The header should show *
 ## Explicit boundaries
 
 - Owner is not unlimited API usage: existing voice/report cost controls remain.
+- The Owner can enable **Tester: 18 starts/day** for an existing account in the Daily voice access column, using their current password. Standard access is 6 starts/day. Lessons and mock interviews share that allowance and reset at midnight UTC. This does not grant staff permissions, reset used starts, or change the 8-minute lesson / 12-minute mock session limits. Extra usage can increase AI costs. Disable tester access when testing ends.
 - This does not expose passwords, API keys, database credentials, billing or Render/GitHub controls.
 - This release does not add arbitrary platform configuration, account deletion, document access, or ownership transfer. Changing Owner ownership requires a separate deliberate administrative procedure.
 - There is no MFA in this release. Use a unique strong Owner password, keep account recovery under your control, and do not share the Owner login. Grant staff roles only to trusted users: staff access currently spans all student records.
