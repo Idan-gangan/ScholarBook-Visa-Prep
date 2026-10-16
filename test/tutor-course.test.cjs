@@ -2,6 +2,43 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const {LESSONS,tutorInstructions}=require('../learning');
 
+test('incoming freshman examples use future tense without inventing academic history',()=>{
+ const student={academicLevel:'Freshman / First year',university:'Example University',major:'Cybersecurity'};
+ const card=LESSONS.forStudent(student,'academic-journey');
+ assert.match(card.example,/going to begin my bachelor’s degree in Cybersecurity at Example University/);
+ assert.match(card.example,/\[your actual education history\]/);
+ assert.doesNotMatch(card.example,/currently|completed high school|computing|202[0-9]/);
+ for(const module of LESSONS){
+  const prompt=tutorInstructions(student,{},module.id);
+  assert.match(prompt,/not evidence that the student has arrived or enrolled/);
+  assert.match(prompt,/Respect explicit current-study or transfer facts/);
+  assert.match(prompt,/"If accurate" does not make an invented personal fact acceptable/);
+ }
+});
+test('nil future plans stay unknown; genuine goals remain available',()=>{
+ for(const postGradPlan of ['', 'nil', ' NILL ', 'None','N/A','null','unknown']){
+  const card=LESSONS.forStudent({postGradPlan,sport:'Volleyball'},'future-plans');
+  assert.match(card.example,/\[your real goal\]/);
+  assert.doesNotMatch(card.example,/My current plan is|coach|return|professional athlete/);
+  assert.equal(card.questions[0],'What would you like to do after your studies?');
+ }
+ const card=LESSONS.forStudent({postGradPlan:'Coach volleyball in Nigeria'},'future-plans');
+ assert.match(card.example,/Coach volleyball in Nigeria/);
+});
+test('sport does not turn an unspecified award into an athletic scholarship or invent coverage',()=>{
+ const student={sport:'Track and field',scholarship:'full ride',scholarshipCoverage:'all my living expenses',remainingSponsor:'Parents'};
+ const study=LESSONS.forStudent(student,'study-purpose'),funding=LESSONS.forStudent(student,'funding');
+ assert.ok(study.points.some(p=>p.includes('Track and field')));
+ assert.doesNotMatch(study.example,/athletic|track and field scholarship/i);
+ assert.match(funding.example,/all my living expenses/);assert.match(funding.example,/Parents/);
+ assert.doesNotMatch(funding.example,/tuition|travel|summer|trial|record/);
+ assert.ok(funding.points.some(p=>p.includes('Does it cover tuition')));
+ const prompt=tutorInstructions(student);
+ assert.match(prompt,/Sport plus a scholarship does not prove an athletic award/);
+ assert.match(prompt,/Never invent trials, records, court performance/);
+ assert.match(prompt,/Do not assign coaching, professional sport/);
+});
+
 test('every starting module supplies all teaching outlines for spoken topic switches',()=>{
  for(const start of LESSONS){
   const prompt=tutorInstructions({major:'Cybersecurity',academicLevel:"Bachelor's"},{},start.id);
