@@ -132,28 +132,17 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
       <div id="lessonDetails" class="hidden">
       <button class="btn secondary" onclick="closeLearningModule()">← Back to all modules</button>
       <div id="practiceFocus" class="card hidden"><h3>Focused practice</h3><p id="practiceFocusText"></p><p class="muted small">Review this feedback with your tutor. Starting this lesson does not mark the issue as resolved.</p><button class="btn secondary" onclick="clearReportPractice()">Return to regular lesson</button></div><div id="activeLesson" class="lesson-heading lesson-block"><div><p class="small muted" id="moduleNumber">MODULE 1</p><h2 id="moduleTitle">Your study plans</h2><p id="moduleSummary"></p></div><span id="lessonBadge" class="pill blue">Not completed</span></div>
-      <div class="grid g2 lesson-grid">
-        <div class="card lesson-content">
-          <h2>1. Understand the question</h2>
+      <div class="card lesson-content lesson-block">
+          <h2>1. Learn</h2>
+          <h3>Understand the question</h3>
           <p id="moduleIntro"></p>
-          <h3>2. Structure your answer</h3><p id="moduleStructure"></p><ol id="modulePoints"></ol>
-          <div class="stepnote"><h3>3. See an example</h3><p id="moduleExample"></p><p class="small muted" id="moduleExampleNotice"></p></div>
+          <h3>How to answer</h3><p id="moduleStructure"></p><ol id="modulePoints"></ol>
+          <div class="stepnote"><h3>See an example</h3><p id="moduleExample"></p><p class="small muted" id="moduleExampleNotice"></p></div>
           <p class="small muted">Use your actual facts. Note anything you still need to check.</p>
-        </div>
-        <div class="card">
-          <h2>Your preparation notes</h2>
-          <p class="muted">Use these prompts to connect the lesson to your plans. Writing notes is optional. You can practise aloud and complete the lesson without typing. Your tutor also uses your saved profile.</p>
-          <div class="field"><label for="learn_subjectReason">What do you want to study, and why does it interest you?</label><textarea id="learn_subjectReason" rows="3" maxlength="2000" placeholder="Use your own experience and interests."></textarea></div>
-          <div class="field"><label for="learn_studyOpportunity">What specific learning opportunity have you checked?</label><textarea id="learn_studyOpportunity" rows="3" maxlength="2000" placeholder="Name what you found, why it matters, and what still needs checking."></textarea></div>
-          <div class="field"><label for="learn_futureUse">How could this learning support your plans?</label><textarea id="learn_futureUse" rows="3" maxlength="2000" placeholder="Describe your actual goals; it is okay if they are still developing."></textarea></div>
-          <button class="btn secondary" id="saveLessonBtn" onclick="saveLesson()">Save notes</button>
-          <button class="btn secondary hidden" id="retryLessonBtn" onclick="loadLesson()">Retry loading notes</button>
-          <div id="lessonStatus" role="status" aria-live="polite" class="small lesson-status"></div>
-        </div>
       </div>
       <div class="card lesson-block">
-        <h2>Learn with your tutor</h2>
-        <p>Your tutor teaches the selected module in short steps. Ask for an explanation, try a practice answer, or say “next”. Say “quick review” to review the course topics.</p>
+        <h2>2. Practise with your tutor</h2>
+        <p>Your tutor explains, gives an example, and helps you practise in your own words. Ask “explain more” if you need help, or say “next” to move on.</p>
         <div id="learn_voiceStatus" role="status" aria-live="polite">Not connected</div>
         <div id="learn_voiceLimitNotice" class="small muted" role="status" aria-live="polite"></div>
         <p id="lessonVoiceUsage" class="small muted" role="status"></p>
@@ -162,12 +151,24 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
         <div id="learn_transcript" class="lesson-transcript" aria-label="Tutor conversation"></div>
         <p class="small muted">Your conversation is for learning, with no readiness score. Save the points you want to keep in your notes; the conversation itself is not saved.</p>
       </div>
-      <div class="card lesson-block">
-        <h2>4. Your turn</h2>
+      <details id="optionalNotes" class="card lesson-block">
+        <summary style="cursor:pointer;font-weight:700">My notes — optional</summary>
+        <p>You do not need to write anything to finish. Your saved notes stay here if you want to use them.</p>
+        <div class="field"><label for="learn_subjectReason">What do you want to study, and why?</label><textarea id="learn_subjectReason" rows="3" maxlength="2000"></textarea></div>
+        <div class="field"><label for="learn_studyOpportunity">What do you like about this school or course?</label><textarea id="learn_studyOpportunity" rows="3" maxlength="2000"></textarea></div>
+        <div class="field"><label for="learn_futureUse">What would you like to learn?</label><textarea id="learn_futureUse" rows="3" maxlength="2000"></textarea></div>
+        <p class="small muted">Questions you can practise aloud or write about:</p>
         <ul id="moduleQuestions" class="lesson-content"></ul>
-        <div class="field"><label for="learn_draftAnswer">Your practice answer or takeaway</label><textarea id="learn_draftAnswer" rows="4" maxlength="2000" placeholder="Choose one practice question above. Save a brief answer using your actual facts, then revise it after feedback."></textarea></div>
-        <label class="lesson-check"><input id="learn_reflected" type="checkbox"> I reviewed this lesson and practised an answer aloud or in writing. I skipped any topics that do not apply to me.</label>
-        <div class="lesson-actions"><button class="btn primary" id="completeLessonBtn" onclick="saveLesson(true)">Mark lesson complete</button><button class="btn secondary" id="nextModuleBtn" onclick="nextLearningModule()">Next module</button><button class="btn secondary" onclick="show('interview')">Go to mock interview</button></div>
+        <div class="field"><label for="learn_draftAnswer">Anything you want to remember</label><textarea id="learn_draftAnswer" rows="3" maxlength="2000" placeholder="An answer, a useful point, or something to check later."></textarea></div>
+        <button class="btn secondary" id="saveLessonBtn" onclick="saveLesson()">Save notes</button>
+        <div id="lessonStatus" role="status" aria-live="polite" class="small lesson-status"></div>
+      </details>
+      <div class="card lesson-block">
+        <h2>3. Finish this module</h2>
+        <p>By completing this module, you confirm that you reviewed it and practised an answer. You can practise with the tutor or on your own.</p>
+        <input id="learn_reflected" type="checkbox" hidden aria-hidden="true">
+        <div class="lesson-actions"><button class="btn primary" id="completeLessonBtn" onclick="completeAndContinue()">Complete module &amp; continue →</button></div>
+        <button class="btn secondary hidden" id="retryLessonBtn" onclick="loadLesson()">Retry loading lesson</button>
         <div id="lessonCompletionStatus" role="status" aria-live="polite" class="small lesson-status"></div>
         <p class="small muted">Completion records your progress through this lesson, not an assessment of readiness. You can revisit it any time.</p>
       </div>
@@ -623,7 +624,7 @@ function renderCourse(){
  const prompts=path==="high-school" && module.id==="academic-journey"?["What grade and subjects are you studying now?","What recent results and school experiences are relevant?","Why is this school the next step for you?"]:module.prompts;
  prompts.forEach((prompt,i)=>{const field=lessonFields[i];document.querySelector('label[for="learn_'+field+'"]').textContent=prompt;$("learn_"+field).placeholder="Use your actual facts; note anything you need to check."});
  $("continueLearningBtn").disabled=lessonSaving || lessonLoading || !lessonStudentId;
- $("nextModuleBtn").disabled=lessonSaving || lessonLoading || activeLessonId===curriculum.at(-1).id;
+ $("completeLessonBtn").textContent=activeLessonId===curriculum.at(-1).id?'Complete module & go to mock interview →':'Complete module & continue →';
 }
 async function selectLearningModule(id){
  if(lessonSaving || lessonLoading || !curriculum.some(m=>m.id===id))return;
@@ -664,6 +665,7 @@ async function changeLearningStudent(){
  if(voice)stopVoice();lessonPractice=null;lessonOpen=false;courseSaved={};activeLessonId="study-purpose";await loadLesson();
 }
 async function loadLesson(){
+ $('optionalNotes').open=false;
  const version=++lessonVersion;lessonStudentId=$("learn_athleteSelect").value;lessonDirty=false;lessonCompleted=false;lessonLoading=true;
  if(lessonPractice && (lessonPractice.studentId!==lessonStudentId || lessonPractice.lessonId!==activeLessonId))lessonPractice=null;
  renderPracticeFocus();
@@ -679,7 +681,7 @@ async function loadLesson(){
    lessonFields.forEach(field=>$("learn_"+field).value=data.progress[field]||"");
    $("learn_reflected").checked=data.progress.reflected===true;lessonCompleted=data.progress.completed===true;
    $("lessonBadge").textContent=lessonCompleted?"Completed":data.progress.updatedAt?"In progress":"Not completed";
-   setLessonStatus(data.progress.updatedAt?"Your saved notes are ready.":"Start with the explanation, then connect it to your situation.");
+   setLessonStatus("");
    lessonControls(false);lessonFields.forEach(field=>$("learn_"+field).disabled=false);$("learn_reflected").disabled=false;
  }catch(e){if(version===lessonVersion){setLessonStatus("Could not load notes: "+e.message);$("retryLessonBtn").classList.remove("hidden")}}
  finally{if(version===lessonVersion){lessonLoading=false;renderCourse()}}
@@ -702,6 +704,15 @@ async function saveLesson(complete=false){
    return unchanged;
  }catch(e){setLessonStatus(e.message);return false}
  finally{lessonSaving=false;lessonControls(false);$("learn_athleteSelect").disabled=!!voice;renderCourse()}
+}
+async function completeAndContinue(){
+ if(lessonSaving || lessonLoading || !lessonStudentId)return;
+ const version=lessonVersion,id=activeLessonId;
+ if(voice?.mode==='learn')stopVoice();
+ $('learn_reflected').checked=true;
+ if(!await saveLesson(true) || version!==lessonVersion || id!==activeLessonId || !lessonCompleted || !$("learning").classList.contains("on"))return;
+ if(id===curriculum.at(-1).id){show('interview');return;}
+ await nextLearningModule();
 }
 async function startLearningTutor(){
  if(voice || lessonSaving || lessonLoading)return;

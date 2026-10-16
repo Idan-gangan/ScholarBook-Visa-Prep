@@ -20,6 +20,7 @@ function fixture(){
    else if(route==='/api/athletes')data=[student];else if(route==='/api/reports')data=[];else if(route==='/api/my-profile')data=student;
    else if(route.startsWith('/api/learning/')){
      if(store.failLoad&&!opt.method)return {ok:false,json:async()=>({error:'Unavailable'})};
+     if(store.failSave&&opt.method==='PUT')return {ok:false,json:async()=>({error:'Save failed'})};
      const id=route.split('/').at(-1);
      if(opt.method==='PUT')store.moduleProgress[id]={...JSON.parse(opt.body),updatedAt:'2026-09-27'};
      data={progress:store.moduleProgress[id]||{}};
@@ -58,6 +59,27 @@ test('overview hides lesson details until selection and allows return without lo
  assert.equal(f.store.moduleProgress.funding.completed,true);
  f.run('closeLearningModule()');assert.equal(f.elements.get('lessonDetails').classList.contains('hidden'),true);
  await f.run("selectLearningModule('funding')");assert.equal(f.run('lessonCompleted'),true);
+});
+test('simple lesson flow keeps notes collapsed, preserves saved notes, and completes into next module',async()=>{
+ const f=fixture();f.store.moduleProgress['study-purpose']={subjectReason:'My saved reason',draftAnswer:'My saved answer'};
+ await f.run('boot()');await f.run("selectLearningModule('study-purpose')");
+ assert.equal(f.elements.get('optionalNotes').open,false);
+ assert.equal(f.elements.get('learn_subjectReason').value,'My saved reason');
+ await f.run('completeAndContinue()');
+ assert.equal(f.run('activeLessonId'),'academic-journey');
+ assert.equal(f.store.moduleProgress['study-purpose'].completed,true);
+ assert.equal(f.store.moduleProgress['study-purpose'].reflected,true);
+ assert.equal(f.store.moduleProgress['study-purpose'].draftAnswer,'My saved answer');
+ assert.doesNotMatch(html,/Your preparation notes|4\. Your turn|id="nextModuleBtn"/);
+});
+test('completion does not advance on save failure; final module opens mock without starting a paid session',async()=>{
+ const f=fixture();await f.run('boot()');await f.run("selectLearningModule('funding')");f.store.failSave=true;
+ await f.run('completeAndContinue()');assert.equal(f.run('activeLessonId'),'funding');
+ assert.match(f.elements.get('lessonCompletionStatus').textContent,/Save failed/);
+ f.store.failSave=false;await f.run("selectLearningModule('interview-practice')");await f.run('completeAndContinue()');
+ assert.equal(f.store.moduleProgress['interview-practice'].completed,true);
+ assert.equal(f.elements.get('interview').classList.contains('on'),true);
+ assert.equal(f.store.requests.some(r=>r.url.startsWith('/api/realtime-session')),false);
 });
 test('report practice opens the matched lesson and clears on module change',async()=>{
  const f=fixture();await f.run('boot()');
