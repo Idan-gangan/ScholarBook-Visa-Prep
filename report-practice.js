@@ -7,7 +7,7 @@ function practiceTargets(report) {
     const lesson = lessons.find(item => item.id === requested) || lessons.find(item => item.id === 'interview-practice');
     return [{lessonId: lesson.id, title: lesson.title, focus: focus.slice(0, 1000)}];
   });
-  if (!targets.length && typeof report.biggestWeakness === 'string' && report.biggestWeakness.trim()) {
+  if (report.formatVersion!==3 && !targets.length && typeof report.biggestWeakness === 'string' && report.biggestWeakness.trim()) {
     const lesson = lessons.find(item => item.id === 'interview-practice');
     targets.push({lessonId: lesson.id, title: lesson.title, focus: report.biggestWeakness.slice(0, 1000)});
   }

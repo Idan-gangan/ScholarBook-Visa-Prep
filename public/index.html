@@ -177,6 +177,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
       <h1>Live AI Mock Interview</h1>
       <div class="notice">Answer one question at a time. Your interviewer will ask follow-up questions. You will get feedback after you end the interview.</div>
       <div class="field"><label>Student</label><select id="athleteSelect"></select></div>
+      <div class="field"><label for="interviewDifficulty">Interview mode</label><select id="interviewDifficulty"><option value="standard">Standard</option><option value="challenging">Challenging</option><option value="intensive">Intensive</option></select><p class="small muted">Standard: direct questions. Challenging: more follow-ups. Intensive: deeper questioning. All modes use simple language and the same scoring standard.</p></div>
       <div class="voiceBox">
         <div class="card">
           <div id="voiceStatus" class="status">Not connected</div>
@@ -199,7 +200,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
         <div class="card">
           <h3>After the interview</h3>
           <p class="muted">End your interview to see what went well and what to practise next. Coaching and corrections appear here, after the conversation.</p>
-          <button class="btn primary" style="width:100%" onclick="generateReport()">Generate Readiness Report</button>
+          <button class="btn primary" style="width:100%" id="feedbackBtn" onclick="generateReport()">View my feedback</button>
           <p class="muted small">Up to six new reports each day, one per mock interview. Opening saved reports uses no allowance. If generation fails, you can retry, with a maximum of twelve generation attempts per day. Limits reset at midnight UTC.</p>
 <p id="reportUsage" class="small muted" role="status"></p>
 <div id="evalStatus" class="small muted" style="margin-top:12px"></div>
@@ -458,11 +459,12 @@ async function saveProfile(){
  try{ $("profileStatus").textContent="Saving…"; const saved=await api("/api/my-profile",{method:"PUT",body:JSON.stringify(body)}); athletes=await api("/api/athletes");renderAll();const missing=window.VisaAtlasProfile?.missing(saved)||[];$("profileStatus").textContent=missing.length?'Saved. Before your mock interview, complete: '+missing.join(', '):'Saved. Your profile is ready for mock practice.'; }
  catch(e){ $("profileStatus").textContent=e.message; }
 }
-function readiness(score){return score>=85?"Ready":score>=70?"Almost Ready":score>=55?"Needs Significant Prep":"High Concern"}
-function pill(score){const c=score>=85?"green":score>=70?"amber":"red";return `<span class="pill ${c}">${readiness(score)}</span>`}
+function readiness(score){if(!Number.isFinite(score))return "Not assessed";return score>=85?"Ready":score>=70?"Almost Ready":score>=55?"Needs Significant Prep":"High Concern"}
+function pill(score){if(!Number.isFinite(score))return '<span class="pill blue">Not assessed</span>';const c=score>=85?"green":score>=70?"amber":"red";return `<span class="pill ${c}">${readiness(score)}</span>`}
 function renderAll(){
  const total=athletes.length, ready=athletes.filter(a=>(a.currentScore||0)>=85).length;
- const avg=Math.round(athletes.reduce((s,a)=>s+(a.currentScore||0),0)/(total||1));
+ const scored=athletes.filter(a=>Number.isFinite(a.currentScore));
+ const avg=scored.length?Math.round(scored.reduce((s,a)=>s+a.currentScore,0)/scored.length):"—";
  $("dashCards").innerHTML=[
   ["Students",total],["Ready",ready],["Average Readiness",avg+"/100"],["Reports",reports.length]
  ].map(x=>`<div class="card"><div class="muted small">${x[0]}</div><div class="kpi">${x[1]}</div></div>`).join("");
@@ -473,8 +475,8 @@ function renderAll(){
 }
 function reportSections(r){
  const list=(items,ordered=false)=>`<${ordered?'ol':'ul'}>${items.map(item=>`<li>${escapeHtml(item)}</li>`).join('')}</${ordered?'ol':'ul'}>`;
- if(r.formatVersion===2&&Array.isArray(r.strengths)&&Array.isArray(r.clarifications)&&Array.isArray(r.nextSteps)){
-   return `<p class="report-summary">${escapeHtml(r.feedback)}</p><p class="report-priority"><strong>Focus first:</strong> ${escapeHtml(r.biggestWeakness)}</p><div class="report-grid"><section class="report-section"><h4>What went well</h4>${r.strengths.length?list(r.strengths):'<p>There is not enough evidence in this interview to identify a clear strength yet.</p>'}</section><section class="report-section"><h4>Points to clarify</h4>${list(r.clarifications)}</section><section class="report-section report-actions"><h4>Your next three steps</h4>${list(r.nextSteps,true)}</section></div>`;
+ if([2,3].includes(r.formatVersion)&&Array.isArray(r.strengths)&&Array.isArray(r.clarifications)&&Array.isArray(r.nextSteps)){
+   return `<p class="report-summary">${escapeHtml(r.feedback)}</p><p class="report-priority"><strong>Focus first:</strong> ${escapeHtml(r.biggestWeakness)}</p><div class="report-grid"><section class="report-section"><h4>What went well</h4>${r.strengths.length?list(r.strengths):'<p>There is not enough evidence in this interview to identify a clear strength yet.</p>'}</section><section class="report-section"><h4>Points to clarify</h4>${r.clarifications.length?list(r.clarifications):"<p>No specific improvement identified in the answers assessed.</p>"}</section><section class="report-section report-actions"><h4>Your next steps</h4>${list(r.nextSteps,true)}</section></div>`;
  }
  return `<div class="report-legacy"><h4>Focus first</h4><p>${escapeHtml(r.biggestWeakness)}</p><h4>Interview feedback</h4><p>${escapeHtml(r.feedback)}</p><h4>Next step</h4><p>${escapeHtml(r.nextStep)}</p></div>`;
 }
@@ -503,7 +505,7 @@ function renderReports(){
    const a=athletes.find(x=>x.id===r.athleteId)||{};
    const h=r.humanReview?`<div class="card" style="margin-top:10px"><b>Human review — ${escapeHtml(r.humanReview.reviewer)}</b><p>Adjusted score: <b>${escapeHtml(r.humanReview.score)}/100</b></p><p>${escapeHtml(r.humanReview.note)}</p></div>`:"";
    const reviewBtn=(["owner","coach","supervisor"].includes(me.role))?`<button class="btn secondary" data-report-id="${escapeHtml(r.id)}" data-report-score="${escapeHtml(r.overall)}">Add human review</button>`:"";
-   return `<article class="card report-card" style="margin-bottom:16px"><div class="report-header"><div><h3>${escapeHtml(a.name||"Student")} · Mock #${escapeHtml(r.mockNumber)}</h3><div class="muted small">${new Date(r.createdAt).toLocaleString()}</div></div><div class="report-score"><div class="muted small">Practice readiness</div><span class="kpi">${escapeHtml(r.overall)}/100</span> ${pill(r.overall)}</div></div><p class="muted small">Feedback on this practice interview, not a prediction of visa approval.</p>${reportSections(r)}${reportPractice(r)}${reviewBtn}${h}</article>`
+   return `<article class="card report-card" style="margin-bottom:16px"><div class="report-header"><div><h3>${escapeHtml(a.name||"Student")} · Mock #${escapeHtml(r.mockNumber)}</h3><div class="muted small">${new Date(r.createdAt).toLocaleString()}</div></div><div class="report-score"><div class="muted small">${r.formatVersion===3?escapeHtml(({standard:"Standard",challenging:"Challenging",intensive:"Intensive"})[r.difficulty]||"Standard")+" · ":""}Practice readiness</div>${Number.isFinite(r.overall)?`<span class="kpi">${escapeHtml(r.overall)}/100</span> ${pill(r.overall)}`:'<p>Not enough information to score</p>'}</div></div><p class="muted small">Feedback on this practice interview, not a prediction of visa approval.</p>${reportSections(r)}${r.formatVersion===3?`<section class="report-section"><h4>Interview coverage</h4><p>${escapeHtml(r.coverage?.assessed)} of ${escapeHtml(r.coverage?.required)} relevant areas assessed.</p><h4>Not covered — not counted against you</h4>${r.notCovered?.length?`<ul>${r.notCovered.map(x=>`<li>${escapeHtml(x)}</li>`).join("")}</ul>`:"<p>All relevant main areas were covered.</p>"}</section>`:""}${reportPractice(r)}${reviewBtn}${h}</article>`
  }).join("")||'<div class="card">No reports yet.</div>';
  $("reportsList").querySelectorAll('[data-report-id]').forEach(button=>button.addEventListener('click',()=>humanReview(button.dataset.reportId,button.dataset.reportScore)));
  $("reportsList").querySelectorAll('[data-practice-report]').forEach(button=>button.addEventListener('click',()=>openReportPractice(button.dataset.practiceReport,Number(button.dataset.focus))));
@@ -527,7 +529,7 @@ let voice=null, voiceScreen="mock", learningTranscript=[], mockStudentId=null;
 function voiceEl(id){return $(voiceScreen==="learn"?"learn_"+id:id)}
 function voiceSend(v,type,details={}){if(voice===v && dc?.readyState==="open")dc.send(JSON.stringify({type,...details}))}
 function voiceMic(v,on){if(voice===v)stream?.getAudioTracks().forEach(t=>t.enabled=on)}
-let mockSessionId=null;
+let mockSessionId=null, mockSave=Promise.resolve();
 function interviewerState(state){
  const stage=$('interviewerStage'),label=$('interviewerActivity');
  if(!stage||!label)return;
@@ -536,6 +538,10 @@ function interviewerState(state){
 }
 function voiceReady(v){
   if(voice!==v || v.busy || v.playing || v.waiting || !v.connected)return;
+  if(v.closing){
+    stopVoice('Interview complete — view your feedback below.');
+    $('feedbackBtn')?.scrollIntoView?.({behavior:'smooth',block:'center'});$('feedbackBtn')?.focus?.();return;
+  }
   voiceSend(v,"input_audio_buffer.clear");voiceMic(v,true);
   voiceEl("voiceStatus").textContent="Your turn — listening";
   if(v.mode==='mock')interviewerState('listening');
@@ -564,13 +570,16 @@ function voiceEvent(v,ev){
   if(ev.type==="conversation.item.input_audio_transcription.failed" && v.pendingItem===ev.item_id){
     voiceInputDone(v,ev.item_id,"");voiceEl("voiceStatus").textContent="I couldn’t hear that clearly — please say your answer again.";
   }
-  if((ev.type==="response.output_audio_transcript.done"||ev.type==="response.audio_transcript.done") && ev.transcript)addLine("assistant",ev.transcript);
+  if((ev.type==="response.output_audio_transcript.done"||ev.type==="response.audio_transcript.done") && ev.transcript){
+    addLine("assistant",ev.transcript);
+    if(v.mode==='mock'&&/thank you[.!]? this mock interview is complete[.!]? your feedback is ready to generate[.!]?/i.test(ev.transcript.replace(/\s+/g,' ').trim())){v.closing=true;voiceMic(v,false);voiceReady(v);}
+  }
   if(ev.type==="input_audio_buffer.committed" && ev.item_id){
     v.seenItems??=new Set();
     if(v.seenItems.has(ev.item_id))return;
     v.seenItems.add(ev.item_id);
     // Discard input captured during the question, including late VAD events.
-    if(v.busy || v.playing || v.waiting){voiceSend(v,"conversation.item.delete",{item_id:ev.item_id});return}
+    if(v.closing || v.busy || v.playing || v.waiting){voiceSend(v,"conversation.item.delete",{item_id:ev.item_id});return}
     v.pendingItem=ev.item_id;v.waiting=true;voiceMic(v,false);
     voiceEl("voiceStatus").textContent="Processing your answer…";
     // Transcription is asynchronous. Recover automatically if it never arrives.
@@ -604,9 +613,9 @@ async function startVoice(mode="mock"){
   voiceScreen=mode;
   if(!voiceEl("athleteSelect").value){voiceEl("voiceStatus").textContent="Select a student first.";return}
   if(mode==='mock'&&typeof window!=='undefined'&&window.VisaAtlasProfile){const p=athletes.find(a=>a.id===voiceEl("athleteSelect").value);const missing=window.VisaAtlasProfile.missing(p);if(missing.length){voiceEl("voiceStatus").textContent='Complete My Profile first: '+missing.join(', ');return}}
-  const v={mode,athleteId:voiceEl("athleteSelect").value,busy:false,playing:false,waiting:false,pendingItem:null,connected:false};voice=v;
+  const v={mode,difficulty:mode==='mock'?$('interviewDifficulty').value:'standard',athleteId:voiceEl("athleteSelect").value,busy:false,playing:false,waiting:false,pendingItem:null,connected:false};voice=v;
   if(mode==="learn")learningTranscript=[];
-  else {mockSessionId=null;interviewerState('connecting');transcript=[];mockStudentId=v.athleteId;$("evalStatus").textContent=""}
+  else {mockSessionId=null;mockSave=Promise.resolve();$('interviewDifficulty').disabled=true;interviewerState('connecting');transcript=[];mockStudentId=v.athleteId;$("evalStatus").textContent=""}
   voiceEl("transcript").replaceChildren();
   voiceEl("startBtn").disabled=true;voiceEl("stopBtn").disabled=false;
   voiceEl("athleteSelect").disabled=true;
@@ -627,7 +636,7 @@ async function startVoice(mode="mock"){
     const offer=await peer.createOffer();if(voice!==v)return;
     await peer.setLocalDescription(offer);if(voice!==v)return;
     v.abort=new AbortController();
-    const r=await fetch("/api/realtime-session?athleteId="+encodeURIComponent(v.athleteId)+"&mode="+mode+(mode==="learn"?"&lesson="+encodeURIComponent(activeLessonId)+reportPracticeQuery():""),{method:"POST",body:offer.sdp,headers:{"Content-Type":"application/sdp"},signal:v.abort.signal});
+    const r=await fetch("/api/realtime-session?athleteId="+encodeURIComponent(v.athleteId)+"&mode="+mode+(mode==="learn"?"&lesson="+encodeURIComponent(activeLessonId)+reportPracticeQuery():"&difficulty="+encodeURIComponent(v.difficulty)),{method:"POST",body:offer.sdp,headers:{"Content-Type":"application/sdp"},signal:v.abort.signal});
     const answer=await r.text();refreshVoiceUsage();if(voice!==v)return;
     if(!r.ok){let message=answer;try{message=JSON.parse(answer).error||answer}catch{}if(r.status===401 && message==="Unauthorized"){returnToSignIn();return}throw new Error(message)}
     if(mode==='mock')mockSessionId=r.headers.get('X-Mock-Session-Id');
@@ -643,7 +652,13 @@ function stopVoice(message=voiceScreen==="learn"?"Lesson conversation ended":"In
   const v=voice;voice=null;clearTimeout(v?.inputTimer);clearTimeout(v?.limitTimer);clearTimeout(v?.warningTimer);v?.abort?.abort();
   if(stream)stream.getTracks().forEach(t=>t.stop());if(dc)dc.close();if(pc)pc.close();
   if(v?.audio){v.audio.pause();v.audio.srcObject=null}
-  if(v?.mode==='mock')interviewerState('ended');
+  if(v?.mode==='mock'){
+    interviewerState('ended');$('interviewDifficulty').disabled=false;
+    if(mockSessionId&&transcript.some(line=>line.role==='athlete')){
+      const version=sessionVersion;
+      mockSave=api('/api/mock-session/end',{method:'POST',body:JSON.stringify({mockSessionId,transcript})}).catch(()=>{if(version===sessionVersion&&me)$('evalStatus').textContent='Your conversation is still here. Use View my feedback to retry saving it.';});
+    }
+  }
   pc=dc=stream=null;voiceEl("voiceStatus").textContent=message;
   voiceEl("startBtn").disabled=false;voiceEl("stopBtn").disabled=true;
   voiceEl("athleteSelect").disabled=false;
@@ -659,9 +674,10 @@ async function generateReport(){
  try{
    const athleteId=mockStudentId || $("athleteSelect").value;
    const reportTranscript=transcript.map(line=>({...line})),reportSessionId=mockSessionId;
+   await mockSave;
    await api("/api/save-transcript",{method:"POST",body:JSON.stringify({athleteId,transcript:reportTranscript})});
    const r=await api("/api/evaluate",{method:"POST",body:JSON.stringify({athleteId,transcript:reportTranscript,mockSessionId:reportSessionId})});
-   $("evalStatus").textContent=`Report created: ${r.overall}/100 — ${r.readiness}`;
+   $("evalStatus").textContent=Number.isFinite(r.overall)?`Report created: ${r.overall}/100 — ${r.readiness}`:"Feedback ready — not enough information to score.";
    athletes=await api("/api/athletes");reports=await api("/api/reports");renderAll();show("reports");
  }catch(e){$("evalStatus").textContent=e.message}
  finally{reportGenerating=false;refreshVoiceUsage();}
