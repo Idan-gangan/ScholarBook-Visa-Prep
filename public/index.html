@@ -90,38 +90,30 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
 
 
 <div id="registration" class="hidden" style="min-height:100vh;background:var(--bg);padding:20px">
-  <div class="modalish">
-    <div style="display:flex;justify-content:space-between;gap:15px;align-items:start;flex-wrap:wrap"><div><div class="logo">VA</div><h1>Create Student Account</h1><p class="muted">Tell us about your study plans so your preparation can fit your background.</p></div><button class="btn secondary" onclick="showWelcome()">Back to home</button></div>
-    <div class="notice">Prototype notice: Do not enter passport numbers, DS-160 details, financial-document images, Social Security numbers, or other highly sensitive information.</div>
-    <div class="formgrid">
-      <div class="field"><label>Full name *</label><input id="r_name"></div>
-      <div class="field"><label>Email *</label><input id="r_email" type="email"></div>
-      <div class="field"><label>Password *</label><input id="r_password" type="password" autocomplete="new-password" minlength="15" maxlength="128" placeholder="At least 15 characters"></div>
-      <div class="field"><label>Phone</label><input id="r_phone"></div>
-      <div class="field"><label>Country *</label><input id="r_country"></div>
-      <div class="field"><label>Interview location / Embassy</label><input id="r_interviewLocation" placeholder="e.g. Nairobi, Kenya"></div>
-      <div class="field"><label for="r_sport">Sport (optional)</label><input id="r_sport" placeholder="Leave blank if you are not a student-athlete"></div>
-      <div class="field"><label>School / University *</label><input id="r_university"></div>
-      <div class="field"><label>Subjects / Program / Research area *</label><input id="r_major" placeholder="e.g. Secondary school subjects, Biology, or research area"></div>
-      <div class="field"><label>Academic level</label><select id="r_academicLevel"><option value="">Select</option><option>High school</option><option>Undergraduate</option><option>Master’s</option><option>PhD / Doctorate</option><option>Other</option></select></div>
-      <div class="field"><label>Scholarship type</label><input id="r_scholarshipType" placeholder="If applicable: merit, research, athletic, or other"></div>
-      <div class="field"><label>What does the scholarship cover?</label><input id="r_scholarshipCoverage" placeholder="Use your actual award information"></div>
-      <div class="field"><label>Previous U.S. visa refusal?</label><select id="r_previousRefusal"><option>No</option><option>Yes</option></select></div>
-      <div class="field"><label>Number of previous attempts</label><input id="r_previousAttempts" type="number" min="0" value="0"></div>
-      <div class="field"><label>Previous U.S. travel?</label><select id="r_previousTravel"><option>No</option><option>Yes</option></select></div>
-      <div class="field"><label>Who covers costs not covered by scholarship?</label><input id="r_remainingSponsor"></div>
-      <div class="field wide"><label>What are your plans after graduation?</label><textarea id="r_postGradPlan" rows="4" placeholder="Briefly describe your genuine current plan."></textarea></div>
-    </div>
-    <div class="stepnote small">By creating an account, you confirm that the information you enter is your own and should be truthful. This prototype does not determine visa eligibility.</div>
-    <button class="btn primary" style="width:100%;margin-top:15px" onclick="registerAthlete()">Create Student Account</button>
-    <button class="linkbtn" onclick="backToLogin()">Already have an account? Sign in</button>
-    <div id="registerErr" class="small" style="color:#b32626;margin-top:10px"></div>
-  </div>
+ <div class="modalish" style="max-width:560px">
+  <h1>Create your account</h1><p>Start with your name, email and password. We’ll email you a verification link, then you can set up your study profile.</p>
+  <form onsubmit="event.preventDefault();registerAthlete()">
+   <div class="field"><label for="r_name">Full name</label><input id="r_name" autocomplete="name" maxlength="120" required></div>
+   <div class="field"><label for="r_email">Email</label><input id="r_email" type="email" autocomplete="email" maxlength="160" required></div>
+   <div class="field"><label for="r_password">Password</label><input id="r_password" type="password" autocomplete="new-password" minlength="15" maxlength="128" placeholder="At least 15 characters" required></div>
+   <p class="small muted">Use an email you can access. You’ll need to verify it before voice practice and reports.</p>
+   <button id="registerBtn" class="btn primary" type="submit">Create account</button>
+  </form>
+  <button class="linkbtn" onclick="backToLogin()">Already have an account? Sign in</button>
+  <button class="linkbtn" onclick="showWelcome()">Back to home</button>
+  <div id="registerErr" role="status" class="small"></div>
+ </div>
 </div>
 
 <div id="app" class="hidden">
   <div class="top"><div class="brand"><div class="logo" aria-hidden="true">VA</div>VisaAtlas</div><div class="account-summary"><span class="account-avatar" id="accountAvatar" aria-hidden="true"></span><div class="account-copy"><b id="who"></b><span id="role" class="muted"></span></div><button class="btn secondary" onclick="logout()">Log out</button></div></div>
   <div class="layout"><nav class="side" id="nav" aria-label="Main navigation"></nav><main class="main">
+    <div id="verificationNotice" class="card hidden" style="margin-bottom:18px">
+      <h2>Verify your email</h2><p id="verificationEmail"></p><p>You can set up your profile and read lessons now. Verify your email to unlock voice practice and reports.</p>
+      <button class="btn primary" onclick="sendVerification()">Resend email</button> <button class="btn secondary" onclick="refreshVerification()">I’ve verified my email</button>
+      <details><summary>Wrong email address?</summary><label for="verificationNewEmail">Correct email</label><input id="verificationNewEmail" type="email" autocomplete="email"><label for="verificationPassword">Current password</label><input id="verificationPassword" type="password" autocomplete="current-password"><button class="btn secondary" onclick="sendVerification(true)">Change email &amp; resend</button></details>
+      <p id="verificationStatus" role="status"></p>
+    </div>
     <section id="learning" class="screen">
       <div class="learning-welcome"><div><h1 id="learningGreeting">Welcome back</h1><p>Continue your preparation for your F-1 interview.</p></div><div class="course-status"><p id="courseProgress" role="status">Loading progress…</p><progress id="courseMeter" class="course-meter" max="6" value="0" aria-label="Modules completed"></progress></div></div>
       <div class="field learning-student-picker" id="learningStudentPicker"><label for="learn_athleteSelect">Student</label><select id="learn_athleteSelect" onchange="changeLearningStudent()"></select></div>
@@ -258,6 +250,8 @@ function returnToSignIn(message=sessionMessage){
  me=null;athletes=[];reports=[];transcript=[];learningTranscript=[];mockStudentId=null;
  lessonOpen=false;$('lessonDetails').classList.add('hidden');lessonPractice=null;renderPracticeFocus();courseSaved={};activeLessonId="study-purpose";$("moduleCards").replaceChildren();$("courseProgress").textContent="";lessonVersion++;lessonStudentId=null;lessonDirty=false;lessonCompleted=false;
  clearPasswordForm();
+ for(const id of ['verificationPassword','verificationNewEmail'])$(id).value='';
+ $('verificationStatus').textContent='';renderVerification();
  clearOwnerView();
  lessonFields.forEach(field=>$('learn_'+field).value='');$('learn_reflected').checked=false;
  for(const id of ['profileForm','reportsList','athleteTable','managerTable','dashCards','nav','transcript','learn_transcript','athleteSelect','learn_athleteSelect'])$(id).replaceChildren();
@@ -280,10 +274,24 @@ function showWelcome(){publicPage("welcome")}
 function showRegistration(){publicPage("registration")}
 function backToLogin(){publicPage("login")}
 async function registerAthlete(){
- const ids=["name","email","password","phone","country","interviewLocation","sport","university","major","academicLevel","scholarshipType","scholarshipCoverage","previousRefusal","previousAttempts","previousTravel","remainingSponsor","postGradPlan"];
+ if($('registerBtn').disabled)return;$('registerBtn').disabled=true;
+ const ids=["name","email","password"];
  const body={}; ids.forEach(k=>body[k]=$("r_"+k).value);
- try{ $("registerErr").textContent="Creating account…"; await api("/api/register-athlete",{method:"POST",body:JSON.stringify(body)}); $("registration").classList.add("hidden"); await boot(); }
+ try{ $("registerErr").textContent="Creating account…"; const result=await api("/api/register-athlete",{method:"POST",body:JSON.stringify(body)});$('r_password').value=''; $("registration").classList.add("hidden"); await boot();$('verificationStatus').textContent=result.verificationMessage||''; }
  catch(e){ $("registerErr").textContent=e.message; }
+ finally{$('registerBtn').disabled=false;}
+}
+function renderVerification(){
+ $('verificationNotice').classList.toggle('hidden',!me?.needsEmailVerification);
+ $('verificationEmail').textContent=me?.needsEmailVerification?'Check the inbox for '+me.email:'';
+}
+async function refreshVerification(){try{me=await api('/api/me');renderVerification();$('verificationStatus').textContent=me.needsEmailVerification?'Not verified yet. Open the link in your email first.':'Email verified.';}catch(e){$('verificationStatus').textContent=e.message;}}
+let verificationSending=false;
+async function sendVerification(change=false){
+ if(verificationSending)return;verificationSending=true;$('verificationStatus').textContent='Sending…';
+ try{const result=await api(change?'/api/change-unverified-email':'/api/resend-verification',{method:'POST',body:JSON.stringify(change?{email:$('verificationNewEmail').value,currentPassword:$('verificationPassword').value}:{})});me=await api('/api/me');renderVerification();$('verificationStatus').textContent=result.message;}
+ catch(e){$('verificationStatus').textContent=e.message;}
+ finally{$('verificationPassword').value='';verificationSending=false;}
 }
 async function logout(){if(voice)stopVoice();await api("/api/logout",{method:"POST"});location.reload()}
 function clearPasswordForm(){for(const id of ['currentPassword','newPassword','confirmPassword'])$(id).value='';}
@@ -326,7 +334,7 @@ async function boot(){
  $("learn_athleteSelect").replaceChildren(...athletes.map(a=>new Option(a.name+" — "+(a.university||""),a.id)));
  renderAll(); if(me.role==="athlete" || (me.role==='owner' && athletes.some(a=>a.userId===me.id))) await renderProfile();
  if(me.role==='owner')await loadOwner();else clearOwnerView();
- show(me.role==='owner'?'owner':me.role==="athlete"?"learning":"dashboard");
+ renderVerification();show(me.role==='owner'?'owner':me.role==="athlete"?(athletes.find(a=>a.userId===me.id)?.profileStatus==='Incomplete'?'profile':'learning'):"dashboard");
  await loadLesson();await refreshVoiceUsage();
 }
 function levelOptions(current){
@@ -374,21 +382,63 @@ async function saveAccountRole(button){
  }catch(error){$('ownerStatus').textContent=error.message;}
  finally{$('ownerPassword').value='';button.disabled=false;}
 }
+let profileChoices={countries:[],sports:[],fundingSources:[]};
+function selectOptions(values,current,placeholder='Choose or skip'){
+ const list=['',...values];if(current&&!list.includes(current))list.push(current);
+ return list.map(v=>`<option value="${escapeHtml(v)}"${v===(current||'')?' selected':''}>${escapeHtml(v||placeholder)}</option>`).join('');
+}
+function countryFlag(code){return Array.from(code).map(c=>String.fromCodePoint(127397+c.charCodeAt(0))).join('');}
 async function renderProfile(){
- const p=await api("/api/my-profile");
- const fields=[
-  ["phone","Phone","text"],["country","Country","text"],["interviewLocation","Interview location / Embassy","text"],
-  ["sport","Sport (optional)","text"],["university","School / University","text"],["major","Subjects / Program / Research area","text"],["academicLevel","Academic level","level"],
-  ["scholarship","Scholarship type","text"],["scholarshipCoverage","Scholarship coverage","text"],["previousRefusal","Previous U.S. visa refusal?","text"],
-  ["previousAttempts","Previous attempts","number"],["previousTravel","Previous U.S. travel?","text"],["remainingSponsor","Who covers remaining costs?","text"],
-  ["postGradPlan","Plans after graduation","textarea"]
- ];
- $("profileForm").innerHTML=fields.map(([k,label,t])=>`<div class="field ${k==="postGradPlan"?"wide":""}"><label>${label}</label>${t==="level"?`<select id="p_${k}">${levelOptions(p[k])}</select>`:t==="textarea"?`<textarea id="p_${k}" rows="4">${escapeHtml(p[k])}</textarea>`:`<input id="p_${k}" type="${t}" value="${escapeHtml(p[k])}">`}</div>`).join("");
+ const p=await api("/api/my-profile");profileChoices=await api('/api/profile-options');
+ const field=(key,label,type='text',extra='')=>`<div class="field"><label for="p_${key}">${label}</label><input id="p_${key}" type="${type}" value="${escapeHtml(p[key])}" ${extra}></div>`;
+ const select=(key,label,values)=>`<div class="field"><label for="p_${key}">${label}</label><select id="p_${key}">${selectOptions(values,p[key])}</select></div>`;
+ const countryList='<datalist id="countryChoices">'+profileChoices.countries.map(c=>`<option value="${escapeHtml(c.name)}">${countryFlag(c.code)} ${escapeHtml(c.name)}</option>`).join('')+'</datalist>';
+ const phoneOptions='<option value="">Calling country</option>'+profileChoices.countries.map(c=>`<option value="${c.code}"${p.phoneCountry===c.code?' selected':''}>${countryFlag(c.code)} ${escapeHtml(c.name)} (${c.callingCode})</option>`).join('');
+ const funding=String(p.fundingSources||'').split('; ').filter(Boolean);
+ const sources=[...profileChoices.fundingSources,...funding.filter(v=>!profileChoices.fundingSources.includes(v))];
+ $('profileForm').innerHTML=countryList+
+ '<div class="wide"><h2>Your study plans</h2><p>These details help your tutor teach you. Save what you know; you can add the rest later.</p></div>'+
+ field('country','Home country','text','list="countryChoices" placeholder="Search countries"')+
+ field('university','School / University')+field('major','Subjects / Program / Research area')+
+ `<div class="field"><label for="p_academicLevel">Study level you are going for</label><select id="p_academicLevel">${levelOptions(p.academicLevel)}</select></div>`+
+ select('studyStatus','Have you started at this school yet?',['Not started yet','Already studying there','Transferring to this school','Not sure yet'])+
+ '<div class="wide" id="educationHistory"><h3 id="educationHistoryTitle">Previous education — optional</h3><div class="formgrid">'+
+ select('priorEducationStatus','Have you completed that stage?',['Completed','Still studying','Not sure'])+
+ field('priorEducationYear','Completion or expected completion year','number','min="1900" max="2199" placeholder="e.g. 2025"')+'</div></div>'+
+ '<div class="wide"><h2>Your funding</h2><p>Select any that apply. Leave blank if you are still confirming.</p><div class="formgrid">'+sources.map((source,i)=>`<label class="lesson-check"><input type="checkbox" name="fundingSource" value="${escapeHtml(source)}"${funding.includes(source)?' checked':''}> ${escapeHtml(source)}</label>`).join('')+'</div></div>'+
+ field('scholarship','Scholarship name or type — if applicable')+field('scholarshipCoverage','What does the award actually cover?')+field('remainingSponsor','Who covers any remaining costs?')+
+ '<details class="wide"><summary>Contact, interview and other details — optional</summary><div class="formgrid">'+
+ `<div class="field"><label for="p_phoneCountry">Phone calling country</label><select id="p_phoneCountry">${phoneOptions}</select></div>`+
+ field('phone','Phone number — optional','tel','autocomplete="tel" placeholder="Your number or full + international number"')+
+ field('interviewCountry','Interview country','text','list="countryChoices" placeholder="Search countries"')+
+ field('interviewCity','Embassy / consulate city','text','list="interviewCities" placeholder="e.g. Lagos — use your appointment location"')+
+ '<datalist id="interviewCities"><option value="Not booked yet"></option><option value="Other / enter city"></option></datalist>'+
+ field('interviewLocation','Interview location — existing or custom entry','text','placeholder="Not booked yet, or your exact appointment location"')+
+ select('sport','Sport — optional',profileChoices.sports)+
+ select('previousRefusal','Previous U.S. visa refusal?',['No','Yes','Prefer to discuss with tutor'])+
+ field('previousAttempts','Number of previous applications','number','min="0"')+
+ select('previousTravel','Previous U.S. travel?',['No','Yes'])+
+ `<div class="field wide"><label for="p_postGradPlan">Plans after your studies — optional</label><textarea id="p_postGradPlan" rows="3" placeholder="It is okay if you are still deciding.">${escapeHtml(p.postGradPlan)}</textarea></div>`+
+ '</div></details>';
+ $('p_academicLevel').addEventListener('change',updateEducationFields);updateEducationFields();
+ $('p_interviewCountry').addEventListener('change',updateInterviewCities);updateInterviewCities();
+}
+function updateEducationFields(){
+ const level=window.VisaAtlasCurriculum.resolveLevel($('p_academicLevel').value);
+ $('educationHistory').classList.toggle('hidden',!['undergraduate','masters','phd'].includes(level));
+ $('educationHistoryTitle').textContent=level==='undergraduate'?'Your high-school education — optional':level==='masters'?'Your bachelor’s degree — optional':'Your most recent degree — optional';
+}
+function updateInterviewCities(){
+ // Suggestions are not a claim of appointment availability. Other cities remain editable.
+ const cities=$('p_interviewCountry').value==='Nigeria'?['Lagos','Abuja']:$('p_interviewCountry').value==='Kenya'?['Nairobi']:[];
+ $('interviewCities').innerHTML=['Not booked yet',...cities].map(city=>`<option value="${escapeHtml(city)}"></option>`).join('');
 }
 async function saveProfile(){
- const keys=["phone","country","interviewLocation","sport","university","major","academicLevel","scholarship","scholarshipCoverage","previousRefusal","previousAttempts","previousTravel","remainingSponsor","postGradPlan"];
- const body={}; keys.forEach(k=>body[k]=$("p_"+k).value);
- try{ $("profileStatus").textContent="Saving…"; await api("/api/my-profile",{method:"PUT",body:JSON.stringify(body)}); athletes=await api("/api/athletes"); renderAll(); $("profileStatus").textContent="Saved"; }
+ const keys=["phone","phoneCountry","country","interviewCountry","interviewCity","interviewLocation","sport","university","major","academicLevel","scholarship","scholarshipCoverage","previousRefusal","previousAttempts","previousTravel","remainingSponsor","postGradPlan","studyStatus","priorEducationStatus","priorEducationYear"];
+ const body={};keys.forEach(k=>body[k]=$("p_"+k).value);
+ body.fundingSources=Array.from(document.querySelectorAll('input[name="fundingSource"]:checked')).map(el=>el.value).join('; ');
+ if(body.interviewCity)body.interviewLocation=body.interviewCity==='Not booked yet'?'Not booked yet':[body.interviewCity,body.interviewCountry].filter(Boolean).join(', ');
+ try{ $("profileStatus").textContent="Saving…"; await api("/api/my-profile",{method:"PUT",body:JSON.stringify(body)}); athletes=await api("/api/athletes");renderAll();$("profileStatus").textContent="Saved. You can continue to My Learning."; }
  catch(e){ $("profileStatus").textContent=e.message; }
 }
 function readiness(score){return score>=85?"Ready":score>=70?"Almost Ready":score>=55?"Needs Significant Prep":"High Concern"}

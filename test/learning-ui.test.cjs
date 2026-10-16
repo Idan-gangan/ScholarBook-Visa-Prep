@@ -6,7 +6,7 @@ function fixture(){
  const elements=new Map();
  function element(){const classes=new Set();return {value:'',textContent:'',innerHTML:'',disabled:false,checked:false,children:[],dataset:{},classList:{add:x=>classes.add(x),remove:x=>classes.delete(x),contains:x=>classes.has(x),toggle:(x,on)=>on?classes.add(x):classes.delete(x)},querySelectorAll(){return []},setAttribute(){},addEventListener(){},append(...items){this.children.push(...items)},appendChild(item){this.children.push(item)},replaceChildren(...items){this.children=items;if(items[0]?.value)this.value=items[0].value},pause(){}}}
  for(const match of html.matchAll(/id="([^"]+)"/g))elements.set(match[1],element());
- const document={getElementById:id=>{if(!elements.has(id))throw new Error('Missing DOM element '+id);return elements.get(id)},querySelector:selector=>{if(!elements.has(selector))elements.set(selector,element());return elements.get(selector)},querySelectorAll:selector=>selector==='.screen'?['learning','dashboard','interview','profile','reports','manager'].map(id=>elements.get(id)):[],createElement:()=>element(),createTextNode:text=>({textContent:text})};
+ const document={getElementById:id=>{if(!elements.has(id)){if(id.startsWith('p_')||['educationHistory','educationHistoryTitle','interviewCities'].includes(id))elements.set(id,element());else throw new Error('Missing DOM element '+id);}return elements.get(id)},querySelector:selector=>{if(!elements.has(selector))elements.set(selector,element());return elements.get(selector)},querySelectorAll:selector=>selector==='.screen'?['learning','dashboard','interview','profile','reports','manager'].map(id=>elements.get(id)):[],createElement:()=>element(),createTextNode:text=>({textContent:text})};
  const student={id:'s1',userId:'u1',name:'Test Student',university:'Example University',major:'Biology',currentScore:0};
  const store={progress:{},moduleProgress:{},requests:[],tracks:[],failLoad:false,failPassword:false};
  const ctx=vm.createContext({document,console,AbortController,URL,Date,JSON,Set,setTimeout,clearTimeout,Option:function(text,value){return {text,value}},window:{VisaAtlasCurriculum:require("../public/curriculum"),addEventListener(){}},location:{reload(){}},confirm:()=>true,navigator:{mediaDevices:{getUserMedia:async()=>{const track={enabled:true,stop(){this.stopped=true}};store.tracks.push(track);return {getTracks:()=>[track],getAudioTracks:()=>[track]}}}},RTCPeerConnection:class{addTrack(){}createDataChannel(){return {readyState:'open',addEventListener(){},send(){},close(){}}}async createOffer(){return {sdp:'offer'}}async setLocalDescription(){}async setRemoteDescription(){}close(){}},fetch:async(url,opt={})=>{
@@ -17,6 +17,7 @@ function fixture(){
    else if(route==='/api/owner/role')data={ok:true};
    else if(route==='/api/owner/voice-access')data={ok:true};
    else if(route==='/api/voice-usage')data={limit:6,used:2,remaining:4,resetsAt:'2026-10-17T00:00:00.000Z'};
+   else if(route==='/api/profile-options')data=JSON.parse(JSON.stringify(require('../profile-options')));
    else if(route==='/api/athletes')data=[student];else if(route==='/api/reports')data=[];else if(route==='/api/my-profile')data=student;
    else if(route.startsWith('/api/learning/')){
      if(store.failLoad&&!opt.method)return {ok:false,json:async()=>({error:'Unavailable'})};
@@ -157,7 +158,8 @@ test('profile, dashboard and report data cannot create HTML or inline handlers',
  const f=fixture();await f.run('boot()');
  const payload=`</textarea><img src=x onerror=alert(1)>"'&`;
  f.ctx.payload=payload;
- await f.run('api=async()=>({postGradPlan:payload,university:payload});renderProfile()');
+ f.ctx.choices=JSON.parse(JSON.stringify(require('../profile-options')));
+ await f.run('api=async(url)=>url==="/api/profile-options"?choices:({postGradPlan:payload,university:payload});renderProfile()');
  const profile=f.elements.get('profileForm').innerHTML;
  assert.doesNotMatch(profile,/<img/);assert.match(profile,/&lt;\/textarea&gt;/);assert.match(profile,/&quot;/);
  f.run(`athletes=[{id:'s1',name:payload,interviewDate:payload,mainConcern:payload}];me={role:'coach'};reports=[{id:payload,athleteId:'s1',overall:45,mockNumber:1,feedback:payload,biggestWeakness:payload,nextStep:payload,humanReview:{reviewer:payload,note:payload,score:45}}];renderAll()`);

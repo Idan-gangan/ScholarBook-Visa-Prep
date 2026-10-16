@@ -49,7 +49,7 @@ function harness(user={id:'u1',role:'athlete'},env={}){
      return pool.query(sql,args);
    },release(){if(unlock)unlock();}};
  };
- const context=vm.createContext({require:id=>id==='./owner-access'?require('../owner-access'):id==='./report-practice'?require('../report-practice'):id==='http'?{createServer:fn=>{handler=fn;return {}}}:id==='pg'?{Pool:function(){return pool}}:id==='fs'?{...fs,readFileSync:(file,...args)=>file===path.resolve(__dirname,'../data/db.json')?'{}':fs.readFileSync(file,...args)}:id==='./evaluation-limits'?require('../evaluation-limits'):id==='./voice-limits'?require('../voice-limits'):id==='./learning'?learning:id==='./passwords'?passwords:id==='./password-recovery'?require('../password-recovery'):require(id),__dirname:path.resolve(__dirname,'..'),process:{env:{OPENAI_API_KEY:'test-only',...env}},console:{log:(...args)=>logs.push(args.join(' ')),warn:(...args)=>logs.push(args.join(' ')),error:(...args)=>logs.push(args.join(' '))},Buffer,URL,FormData,AbortSignal,fetch:async(url,options)=>{if(url.endsWith('/responses')){calls.push({url,request:JSON.parse(options.body)});return {ok:true,json:async()=>({output_text:JSON.stringify({scores:{},overall:45,readiness:'High Concern',biggestWeakness:'Test',feedback:'Test feedback',nextStep:'Practice'})})};}calls.push({url,session:JSON.parse(options.body.get('session'))});return {ok:true,status:200,headers:{get:()=>'/v1/realtime/calls/rtc_test'},text:async()=> 'test-sdp-answer'}}});
+ const context=vm.createContext({require:id=>id==='./email-verification'?require('../email-verification'):id==='./profile-options'?require('../profile-options'):id==='./owner-access'?require('../owner-access'):id==='./report-practice'?require('../report-practice'):id==='http'?{createServer:fn=>{handler=fn;return {}}}:id==='pg'?{Pool:function(){return pool}}:id==='fs'?{...fs,readFileSync:(file,...args)=>file===path.resolve(__dirname,'../data/db.json')?'{}':fs.readFileSync(file,...args)}:id==='./evaluation-limits'?require('../evaluation-limits'):id==='./voice-limits'?require('../voice-limits'):id==='./learning'?learning:id==='./passwords'?passwords:id==='./password-recovery'?require('../password-recovery'):require(id),__dirname:path.resolve(__dirname,'..'),process:{env:{OPENAI_API_KEY:'test-only',...env}},console:{log:(...args)=>logs.push(args.join(' ')),warn:(...args)=>logs.push(args.join(' ')),error:(...args)=>logs.push(args.join(' '))},Buffer,URL,FormData,AbortSignal,fetch:async(url,options)=>{if(url.endsWith('/responses')){calls.push({url,request:JSON.parse(options.body)});return {ok:true,json:async()=>({output_text:JSON.stringify({scores:{},overall:45,readiness:'High Concern',biggestWeakness:'Test',feedback:'Test feedback',nextStep:'Practice'})})};}calls.push({url,session:JSON.parse(options.body.get('session'))});return {ok:true,status:200,headers:{get:()=>'/v1/realtime/calls/rtc_test'},text:async()=> 'test-sdp-answer'}}});
  let source=fs.readFileSync(path.join(__dirname,'../server.js'),'utf8');source=source.slice(0,source.indexOf('initDb().then('));vm.runInContext(source,context);vm.runInContext(`sessions.set('test-token',{userId:${JSON.stringify(user.id)},version:0,expires:Date.now()+60000})`,context);
  async function request(method,url,body,authenticated=true){
    const req=Readable.from(body===undefined?[]:[Buffer.from(typeof body==='string'?body:JSON.stringify(body))]);req.method=method;req.url=url;req.headers={'content-type':'application/json',host:'localhost',cookie:authenticated?'sb_session=test-token':''};
@@ -57,6 +57,26 @@ function harness(user={id:'u1',role:'athlete'},env={}){
  }
  return {request,progress,calls,db,logs,credentials,init:()=>vm.runInContext('initDb()',context),run:code=>vm.runInContext(code,context)};
 }
+test('unverified users cannot spend voice or evaluation allowance; me never exposes verification tokens',async()=>{
+ const h=harness({id:'u1',role:'athlete',verificationRequired:true,email:'test@example.test',emailVerification:{hash:'secret-hash'}});
+ for(const url of ['/api/realtime-session','/api/evaluate']){
+  const response=await h.request('POST',url,{});
+  assert.equal(response.status,403,url);
+ }
+ assert.equal(h.calls.length,0);
+ const me=await h.request('GET','/api/me');assert.equal(me.body.needsEmailVerification,true);assert.doesNotMatch(me.text,/secret-hash|emailVerification"/);
+ const legacy=await harness().request('GET','/api/me');assert.equal(legacy.body.needsEmailVerification,false);assert.equal(legacy.body.emailVerified,false);
+});
+test('short signup creates an unverified student even when email delivery is unavailable',async()=>{
+ const h=harness();
+ const result=await h.request('POST','/api/register-athlete',{name:'New Student',email:'new@example.test',password:'long test password for signup',role:'owner',emailVerifiedAt:'fake'},false);
+ assert.equal(result.status,201);assert.match(result.headers['Set-Cookie'],/sb_session=/);
+ const user=h.db.users.find(u=>u.email==='new@example.test');
+ assert.equal(user.role,'athlete');assert.equal(user.verificationRequired,true);assert.equal(user.emailVerifiedAt,undefined);
+ assert.equal(h.db.athletes.find(a=>a.userId===user.id).profileStatus,'Incomplete');
+ assert.equal((await h.request('POST','/api/resend-verification',{},false)).status,401);
+ assert.equal((await h.request('POST','/api/verify-email',{token:'invalid'},false)).status,400);
+});
 test('owner routes reject anonymous, student and staff accounts',async()=>{
  for(const role of ['athlete','coach','supervisor','manager','unknown']){
   const h=harness({id:'u1',role});

@@ -220,6 +220,7 @@ lessons.forStudent = function(student, lessonId){
   structure='Say what you will study and where. If asked why the U.S., explain your own reason for choosing it.';
   const study=level==='high-school'?'continue my secondary education':level==='undergraduate'?`study for a bachelor’s degree in ${subject}`:level==='masters'?`study for a master’s degree in ${subject}`:level==='phd'?`study for a PhD in ${subject}`:`study ${subject}`;
   example=`I’m going to ${school} to ${study}.`;
+  if(value('studyStatus')==='Already studying there')example=`I’m studying ${subject} at ${school}.`;
   if(award)example+=` I have been offered ${award}.`;
   if(sport)points.push(`Your profile lists ${sport}. You can mention it when explaining your school choice. Only say you will join a team or have a sports scholarship if you know that is confirmed.`);
  }else if(lessonId==='academic-journey'){
@@ -229,11 +230,14 @@ lessons.forStudent = function(student, lessonId){
    example=`I’m going to begin my bachelor’s degree in ${subject} at ${school}. Before this, I [your actual education history].`;
    points.push('First year describes the level you plan to start. Only say you are currently studying there if you have already started.');
   }
+  if(value('studyStatus')==='Already studying there')example=`I’m studying ${subject} at ${school}. Before this, I [your actual education history].`;
+  if(value('priorEducationStatus')&&value('priorEducationYear'))points.push(`You recorded ${value('priorEducationStatus').toLowerCase()} for your previous education, with year ${value('priorEducationYear')}. If you are still studying, describe this as an expected completion year.`);
   if(level==='high-school')points=[lessons.levelTopics[level][index],'Describe your current subjects and recent results accurately.','Explain any actual gap or school change without assuming you have finished secondary school.'];
   else if(level!=='masters'&&level!=='phd')points=points.filter(p=>!p.startsWith('For graduate study'));
   else if(level==='phd')points=points.filter(p=>!p.startsWith('For graduate study'));
  }else if(lessonId==='funding'){
   structure='Say who pays, what they cover, and who pays any costs left over. Check the amounts and conditions.';
+  if(value('fundingSources'))points.push(`Your recorded funding sources are: ${value('fundingSources')}. Explain what each contributes; do not assume equal shares or full coverage.`);
   example=award?`My funding includes ${award}. ${coverage?`It covers ${coverage}.`:'I need to check exactly what it covers.'}`:coverage?`My funding covers ${coverage}. I need to confirm the funding source and any remaining costs.`:sponsor?`${sponsor} will help with remaining costs. I need to confirm the full funding arrangement and amounts.`:'My education will be paid for by [actual funding source], covering [confirmed costs].';
   if((award||coverage)&&sponsor)example+=` ${sponsor} will support the remaining costs.`;
   if(!award&&!coverage){points=points.filter(p=>!p.startsWith('For a scholarship'));questions=questions.filter(q=>!q.includes('scholarship'));}

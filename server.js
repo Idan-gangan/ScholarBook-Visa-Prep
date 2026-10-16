@@ -20,6 +20,9 @@ const {EVALUATION_POLICY,normalizeTranscript,createEvaluationLimits}=require("./
 const evaluationLimits=createEvaluationLimits(pool);
 const {createPasswordRecovery}=require('./password-recovery');
 const passwordRecovery=createPasswordRecovery(pool,{env:process.env,diagnostic:authDiagnostic});
+const {createEmailVerification,needsVerification}=require('./email-verification');
+const emailVerification=createEmailVerification({mutateDb,env:process.env});
+const profileOptions=require('./profile-options');
 const EVALUATION_MODEL = process.env.EVALUATION_MODEL || "gpt-5.6";
 const PUBLIC = path.join(__dirname, "public");
 const DATA_FILE = path.join(__dirname, "data", "db.json");
@@ -194,7 +197,7 @@ function serveStatic(req,res){
   if(!file.startsWith(PUBLIC) || !fs.existsSync(file) || fs.statSync(file).isDirectory()){
     res.writeHead(404); return res.end("Not found");
   }
-  const recovery=path.basename(file).startsWith('password-recovery.');
+  const recovery=/^(password-recovery|verify-email)\./.test(path.basename(file));
   res.writeHead(200,{...RESPONSE_HEADERS,"Content-Type":contentType(file),"Cache-Control":recovery?'no-store':'no-cache',...(recovery?{'Referrer-Policy':'no-referrer'}:{})}); fs.createReadStream(file).pipe(res);
 }
 function makeId(prefix){ return prefix+"_"+crypto.randomBytes(6).toString("hex"); }
@@ -214,6 +217,24 @@ function outputText(resp){
 const server=http.createServer(async (req,res)=>{
   try{
     const url=new URL(req.url, `http://${req.headers.host}`);
+    if(req.method==='GET' && url.pathname==='/api/profile-options')return json(res,200,{countries:profileOptions.countries,sports:profileOptions.sports,fundingSources:profileOptions.fundingSources});
+    if(req.method==='POST' && ['/api/verify-email','/api/resend-verification','/api/change-unverified-email'].includes(url.pathname)){
+      if(!(req.headers['content-type']||'').toLowerCase().startsWith('application/json'))return json(res,415,{error:'JSON required.'});
+      let body;try{body=JSON.parse((await readBody(req,4096)).toString()||'{}');}catch{return json(res,400,{error:'Invalid request.'});}
+      if(!body||typeof body!=='object'||Array.isArray(body))return json(res,400,{error:'Invalid request.'});
+      if(url.pathname==='/api/verify-email')return json(res,200,await emailVerification.verify(body.token));
+      const u=await requireUser(req,res);if(!u)return;
+      if(!allowAuth('verification:'+u.id))return json(res,429,{error:'Please wait before trying again.'});
+      if(url.pathname==='/api/change-unverified-email'){
+        const saved=await credential(u.id);
+        if(!saved||!await verifyPassword(body.currentPassword,saved.password_hash))return json(res,403,{error:'Your current password is required.'});
+        return json(res,200,await emailVerification.request(u.id,{newEmail:body.email,beforeChange:async client=>{
+          const current=(await client.query('SELECT password_hash, version FROM user_credentials WHERE user_id=$1 FOR UPDATE',[u.id])).rows[0];
+          if(!current||current.version!==saved.version||current.password_hash!==saved.password_hash)throw stateError(401,'Sign in again.');
+        }}));
+      }
+      return json(res,200,await emailVerification.request(u.id));
+    }
 
     if(req.method==='POST' && ['/api/forgot-password','/api/reset-password'].includes(url.pathname)){
       if(!(req.headers['content-type']||'').toLowerCase().startsWith('application/json'))return json(res,415,{error:'JSON required.'});
@@ -237,7 +258,7 @@ const server=http.createServer(async (req,res)=>{
 
     if(req.method==="POST" && url.pathname==="/api/register-athlete"){
       const body=JSON.parse((await readBody(req)).toString()||"{}");
-      const required=["name","email","password","country","university","major"];
+      const required=["name","email","password"];
       const missing=required.filter(k=>!clean(body[k]));
       if(missing.length) return json(res,400,{error:"Please complete: "+missing.map(k=>({university:"school / university",major:"subjects / program / research area"}[k]||k)).join(", ")});
       if(!validPassword(body.password)) return json(res,400,{error:"Use a password of 15–128 characters with no line breaks."});
@@ -249,7 +270,7 @@ const server=http.createServer(async (req,res)=>{
       await mutateDb(async(db,client)=>{
       if(db.users.some(u=>normalizeEmail(u.email)===email))throw stateError(409,"An account with this email already exists.");
       await client.query('INSERT INTO user_credentials (user_id,password_hash) VALUES ($1,$2) ON CONFLICT (user_id) DO NOTHING',[userId,hash]);
-      db.users.push({id:userId,name:clean(body.name,120),email,role:"athlete"});
+      db.users.push({id:userId,name:clean(body.name,120),email,role:"athlete",verificationRequired:true});
       db.athletes.push({
         id:athleteId,userId,name:clean(body.name,120),email,
         phone:clean(body.phone,40),country:clean(body.country,80),
@@ -258,13 +279,15 @@ const server=http.createServer(async (req,res)=>{
         scholarship:clean(body.scholarshipType,120),scholarshipCoverage:clean(body.scholarshipCoverage,240),
         previousRefusal:clean(body.previousRefusal,20),previousAttempts:Number(body.previousAttempts||0),
         previousTravel:clean(body.previousTravel,20),remainingSponsor:clean(body.remainingSponsor,160),
-        postGradPlan:clean(body.postGradPlan,500),profileStatus:"Complete",createdAt:new Date().toISOString(),
+        postGradPlan:clean(body.postGradPlan,500),profileStatus:"Incomplete",createdAt:new Date().toISOString(),
         sessions:0,mocks:0,initialScore:0,currentScore:0,mainConcern:"New student — not yet assessed"
       });
       });
       const token=startSession(userId,0);
+      let verificationMessage;
+      try{verificationMessage=(await emailVerification.request(userId)).message;}catch{verificationMessage='Account created. Sign in and use Resend email to verify your address. Email delivery may need a moment.';}
       res.writeHead(201,{"Content-Type":"application/json","Cache-Control":"no-store","Set-Cookie":sessionCookie(token)});
-      return res.end(JSON.stringify({ok:true,user:{id:userId,name:clean(body.name,120),role:"athlete",email}}));
+      return res.end(JSON.stringify({ok:true,verificationMessage,user:{id:userId,name:clean(body.name,120),role:"athlete",email}}));
     }
 
     if(req.method==="POST" && url.pathname==="/api/login"){
@@ -320,7 +343,7 @@ const server=http.createServer(async (req,res)=>{
 
     if(req.method==="GET" && url.pathname==="/api/me"){
       const u=await requireUser(req,res); if(!u) return;
-      return json(res,200,{id:u.id,name:u.name,role:u.role,email:u.email});
+      return json(res,200,{id:u.id,name:u.name,role:u.role,email:u.email,needsEmailVerification:needsVerification(u),emailVerified:!!u.emailVerifiedAt});
     }
 
     if(req.method==='GET' && url.pathname==='/api/voice-usage'){
@@ -387,9 +410,12 @@ const server=http.createServer(async (req,res)=>{
       const updated=await mutateDb(async(db)=>{
       const athlete=db.athletes.find(a=>a.userId===u.id);
       if(!athlete)throw stateError(404,"Student profile not found");
-      const fields={phone:40,country:80,interviewLocation:120,university:160,major:160,academicLevel:80,sport:120,scholarship:120,scholarshipCoverage:240,previousRefusal:20,previousTravel:20,remainingSponsor:160,postGradPlan:500};
+      const fields={phone:40,phoneCountry:2,country:80,interviewCountry:80,interviewCity:120,interviewLocation:220,university:160,major:160,academicLevel:80,sport:120,scholarship:120,scholarshipCoverage:240,previousRefusal:20,previousTravel:20,remainingSponsor:160,postGradPlan:500,studyStatus:40,priorEducationStatus:40,priorEducationYear:4,fundingSources:500};
+      if(body.phone && body.phone!==athlete.phone)body.phone=profileOptions.normalizePhone(clean(body.phone,40),clean(body.phoneCountry,2));
+      if(body.priorEducationYear && !/^(19|20|21)\d{2}$/.test(body.priorEducationYear))throw stateError(400,'Enter a four-digit completion or expected completion year.');
       for(const [k,max] of Object.entries(fields)) if(k in body) athlete[k]=clean(body[k],max);
       if("previousAttempts" in body) athlete.previousAttempts=Math.max(0,Number(body.previousAttempts||0));
+      athlete.profileStatus=['country','university','major','academicLevel'].every(key=>athlete[key])?'Complete':'Incomplete';
       athlete.updatedAt=new Date().toISOString(); return athlete;
       });
       return json(res,200,updated);
@@ -448,6 +474,7 @@ const server=http.createServer(async (req,res)=>{
 
     if(req.method==="POST" && url.pathname==="/api/evaluate"){
       const u=await requireUser(req,res); if(!u) return;
+      if(needsVerification(u))return json(res,403,{error:'Verify your email before generating a report.'});
       const body=JSON.parse((await readBody(req)).toString()||"{}");
       const db=await loadDb();
       const athlete=db.athletes.find(a=>a.id===body.athleteId);
@@ -593,6 +620,7 @@ Use only information in the supplied profile and transcript. Do not reward inven
 
     if(req.method==="POST" && url.pathname==="/api/realtime-session"){
       const u=await requireUser(req,res); if(!u) return;
+      if(needsVerification(u))return json(res,403,{error:'Verify your email before starting voice practice.'});
       if(!OPENAI_API_KEY) return json(res,503,{error:"OPENAI_API_KEY is not configured on the server."});
       const athleteId=url.searchParams.get("athleteId");
       const db=await loadDb();
