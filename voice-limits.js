@@ -1,29 +1,29 @@
 // Persistent admission limits and server-side call expiry. No transcripts stored here.
 const POLICY = Object.freeze({learn: {seconds:480,tokens:1024},mock: {seconds:720,tokens:512}});
-function dailyLimit(user){return user?.voiceTester === true ? 18 : 6;}
+function dailyLimit(user,mode='mock'){if(!['learn','mock'].includes(mode))throw new Error('Invalid voice mode');return user?.voiceTester === true ? 18 : mode==='learn'?12:6;}
 function createVoiceLimits(pool, apiKey, request=fetch) {
   async function init() {
-    await pool.query(`CREATE TABLE IF NOT EXISTS voice_daily_usage (
-      user_id TEXT PRIMARY KEY, usage_day DATE NOT NULL, starts INTEGER NOT NULL)`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS voice_mode_usage (
+      user_id TEXT NOT NULL, mode TEXT NOT NULL CHECK (mode IN ('learn','mock')), usage_day DATE NOT NULL, starts INTEGER NOT NULL, PRIMARY KEY(user_id,mode))`);
     await pool.query(`CREATE TABLE IF NOT EXISTS voice_call_limits (
       call_id TEXT PRIMARY KEY, expires_at TIMESTAMPTZ NOT NULL)`);
   }
-  async function status(userId,limit=6) {
-    const result=await pool.query(`SELECT starts FROM voice_daily_usage WHERE user_id=$1 AND usage_day=(NOW() AT TIME ZONE 'UTC')::date`,[userId]);
+  async function status(userId,limit=6,mode='mock') {
+    const result=await pool.query(`SELECT starts FROM voice_mode_usage WHERE user_id=$1 AND mode=$2 AND usage_day=(NOW() AT TIME ZONE 'UTC')::date`,[userId,mode]);
     const used=Number(result.rows[0]?.starts||0);
     const reset=new Date();reset.setUTCHours(24,0,0,0);
     return {limit,used,remaining:Math.max(0,limit-used),resetsAt:reset.toISOString()};
   }
-  async function reserve(userId,limit=6) {
-    if(![6,18].includes(limit))throw new Error('Invalid daily voice limit');
-    // A single row per account: atomic across tabs, processes and redeployments.
-    const result=await pool.query(`INSERT INTO voice_daily_usage (user_id,usage_day,starts)
-      VALUES ($1,(NOW() AT TIME ZONE 'UTC')::date,1)
-      ON CONFLICT (user_id) DO UPDATE SET
+  async function reserve(userId,limit=6,mode='mock') {
+    if(!['learn','mock'].includes(mode)||![6,12,18].includes(limit))throw new Error('Invalid daily voice limit');
+    // A row per account and mode: atomic across tabs, processes and redeployments.
+    const result=await pool.query(`INSERT INTO voice_mode_usage (user_id,mode,usage_day,starts)
+      VALUES ($1,$3,(NOW() AT TIME ZONE 'UTC')::date,1)
+      ON CONFLICT (user_id,mode) DO UPDATE SET
         usage_day=EXCLUDED.usage_day,
-        starts=CASE WHEN voice_daily_usage.usage_day=EXCLUDED.usage_day THEN voice_daily_usage.starts+1 ELSE 1 END
-      WHERE voice_daily_usage.usage_day<>EXCLUDED.usage_day OR voice_daily_usage.starts<$2
-      RETURNING starts`,[userId,limit]);
+        starts=CASE WHEN voice_mode_usage.usage_day=EXCLUDED.usage_day THEN voice_mode_usage.starts+1 ELSE 1 END
+      WHERE voice_mode_usage.usage_day<>EXCLUDED.usage_day OR voice_mode_usage.starts<$2
+      RETURNING starts`,[userId,limit,mode]);
     return result.rows.length>0;
   }
   function callId(location) {

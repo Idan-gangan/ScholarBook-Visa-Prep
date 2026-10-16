@@ -44,6 +44,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
 .welcome{min-height:100vh;background:#f5f7fb}.welcome-nav{max-width:1120px;margin:auto;padding:24px;display:flex;align-items:center;justify-content:space-between;gap:16px}.welcome-hero{max-width:1120px;margin:auto;padding:64px 24px 40px}.welcome-hero h1{font-size:clamp(38px,6vw,68px);line-height:1.08;max-width:850px;margin:16px 0;letter-spacing:-2px}.welcome-hero>p{max-width:640px;font-size:19px;line-height:1.6;color:#53627d}.welcome-tag{color:#2457ff;font-weight:700;font-size:14px}.welcome-steps{max-width:1120px;margin:auto;padding:0 24px 48px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}.welcome-steps p{line-height:1.6;color:#53627d}.welcome-number{font-size:14px;color:#2457ff;font-weight:800}.welcome-footer{max-width:1120px;margin:auto;padding:0 24px 30px;line-height:1.6;color:#53627d}.welcome .btn{min-height:46px}.welcome-actions{display:flex;gap:12px;flex-wrap:wrap;margin:26px 0}.welcome .brand{font-size:20px}@media(max-width:700px){.welcome-hero{padding-top:30px}.welcome-steps{grid-template-columns:1fr}.welcome-nav{padding:18px}.welcome-hero h1{letter-spacing:-1px}}
 .report-card{max-width:100%;overflow-wrap:anywhere}.report-header{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}.report-score{white-space:nowrap}.report-summary{max-width:76ch;line-height:1.65}.report-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:20px 0}.report-section{padding:18px;border:1px solid #dce3ef;border-radius:12px;background:#f8faff}.report-section h4{margin:0 0 12px}.report-section li{line-height:1.6;margin-bottom:10px}.report-section ul,.report-section ol{padding-left:22px;margin-bottom:0}.report-actions{grid-column:1/-1}.report-priority{padding:12px 16px;border-left:3px solid #5746e8;line-height:1.6}.report-legacy{line-height:1.65;max-width:76ch;white-space:pre-wrap}@media(max-width:640px){.report-grid{grid-template-columns:1fr}.report-section{padding:14px}}
 .course-overview{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:20px 0}.module-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.module-card{display:flex;flex-direction:column;gap:10px;text-align:left;font:inherit;color:inherit;cursor:pointer;border:2px solid transparent}.module-card strong{font-size:18px}.module-card.selected{border-color:#2457db;background:#eff5ff}.module-card:hover{border-color:#809fee}.module-card:focus-visible{outline:3px solid #2457db;outline-offset:3px}@media(max-width:900px){.module-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:560px){.module-grid{grid-template-columns:1fr}.course-overview{align-items:stretch;flex-direction:column}}
+.interviewer-stage{position:relative;overflow:hidden;border-radius:14px;background:#eaf2ff;margin:16px 0;border:1px solid #d8e4f6}.interviewer-stage img{display:block;width:100%;height:320px;object-fit:contain;object-position:center}.interviewer-caption{padding:12px 16px;background:#f5f8ff;display:flex;align-items:center;justify-content:space-between;gap:12px}.interviewer-wave{display:flex;gap:3px;height:22px;align-items:center}.interviewer-wave i{width:4px;height:5px;background:#2457db;border-radius:4px}.interviewer-stage[data-state="speaking"] .interviewer-wave i{animation:interviewer-pulse .75s ease-in-out infinite alternate}.interviewer-wave i:nth-child(2){animation-delay:.15s!important}.interviewer-wave i:nth-child(3){animation-delay:.3s!important}.interviewer-wave i:nth-child(4){animation-delay:.45s!important}@keyframes interviewer-pulse{to{height:22px}}@media(prefers-reduced-motion:reduce){.interviewer-stage[data-state="speaking"] .interviewer-wave i{animation:none;height:16px}}@media(max-width:600px){.interviewer-stage img{height:240px}}
 </style>
 <link rel="stylesheet" href="/atlas.css">
 <meta name="theme-color" content="#0750cf">
@@ -139,7 +140,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
         <div id="learn_voiceStatus" role="status" aria-live="polite">Not connected</div>
         <div id="learn_voiceLimitNotice" class="small muted" role="status" aria-live="polite"></div>
         <p id="lessonVoiceUsage" class="small muted" role="status"></p>
-        <p class="small muted">Voice lessons last up to 8 minutes. Lessons and mock interviews share your daily allowance. Starting a connection uses one start, even if it fails. Reading and notes remain available.</p>
+        <p class="small muted">Voice lessons last up to 8 minutes. Tutoring and mock interviews have separate daily allowances. Starting a connection uses one start, even if it fails. Reading and notes remain available.</p>
         <div class="lesson-actions"><button class="btn primary" id="learn_startBtn" onclick="startLearningTutor()">Start voice lesson</button><button class="btn danger" id="learn_stopBtn" onclick="stopVoice()" disabled>End lesson conversation</button></div>
         <div id="learn_transcript" class="lesson-transcript" aria-label="Tutor conversation"></div>
         <p class="small muted">Your conversation is for learning, with no readiness score. Save the points you want to keep in your notes; the conversation itself is not saved.</p>
@@ -174,28 +175,33 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
     </section>
     <section id="interview" class="screen">
       <h1>Live AI Mock Interview</h1>
-      <div class="notice">Use Chrome/Edge with microphone access. Your OpenAI API key stays on the server; it is not sent to the browser directly.</div>
+      <div class="notice">Answer one question at a time. Your interviewer will ask follow-up questions. You will get feedback after you end the interview.</div>
       <div class="field"><label>Student</label><select id="athleteSelect"></select></div>
       <div class="voiceBox">
         <div class="card">
           <div id="voiceStatus" class="status">Not connected</div>
-          <p class="small muted">Mock interviews last up to 12 minutes. Lessons and mock interviews share your daily allowance. Starting a connection uses one start, even if it fails.</p>
+          <p class="small muted">Mock interviews last up to 12 minutes. Tutoring and mock interviews have separate daily allowances. Starting a connection uses one start, even if it fails.</p>
           <p id="mockVoiceUsage" class="small muted" role="status"></p>
           <div id="voiceLimitNotice" class="small muted" role="status" aria-live="polite"></div>
-          <h2 style="margin-bottom:4px">AI Consular Interviewer</h2>
+          <h2 style="margin-bottom:4px">AI mock interviewer</h2>
+          <div id="interviewerStage" class="interviewer-stage" data-state="idle">
+            <img src="/assets/ai-interviewer.webp" alt="Fictional AI interviewer portrait" width="640" height="640">
+            <div class="interviewer-caption"><span id="interviewerActivity" role="status">Ready when you are</span><span class="interviewer-wave" aria-hidden="true"><i></i><i></i><i></i><i></i></span></div>
+          </div>
+          <p class="small muted">AI practice with a still portrait, not a real consular officer. Microphone only; no camera or video recording.</p>
           <p class="muted">The interviewer asks one question at a time and follows up based on the student’s spoken answer.</p>
           <div style="display:flex;gap:10px;flex-wrap:wrap;margin:16px 0">
             <button class="btn primary" id="startBtn" onclick="startVoice()">🎙 Start Voice Interview</button>
             <button class="btn danger" id="stopBtn" onclick="stopVoice()" disabled>End Interview</button>
-            <button class="btn secondary" onclick="addManualLine()">Add typed transcript line</button>
           </div>
           <p class="muted">Answer naturally after each question. Pause when you finish; the interviewer will respond automatically.</p><div id="transcript" class="transcript"></div>
         </div>
         <div class="card">
           <h3>After the interview</h3>
-          <p class="muted">The transcript is sent to the evaluation model to create a readiness report.</p>
+          <p class="muted">End your interview to see what went well and what to practise next. Coaching and corrections appear here, after the conversation.</p>
           <button class="btn primary" style="width:100%" onclick="generateReport()">Generate Readiness Report</button>
-          <p class="muted small">Six report attempts per account each day, resetting at midnight UTC. Failed attempts count. Repeating a completed transcript reopens its saved report.</p>
+          <p class="muted small">Up to six new reports each day, one per mock interview. Opening saved reports uses no allowance. If generation fails, you can retry, with a maximum of twelve generation attempts per day. Limits reset at midnight UTC.</p>
+<p id="reportUsage" class="small muted" role="status"></p>
 <div id="evalStatus" class="small muted" style="margin-top:12px"></div>
         </div>
       </div>
@@ -250,7 +256,7 @@ const sessionMessage='Your session ended. Please sign in again. Saved work is st
 function returnToSignIn(message=sessionMessage){
  sessionVersion++;
  if(voice)stopVoice('Session ended. Please sign in again.');
- me=null;athletes=[];reports=[];transcript=[];learningTranscript=[];mockStudentId=null;
+ me=null;athletes=[];reports=[];transcript=[];learningTranscript=[];mockStudentId=null;mockSessionId=null;
  lessonOpen=false;$('lessonDetails').classList.add('hidden');lessonPractice=null;renderPracticeFocus();courseSaved={};activeLessonId="study-purpose";$("moduleCards").replaceChildren();$("courseProgress").textContent="";lessonVersion++;lessonStudentId=null;lessonDirty=false;lessonCompleted=false;
  clearPasswordForm();
  for(const id of ['verificationPassword','verificationNewEmail'])$(id).value='';
@@ -357,7 +363,7 @@ async function loadOwner(){
   const data=await api('/api/owner/accounts');
   $('ownerStats').innerHTML=Object.entries(data.counts).map(([label,value])=>`<div class="card"><div class="muted">${escapeHtml(label)}</div><div class="kpi">${escapeHtml(value)}</div></div>`).join('');
   const roles=[['athlete','Student'],['coach','Coach'],['supervisor','Supervisor'],['manager','Manager']];
-  $('ownerAccounts').innerHTML='<table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Action</th><th>Daily voice access</th></tr></thead><tbody>'+data.users.map(u=>`<tr><td>${escapeHtml(u.name)}</td><td>${escapeHtml(u.email)}</td><td>${u.role==='owner'?'Owner (protected)':`<select aria-label="Role for ${escapeHtml(u.email)}">${roles.map(([value,label])=>`<option value="${value}"${u.role===value?' selected':''}>${label}</option>`).join('')}</select>`}</td><td>${u.role==='owner'?'—':`<button type="button" class="btn secondary" data-owner-user="${escapeHtml(u.id)}">Save role</button>`}</td><td><button type="button" class="btn secondary" data-voice-user="${escapeHtml(u.id)}" data-enabled="${u.voiceTester===true}">${u.voiceTester?'Tester: 18 starts — remove':'Standard: 6 starts — enable tester'}</button></td></tr>`).join('')+'</tbody></table>';
+  $('ownerAccounts').innerHTML='<table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Action</th><th>Daily voice access</th></tr></thead><tbody>'+data.users.map(u=>`<tr><td>${escapeHtml(u.name)}</td><td>${escapeHtml(u.email)}</td><td>${u.role==='owner'?'Owner (protected)':`<select aria-label="Role for ${escapeHtml(u.email)}">${roles.map(([value,label])=>`<option value="${value}"${u.role===value?' selected':''}>${label}</option>`).join('')}</select>`}</td><td>${u.role==='owner'?'—':`<button type="button" class="btn secondary" data-owner-user="${escapeHtml(u.id)}">Save role</button>`}</td><td><button type="button" class="btn secondary" data-voice-user="${escapeHtml(u.id)}" data-enabled="${u.voiceTester===true}">${u.voiceTester?'Tester: 18 tutor / 18 mock — remove':'Standard: 12 tutor / 6 mock — enable tester'}</button></td></tr>`).join('')+'</tbody></table>';
   $('ownerAccounts').querySelectorAll('[data-owner-user]').forEach(button=>button.addEventListener('click',()=>saveAccountRole(button)));
   $('ownerAccounts').querySelectorAll('[data-voice-user]').forEach(button=>button.addEventListener('click',()=>saveVoiceAccess(button)));
   const label=id=>data.users.find(u=>u.id===id)?.email||id;
@@ -368,7 +374,7 @@ async function loadOwner(){
 async function saveVoiceAccess(button){
  const currentPassword=$('ownerPassword').value, enabled=button.dataset.enabled!=='true';
  if(!currentPassword){$('ownerStatus').textContent='Enter your current password first.';return;}
- if(!confirm((enabled?'Allow 18 daily voice starts for this tester? This may increase AI costs.':'Restore the standard 6 daily voice starts?')+' This does not change account permissions.'))return;
+ if(!confirm((enabled?'Allow 18 tutor starts and 18 mock starts daily for this tester? This may increase AI costs.':'Restore 12 tutor starts and 6 mock starts daily?')+' This does not change account permissions.'))return;
  button.disabled=true;
  try{await api('/api/owner/voice-access',{method:'POST',body:JSON.stringify({userId:button.dataset.voiceUser,enabled,currentPassword})});await loadOwner();await refreshVoiceUsage();$('ownerStatus').textContent='Voice access updated. Starts already used today still count.';}
  catch(error){$('ownerStatus').textContent=error.message;}
@@ -515,23 +521,31 @@ function addLine(role,text,mode=voiceScreen){
  div.append(label,document.createTextNode(text));
  const box=$(mode==="learn"?"learn_transcript":"transcript");box.appendChild(div);box.scrollTop=box.scrollHeight;
 }
-function addManualLine(){const role=confirm("OK = student line, Cancel = AI interviewer line")?"athlete":"assistant";const text=prompt("Transcript line:");if(text){mockStudentId ||= $("athleteSelect").value;addLine(role,text,"mock")}}
 // Voice lifecycle: the client alone requests responses. Keep input muted until
 // both response generation and WebRTC output playback have finished.
 let voice=null, voiceScreen="mock", learningTranscript=[], mockStudentId=null;
 function voiceEl(id){return $(voiceScreen==="learn"?"learn_"+id:id)}
 function voiceSend(v,type,details={}){if(voice===v && dc?.readyState==="open")dc.send(JSON.stringify({type,...details}))}
 function voiceMic(v,on){if(voice===v)stream?.getAudioTracks().forEach(t=>t.enabled=on)}
+let mockSessionId=null;
+function interviewerState(state){
+ const stage=$('interviewerStage'),label=$('interviewerActivity');
+ if(!stage||!label)return;
+ stage.dataset.state=state;
+ label.textContent={idle:'Ready when you are',connecting:'Connecting…',thinking:'Preparing the next question…',speaking:'Interviewer speaking',listening:'Your turn — listening',ended:'Interview ended'}[state]||'';
+}
 function voiceReady(v){
   if(voice!==v || v.busy || v.playing || v.waiting || !v.connected)return;
   voiceSend(v,"input_audio_buffer.clear");voiceMic(v,true);
   voiceEl("voiceStatus").textContent="Your turn — listening";
+  if(v.mode==='mock')interviewerState('listening');
 }
 function voiceRespond(v){
   if(voice!==v || v.busy || v.playing)return;
   v.busy=true;v.audioSeen=false;v.playbackEnded=false;v.waiting=false;
   voiceMic(v,false);
   voiceEl("voiceStatus").textContent=voiceScreen==="learn"?"Your tutor is responding…":"Interviewer is responding…";
+  if(v.mode==='mock')interviewerState('thinking');
   voiceSend(v,"response.create");
 }
 function voiceInputDone(v,itemId,text){
@@ -567,9 +581,9 @@ function voiceEvent(v,ev){
     },15000);
   }
   if(ev.type==="response.created"){v.busy=true;voiceMic(v,false)}
-  if(ev.type==="output_audio_buffer.started"){v.audioSeen=true;v.playing=true;voiceMic(v,false)}
+  if(ev.type==="output_audio_buffer.started"){v.audioSeen=true;v.playing=true;voiceMic(v,false);if(v.mode==='mock')interviewerState('speaking')}
   if(ev.type==="output_audio_buffer.stopped" || ev.type==="output_audio_buffer.cleared"){
-    v.playbackEnded=true;v.playing=false;voiceReady(v);
+    v.playbackEnded=true;v.playing=false;if(v.mode==='mock')interviewerState('thinking');voiceReady(v);
   }
   if(ev.type==="response.done"){
     v.busy=false;
@@ -586,12 +600,13 @@ function voiceEvent(v,ev){
 }
 async function startVoice(mode="mock"){
   if(voice)return;
+  if(reportGenerating){$("evalStatus").textContent="Please wait for your report before starting another session.";return}
   voiceScreen=mode;
   if(!voiceEl("athleteSelect").value){voiceEl("voiceStatus").textContent="Select a student first.";return}
   if(mode==='mock'&&typeof window!=='undefined'&&window.VisaAtlasProfile){const p=athletes.find(a=>a.id===voiceEl("athleteSelect").value);const missing=window.VisaAtlasProfile.missing(p);if(missing.length){voiceEl("voiceStatus").textContent='Complete My Profile first: '+missing.join(', ');return}}
   const v={mode,athleteId:voiceEl("athleteSelect").value,busy:false,playing:false,waiting:false,pendingItem:null,connected:false};voice=v;
   if(mode==="learn")learningTranscript=[];
-  else {transcript=[];mockStudentId=v.athleteId;$("evalStatus").textContent=""}
+  else {mockSessionId=null;interviewerState('connecting');transcript=[];mockStudentId=v.athleteId;$("evalStatus").textContent=""}
   voiceEl("transcript").replaceChildren();
   voiceEl("startBtn").disabled=true;voiceEl("stopBtn").disabled=false;
   voiceEl("athleteSelect").disabled=true;
@@ -615,6 +630,7 @@ async function startVoice(mode="mock"){
     const r=await fetch("/api/realtime-session?athleteId="+encodeURIComponent(v.athleteId)+"&mode="+mode+(mode==="learn"?"&lesson="+encodeURIComponent(activeLessonId)+reportPracticeQuery():""),{method:"POST",body:offer.sdp,headers:{"Content-Type":"application/sdp"},signal:v.abort.signal});
     const answer=await r.text();refreshVoiceUsage();if(voice!==v)return;
     if(!r.ok){let message=answer;try{message=JSON.parse(answer).error||answer}catch{}if(r.status===401 && message==="Unauthorized"){returnToSignIn();return}throw new Error(message)}
+    if(mode==='mock')mockSessionId=r.headers.get('X-Mock-Session-Id');
     const seconds=Number(r.headers.get('X-Voice-Limit-Seconds'));
     if(!Number.isFinite(seconds)||seconds<=0)throw new Error('Voice session limit is missing. Please refresh and try again.');
     v.limitTimer=setTimeout(()=>{if(voice===v)stopVoice(mode==='learn'?'Lesson time limit reached. Save your notes; you can continue later.':'Mock time limit reached. You can generate a report from this transcript.')},seconds*1000);
@@ -627,6 +643,7 @@ function stopVoice(message=voiceScreen==="learn"?"Lesson conversation ended":"In
   const v=voice;voice=null;clearTimeout(v?.inputTimer);clearTimeout(v?.limitTimer);clearTimeout(v?.warningTimer);v?.abort?.abort();
   if(stream)stream.getTracks().forEach(t=>t.stop());if(dc)dc.close();if(pc)pc.close();
   if(v?.audio){v.audio.pause();v.audio.srcObject=null}
+  if(v?.mode==='mock')interviewerState('ended');
   pc=dc=stream=null;voiceEl("voiceStatus").textContent=message;
   voiceEl("startBtn").disabled=false;voiceEl("stopBtn").disabled=true;
   voiceEl("athleteSelect").disabled=false;
@@ -635,17 +652,19 @@ let reportGenerating=false;
 async function generateReport(){
  if(reportGenerating)return;
  if(voice){$("evalStatus").textContent="End the conversation before generating a report.";return}
- if(transcript.length<2){$("evalStatus").textContent="Add or capture at least a short interview transcript first.";return}
+ if(!mockSessionId){$("evalStatus").textContent="Complete a voice mock interview first.";return}
+ if(transcript.length<2){$("evalStatus").textContent="Answer at least one interview question first.";return}
  reportGenerating=true;
  $("evalStatus").textContent="Generating readiness report… This may take up to 90 seconds.";
  try{
    const athleteId=mockStudentId || $("athleteSelect").value;
-   await api("/api/save-transcript",{method:"POST",body:JSON.stringify({athleteId,transcript})});
-   const r=await api("/api/evaluate",{method:"POST",body:JSON.stringify({athleteId,transcript})});
+   const reportTranscript=transcript.map(line=>({...line})),reportSessionId=mockSessionId;
+   await api("/api/save-transcript",{method:"POST",body:JSON.stringify({athleteId,transcript:reportTranscript})});
+   const r=await api("/api/evaluate",{method:"POST",body:JSON.stringify({athleteId,transcript:reportTranscript,mockSessionId:reportSessionId})});
    $("evalStatus").textContent=`Report created: ${r.overall}/100 — ${r.readiness}`;
    athletes=await api("/api/athletes");reports=await api("/api/reports");renderAll();show("reports");
  }catch(e){$("evalStatus").textContent=e.message}
- finally{reportGenerating=false;}
+ finally{reportGenerating=false;refreshVoiceUsage();}
 }
 
 const curriculum=window.VisaAtlasCurriculum;
@@ -706,9 +725,12 @@ async function refreshVoiceUsage(){
  const version=sessionVersion;
  try{
   const data=await api('/api/voice-usage');
-  const text=data.remaining+' of '+data.limit+' voice starts left today. Resets '+new Date(data.resetsAt).toLocaleString()+ ' (your local time).';
-  for(const id of ['learningVoiceUsage','lessonVoiceUsage','mockVoiceUsage'])$(id).textContent=text;
- }catch(error){if(me && version===sessionVersion){for(const id of ['learningVoiceUsage','lessonVoiceUsage','mockVoiceUsage'])$(id).textContent='Voice allowance could not be loaded. Try refreshing the page.';}}
+  if(!me||version!==sessionVersion)return;
+  for(const [id,mode,label] of [['learningVoiceUsage','learn','tutoring starts'],['lessonVoiceUsage','learn','tutoring starts'],['mockVoiceUsage','mock','mock interviews']]){
+   const usage=data[mode];$(id).textContent=usage.remaining+' of '+usage.limit+' '+label+' left today. Resets '+new Date(usage.resetsAt).toLocaleString()+' (your local time).';
+  }
+  $('reportUsage').textContent=data.reports.remaining+' of '+data.reports.limit+' new reports left today. '+data.reports.attemptsRemaining+' generation attempts left.';
+ }catch(error){if(me && version===sessionVersion){for(const id of ['learningVoiceUsage','lessonVoiceUsage','mockVoiceUsage','reportUsage'])$(id).textContent='Practice allowance could not be loaded. Try refreshing the page.';}}
 }
 function continueLearning(){return selectLearningModule((curriculum.find(m=>!courseSaved[m.id]?.completed)||curriculum[0]).id)}
 function nextLearningModule(){const next=curriculum[curriculum.findIndex(m=>m.id===activeLessonId)+1];if(next)return selectLearningModule(next.id)}

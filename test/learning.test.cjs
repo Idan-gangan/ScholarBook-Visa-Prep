@@ -6,12 +6,12 @@ const learning=require('../learning');
 const passwords=require('../passwords');
 const student={id:'s1',userId:'u1',name:'Test student',major:'Biology',university:'Example University',scholarship:'Merit award',scholarshipCoverage:'Tuition only',remainingSponsor:'Parent',postGradPlan:'Environmental research',email:'private@example.test',country:'Nigeria',phoneCountry:'NG',phone:'+2348031234567',interviewCountry:'Nigeria',interviewCity:'Lagos',studyStatus:'Not started yet',previousRefusal:'No',previousTravel:'No',previousAttempts:0,fundingSources:'Family / guardian'};
 function harness(user={id:'u1',role:'athlete'},env={}){
- let handler;let starts=0;const progress=new Map(),calls=[],logs=[];
+ let handler;const starts=new Map();const progress=new Map(),calls=[],logs=[];
  const credentials=new Map([[user.id,{password_hash:user.passwordHash||'fixture-unusable',version:0}]]);
  const evaluationUsage=new Map();
  const db={users:[user],athletes:[{academicLevel:'Undergraduate',...structuredClone(student)},{id:'s2',userId:'u2'}],reports:[],transcripts:[]};
  const pool={query:async(sql,args)=>{
-   if(sql.trim().startsWith('CREATE TABLE') || sql.trim().startsWith('INSERT INTO app_state'))return {rows:[]};
+   if(sql.trim().startsWith('ALTER TABLE') || sql.trim().startsWith('CREATE TABLE') || sql.trim().startsWith('INSERT INTO app_state'))return {rows:[]};
    if(sql.startsWith('INSERT INTO user_credentials')){if(!credentials.has(args[0]))credentials.set(args[0],{password_hash:args[1],version:0});return {rows:[]};}
    if(sql.startsWith('SELECT password_hash'))return {rows:credentials.has(args[0])?[structuredClone(credentials.get(args[0]))]:[]};
    if(sql==='UPDATE user_credentials SET version=version+1 WHERE user_id=$1'){const c=credentials.get(args[0]);if(c)c.version++;return {rows:[]};}
@@ -22,12 +22,13 @@ function harness(user={id:'u1',role:'athlete'},env={}){
    if(sql.startsWith('SELECT data FROM learning_progress'))return {rows:progress.has(args[0]+":"+args[1])?[{data:progress.get(args[0]+":"+args[1])}]:[]};
    if(sql.startsWith('INSERT INTO learning_progress')){progress.set(args[0]+":"+args[1],JSON.parse(args[2]));return {rows:[]}}
    if(sql.startsWith('INSERT INTO evaluation_daily_usage')){
-     const row=evaluationUsage.get(args[0])||{attempts:0,token:null};
-     if(row.token||row.attempts>=6)return {rows:[]};row.attempts++;row.token=args[1];evaluationUsage.set(args[0],row);return {rows:[{attempts:row.attempts}]};
+     const row=evaluationUsage.get(args[0])||{attempts:0,completed:0,token:null};
+     if(row.token||row.attempts>=args[3]||row.completed>=args[4])return {rows:[]};row.attempts++;row.token=args[1];evaluationUsage.set(args[0],row);return {rows:[{attempts:row.attempts}]};
    }
-   if(sql.startsWith('UPDATE evaluation_daily_usage')){const row=evaluationUsage.get(args[0]);if(row?.token===args[1])row.token=null;return {rows:[]};}
-   if(sql.startsWith('INSERT INTO voice_daily_usage'))return {rows:starts<args[1]?[{starts:++starts}]:[]};
-   if(sql.startsWith('SELECT starts FROM voice_daily_usage'))return {rows:[{starts}]};
+   if(sql.startsWith('UPDATE evaluation_daily_usage')){const row=evaluationUsage.get(args[0]);if(row?.token===args[1]){row.token=null;if(sql.includes('completed=completed+1')){row.completed++;return {rows:[{user_id:args[0]}]};}}return {rows:[]};}
+   if(sql.startsWith('SELECT attempts,completed'))return {rows:evaluationUsage.has(args[0])?[evaluationUsage.get(args[0])]:[]};
+   if(sql.startsWith('INSERT INTO voice_mode_usage')){const key=args[0]+':'+args[2],n=starts.get(key)||0;if(n>=args[1])return {rows:[]};starts.set(key,n+1);return {rows:[{starts:n+1}]};}
+   if(sql.startsWith('SELECT starts FROM voice_mode_usage'))return {rows:[{starts:starts.get(args[0]+':'+args[1])||0}]};
    if(sql.startsWith('INSERT INTO voice_call_limits'))return {rows:[]};
    throw new Error('Unexpected query: '+sql);
  }};
@@ -52,6 +53,14 @@ function harness(user={id:'u1',role:'athlete'},env={}){
  const context=vm.createContext({require:id=>id==='./public/profile-requirements'?require('../public/profile-requirements'):id==='./interview-posts.json'?require('../interview-posts.json'):id==='./email-verification'?require('../email-verification'):id==='./profile-options'?require('../profile-options'):id==='./owner-access'?require('../owner-access'):id==='./report-practice'?require('../report-practice'):id==='http'?{createServer:fn=>{handler=fn;return {}}}:id==='pg'?{Pool:function(){return pool}}:id==='fs'?{...fs,readFileSync:(file,...args)=>file===path.resolve(__dirname,'../data/db.json')?'{}':fs.readFileSync(file,...args)}:id==='./evaluation-limits'?require('../evaluation-limits'):id==='./voice-limits'?require('../voice-limits'):id==='./learning'?learning:id==='./passwords'?passwords:id==='./password-recovery'?require('../password-recovery'):require(id),__dirname:path.resolve(__dirname,'..'),process:{env:{OPENAI_API_KEY:'test-only',...env}},console:{log:(...args)=>logs.push(args.join(' ')),warn:(...args)=>logs.push(args.join(' ')),error:(...args)=>logs.push(args.join(' '))},Buffer,URL,FormData,AbortSignal,fetch:async(url,options)=>{if(url.endsWith('/responses')){calls.push({url,request:JSON.parse(options.body)});return {ok:true,json:async()=>({output_text:JSON.stringify({scores:{},overall:45,readiness:'High Concern',biggestWeakness:'Test',feedback:'Test feedback',nextStep:'Practice'})})};}calls.push({url,session:JSON.parse(options.body.get('session'))});return {ok:true,status:200,headers:{get:()=>'/v1/realtime/calls/rtc_test'},text:async()=> 'test-sdp-answer'}}});
  let source=fs.readFileSync(path.join(__dirname,'../server.js'),'utf8');source=source.slice(0,source.indexOf('initDb().then('));vm.runInContext(source,context);vm.runInContext(`sessions.set('test-token',{userId:${JSON.stringify(user.id)},version:0,expires:Date.now()+60000})`,context);
  async function request(method,url,body,authenticated=true){
+   // Existing evaluation fixtures represent distinct server-issued mock sessions.
+   // Explicit null/invalid IDs exercise missing-session rejection instead.
+   if(url==='/api/evaluate'&&body?.transcript&&body.mockSessionId===undefined&&authenticated&&learning.canAccessStudent(user,db.athletes.find(a=>a.id===body.athleteId))){
+     const id='fixture_'+require('node:crypto').createHash('sha256').update(JSON.stringify([body.athleteId,body.transcript.map(x=>({role:x.role,text:x.text}))])).digest('hex');
+     db.mockSessions??=[];
+     if(!db.mockSessions.some(x=>x.id===id))db.mockSessions.push({id,userId:user.id,athleteId:body.athleteId,createdAt:new Date().toISOString()});
+     body={...body,mockSessionId:id};
+   }
    const req=Readable.from(body===undefined?[]:[Buffer.from(typeof body==='string'?body:JSON.stringify(body))]);req.method=method;req.url=url;req.headers={'content-type':'application/json',host:'localhost',cookie:authenticated?'sb_session=test-token':''};
    const result={};await handler(req,{writeHead:(status,headers)=>{result.status=status;result.headers=headers;},end:text=>{result.text=text;try{result.body=JSON.parse(text)}catch{}}});return result;
  }
@@ -97,9 +106,9 @@ test('owner can grant extra voice starts without changing permissions; password 
  assert.equal(h.db.users[1].voiceTester,true);assert.equal(h.db.users[1].role,'athlete');
  assert.equal(h.db.securityAudit.at(-1).action,'voice-access');
  assert.equal((await h.request('GET','/api/voice-usage',undefined,false)).status,401);
- assert.equal((await h.request('GET','/api/voice-usage')).body.limit,6);
+ assert.equal((await h.request('GET','/api/voice-usage')).body.mock.limit,6);
  h.db.users[0].voiceTester=true;
- assert.equal((await h.request('GET','/api/voice-usage')).body.limit,18);
+ assert.equal((await h.request('GET','/api/voice-usage')).body.mock.limit,18);
 });
 test('owner sees accounts without credentials, all students and reports, and own profile',async()=>{
  const h=harness({id:'u1',role:'owner',email:'owner@example.test',secret:'never-expose'});
@@ -400,7 +409,7 @@ test('completed transcript retries reuse the report without a provider call',asy
  assert.equal(first.status,200);assert.equal(second.body.id,first.body.id);assert.equal(h.calls.length,1);assert.equal(h.db.reports.length,1);
  assert.equal(h.calls[0].request.max_output_tokens,4096);assert.equal(h.calls[0].request.store,false);
 });
-test('six distinct attempts are admitted and malformed transcripts never call provider',async()=>{
+test('six distinct reports are admitted and malformed transcripts never call provider',async()=>{
  const h=harness();
  assert.equal((await h.request('POST','/api/evaluate',{athleteId:'s1',transcript:[]})).status,400);
  assert.equal((await h.request('POST','/api/evaluate',{athleteId:'s1',transcript:[{role:'athlete',text:'x'.repeat(40001)}]})).status,400);
@@ -448,4 +457,30 @@ test('mock sessions receive the saved academic preparation path',async()=>{
   assert.equal(response.status,200);
   assert.ok(h.calls[0].session.instructions.includes('Preparation path: '+learning.LESSONS.resolveLevel(level)));
  }
+});
+
+test('tutoring and mock allowances are independent and their remaining counts are exposed',async()=>{
+ const h=harness();
+ for(let i=0;i<12;i++)assert.equal((await h.request('POST','/api/realtime-session?athleteId=s1&mode=learn&lesson=funding','v=0\r\noffer')).status,200);
+ assert.equal((await h.request('POST','/api/realtime-session?athleteId=s1&mode=learn&lesson=funding','v=0\r\noffer')).status,429);
+ const mock=await h.request('POST','/api/realtime-session?athleteId=s1','v=0\r\noffer');assert.equal(mock.status,200);assert.match(mock.headers['X-Mock-Session-Id'],/^mock_/);
+ const usage=(await h.request('GET','/api/voice-usage')).body;assert.equal(usage.learn.remaining,0);assert.equal(usage.mock.remaining,5);assert.equal(usage.reports.remaining,6);
+ const prompt=h.calls.at(-1).session.instructions;assert.match(prompt,/no intimidation, praise, scoring/);assert.match(prompt,/feedback comes after/);assert.match(prompt,/never as a real consular officer/);
+});
+test('reports require the issued mock session and freeze its first submitted answers',async()=>{
+ const h=harness(),transcript=[{role:'athlete',text:'My answer'}];
+ assert.equal((await h.request('POST','/api/evaluate',{athleteId:'s1',transcript,mockSessionId:null})).status,400);
+ const started=await h.request('POST','/api/realtime-session?athleteId=s1','v=0\r\noffer');
+ const mockSessionId=started.headers['X-Mock-Session-Id'];
+ const first=await h.request('POST','/api/evaluate',{athleteId:'s1',transcript,mockSessionId});assert.equal(first.status,200);
+ const repeat=await h.request('POST','/api/evaluate',{athleteId:'s1',transcript:[{role:'athlete',text:'Changed answer'}],mockSessionId});assert.equal(repeat.body.id,first.body.id);
+ assert.equal(h.db.reports.length,1);assert.equal((await h.request('GET','/api/voice-usage')).body.reports.remaining,5);
+ h.db.mockSessions[0].userId='someone-else';assert.equal((await h.request('POST','/api/evaluate',{athleteId:'s1',transcript,mockSessionId})).status,400);
+});
+test('failed reports can retry without consuming the successful report allowance',async()=>{
+ const h=harness();h.run(`fetch=async()=>{throw Object.assign(new Error('timeout'),{name:'TimeoutError'})}`);
+ const body={athleteId:'s1',transcript:[{role:'athlete',text:'Answer'}]};
+ for(let i=0;i<12;i++)assert.equal((await h.request('POST','/api/evaluate',body)).status,504);
+ assert.equal((await h.request('POST','/api/evaluate',body)).status,429);
+ const usage=(await h.request('GET','/api/voice-usage')).body.reports;assert.equal(usage.remaining,6);assert.equal(usage.attemptsRemaining,0);
 });
