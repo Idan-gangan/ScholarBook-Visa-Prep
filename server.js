@@ -366,7 +366,7 @@ const server=http.createServer(async (req,res)=>{
           users:db.users.map(({id,name,email,role,voiceTester})=>({id,name,email,role,voiceTester:voiceTester===true})),
           audit:(db.securityAudit||[]).slice(-100).reverse(),
           counts:{accounts:db.users.length,students:db.athletes.length,reports:db.reports.length},
-          limits:{tutorStartsPerDay:12,mockStartsPerDay:6,reportsPerDay:6}
+          limits:{unlimited:true,tutorStartsPerDay:null,mockStartsPerDay:null,reportsPerDay:null}
         });
       }
       if(req.method==='POST' && ['/api/owner/role','/api/owner/voice-access'].includes(url.pathname)){
@@ -507,7 +507,7 @@ const server=http.createServer(async (req,res)=>{
       const previous=db.reports.find(report=>report.evaluationKey===evaluationKey);
       if(previous)return json(res,200,previous);
       const lease=await evaluationLimits.reserve(u.id);
-      if(!lease)return json(res,429,{error:"A report is already processing, or you have used today's six reports or twelve generation attempts. Daily limits reset at midnight UTC."});
+      if(!lease)return json(res,429,{error:"A report is already processing. Please wait for it to finish before trying again."});
       try{
       // Recheck after admission in case another request finished between the first lookup and reservation.
       const cached=(await loadDb()).reports.find(report=>report.evaluationKey===evaluationKey);
@@ -688,7 +688,7 @@ Use only information in the supplied profile and transcript. Do not reward inven
       }
       const sdp=(await readBody(req)).toString();
       if(!sdp.startsWith('v=0') || sdp.length>64000)return json(res,400,{error:'Invalid voice connection offer.'});
-      if(!await voiceLimits.reserve(u.id,dailyLimit(u,mode),mode))return json(res,429,{error:'You have used your '+dailyLimit(u,mode)+' '+(mode==='learn'?'tutoring':'mock interview')+' starts for today. They reset at midnight UTC. You can still read lessons and save notes.'});
+      if(!await voiceLimits.reserve(u.id,dailyLimit(u,mode),mode))return json(res,429,{error:'Unable to start this voice session right now. Please try again shortly.'});
 const embassyKnowledge = loadEmbassyKnowledge(athlete.interviewLocation);
       let instructions=`You are a realistic but fair F-1 student visa mock interviewer for VisaAtlas.
 You are speaking with ${athlete.name}.

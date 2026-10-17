@@ -1,6 +1,6 @@
 // Persistent admission limits and server-side call expiry. No transcripts stored here.
 const POLICY = Object.freeze({learn: {seconds:480,tokens:1024},mock: {seconds:720,tokens:512}});
-function dailyLimit(user,mode='mock'){if(!['learn','mock'].includes(mode))throw new Error('Invalid voice mode');return user?.voiceTester === true ? 18 : mode==='learn'?12:8;}
+function dailyLimit(user,mode='mock'){if(!['learn','mock'].includes(mode))throw new Error('Invalid voice mode');return null;}
 function createVoiceLimits(pool, apiKey, request=fetch) {
   async function init() {
     await pool.query(`CREATE TABLE IF NOT EXISTS voice_mode_usage (
@@ -8,21 +8,21 @@ function createVoiceLimits(pool, apiKey, request=fetch) {
     await pool.query(`CREATE TABLE IF NOT EXISTS voice_call_limits (
       call_id TEXT PRIMARY KEY, expires_at TIMESTAMPTZ NOT NULL)`);
   }
-  async function status(userId,limit=8,mode='mock') {
+  async function status(userId,limit=null,mode='mock') {
     const result=await pool.query(`SELECT starts FROM voice_mode_usage WHERE user_id=$1 AND mode=$2 AND usage_day=(NOW() AT TIME ZONE 'UTC')::date`,[userId,mode]);
     const used=Number(result.rows[0]?.starts||0);
     const reset=new Date();reset.setUTCHours(24,0,0,0);
-    return {limit,used,remaining:Math.max(0,limit-used),resetsAt:reset.toISOString()};
+    return {limit,unlimited:limit===null,used,remaining:limit===null?null:Math.max(0,limit-used),resetsAt:reset.toISOString()};
   }
-  async function reserve(userId,limit=8,mode='mock') {
-    if(!['learn','mock'].includes(mode)||![8,12,18].includes(limit))throw new Error('Invalid daily voice limit');
+  async function reserve(userId,limit=null,mode='mock') {
+    if(!['learn','mock'].includes(mode)||(limit!==null&&![8,12,18].includes(limit)))throw new Error('Invalid daily voice limit');
     // A row per account and mode: atomic across tabs, processes and redeployments.
     const result=await pool.query(`INSERT INTO voice_mode_usage (user_id,mode,usage_day,starts)
       VALUES ($1,$3,(NOW() AT TIME ZONE 'UTC')::date,1)
       ON CONFLICT (user_id,mode) DO UPDATE SET
         usage_day=EXCLUDED.usage_day,
         starts=CASE WHEN voice_mode_usage.usage_day=EXCLUDED.usage_day THEN voice_mode_usage.starts+1 ELSE 1 END
-      WHERE voice_mode_usage.usage_day<>EXCLUDED.usage_day OR voice_mode_usage.starts<$2
+      WHERE $2::integer IS NULL OR voice_mode_usage.usage_day<>EXCLUDED.usage_day OR voice_mode_usage.starts<$2
       RETURNING starts`,[userId,limit,mode]);
     return result.rows.length>0;
   }

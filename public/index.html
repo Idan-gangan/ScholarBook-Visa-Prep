@@ -232,7 +232,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
         <div style="overflow:auto" id="ownerAccounts"></div>
       </div>
       <div class="card" style="margin-top:16px"><h2>Recent permission changes</h2><div style="overflow:auto" id="ownerAudit"></div></div>
-      <div class="notice" style="margin-top:16px">Use Student Manager View, My Learning and Readiness Reports to work with students. Voice and report cost limits still apply to Owner. Hosting, API keys, billing and deployment settings remain in Render/GitHub and are not exposed here.</div>
+      <div class="notice" style="margin-top:16px">Use Student Manager View, My Learning and Readiness Reports to work with students. Daily attempts are unlimited for everyone. Session time limits still apply. Hosting, API keys, billing and deployment settings remain in Render/GitHub and are not exposed here.</div>
     </section>
     <section id="account" class="screen"><h1>Account security</h1>
       <form class="card" style="max-width:560px" onsubmit="event.preventDefault();changePassword()">
@@ -365,22 +365,12 @@ async function loadOwner(){
   const data=await api('/api/owner/accounts');
   $('ownerStats').innerHTML=Object.entries(data.counts).map(([label,value])=>`<div class="card"><div class="muted">${escapeHtml(label)}</div><div class="kpi">${escapeHtml(value)}</div></div>`).join('');
   const roles=[['athlete','Student'],['coach','Coach'],['supervisor','Supervisor'],['manager','Manager']];
-  $('ownerAccounts').innerHTML='<table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Action</th><th>Daily voice access</th></tr></thead><tbody>'+data.users.map(u=>`<tr><td>${escapeHtml(u.name)}</td><td>${escapeHtml(u.email)}</td><td>${u.role==='owner'?'Owner (protected)':`<select aria-label="Role for ${escapeHtml(u.email)}">${roles.map(([value,label])=>`<option value="${value}"${u.role===value?' selected':''}>${label}</option>`).join('')}</select>`}</td><td>${u.role==='owner'?'—':`<button type="button" class="btn secondary" data-owner-user="${escapeHtml(u.id)}">Save role</button>`}</td><td><button type="button" class="btn secondary" data-voice-user="${escapeHtml(u.id)}" data-enabled="${u.voiceTester===true}">${u.voiceTester?'Tester: 18 tutor / 18 mock — remove':'Standard: 12 tutor / 6 mock — enable tester'}</button></td></tr>`).join('')+'</tbody></table>';
+  $('ownerAccounts').innerHTML='<table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Action</th><th>Daily voice access</th></tr></thead><tbody>'+data.users.map(u=>`<tr><td>${escapeHtml(u.name)}</td><td>${escapeHtml(u.email)}</td><td>${u.role==='owner'?'Owner (protected)':`<select aria-label="Role for ${escapeHtml(u.email)}">${roles.map(([value,label])=>`<option value="${value}"${u.role===value?' selected':''}>${label}</option>`).join('')}</select>`}</td><td>${u.role==='owner'?'—':`<button type="button" class="btn secondary" data-owner-user="${escapeHtml(u.id)}">Save role</button>`}</td><td>Unlimited for everyone</td></tr>`).join('')+'</tbody></table>';
   $('ownerAccounts').querySelectorAll('[data-owner-user]').forEach(button=>button.addEventListener('click',()=>saveAccountRole(button)));
-  $('ownerAccounts').querySelectorAll('[data-voice-user]').forEach(button=>button.addEventListener('click',()=>saveVoiceAccess(button)));
   const label=id=>data.users.find(u=>u.id===id)?.email||id;
   $('ownerAudit').innerHTML=data.audit.length?'<table><thead><tr><th>When</th><th>Account</th><th>Change</th><th>By</th></tr></thead><tbody>'+data.audit.map(entry=>`<tr><td>${escapeHtml(entry.at)}</td><td>${escapeHtml(label(entry.targetId))}</td><td>${escapeHtml(entry.previousRole)} → ${escapeHtml(entry.role)}</td><td>${escapeHtml(label(entry.actorId))}</td></tr>`).join('')+'</tbody></table>':'<p>No permission changes recorded.</p>';
   $('ownerStatus').textContent='Accounts loaded.';
  }catch(error){$('ownerStatus').textContent=error.message;}
-}
-async function saveVoiceAccess(button){
- const currentPassword=$('ownerPassword').value, enabled=button.dataset.enabled!=='true';
- if(!currentPassword){$('ownerStatus').textContent='Enter your current password first.';return;}
- if(!confirm((enabled?'Allow 18 tutor starts and 18 mock starts daily for this tester? This may increase AI costs.':'Restore 12 tutor starts and 6 mock starts daily?')+' This does not change account permissions.'))return;
- button.disabled=true;
- try{await api('/api/owner/voice-access',{method:'POST',body:JSON.stringify({userId:button.dataset.voiceUser,enabled,currentPassword})});await loadOwner();await refreshVoiceUsage();$('ownerStatus').textContent='Voice access updated. Starts already used today still count.';}
- catch(error){$('ownerStatus').textContent=error.message;}
- finally{$('ownerPassword').value='';button.disabled=false;}
 }
 async function saveAccountRole(button){
  const row=button.closest('tr'), role=row.querySelector('select').value, currentPassword=$('ownerPassword').value;
@@ -753,9 +743,9 @@ async function refreshVoiceUsage(){
   const data=await api('/api/voice-usage');
   if(!me||version!==sessionVersion)return;
   for(const [id,mode,label] of [['learningVoiceUsage','learn','tutoring starts'],['lessonVoiceUsage','learn','tutoring starts'],['mockVoiceUsage','mock','mock interviews']]){
-   const usage=data[mode];$(id).textContent=usage.remaining+' of '+usage.limit+' '+label+' left today. Resets '+new Date(usage.resetsAt).toLocaleString()+' (your local time).';
+   const usage=data[mode];$(id).textContent=usage.unlimited?'Unlimited '+label+'. Session time limits still apply.':usage.remaining+' of '+usage.limit+' '+label+' left today.';
   }
-  $('reportUsage').textContent=data.reports.remaining+' of '+data.reports.limit+' new reports left today. '+data.reports.attemptsRemaining+' generation attempts left.';
+  $('reportUsage').textContent=data.reports.unlimited?'Unlimited feedback reports. Generate one report at a time.':data.reports.remaining+' new reports left today.';
  }catch(error){if(me && version===sessionVersion){for(const id of ['learningVoiceUsage','lessonVoiceUsage','mockVoiceUsage','reportUsage'])$(id).textContent='Practice allowance could not be loaded. Try refreshing the page.';}}
 }
 function continueLearning(){return selectLearningModule((curriculum.find(m=>!courseSaved[m.id]?.completed)||curriculum[0]).id)}

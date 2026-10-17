@@ -1,5 +1,5 @@
 const crypto=require('node:crypto');
-const EVALUATION_POLICY=Object.freeze({daily:8,attempts:12,timeoutMs:90000,leaseSeconds:180,outputTokens:4096,maxCharacters:40000,maxTurns:200});
+const EVALUATION_POLICY=Object.freeze({daily:null,attempts:null,timeoutMs:90000,leaseSeconds:180,outputTokens:4096,maxCharacters:40000,maxTurns:200});
 function normalizeTranscript(value){
  if(!Array.isArray(value)||value.length<1||value.length>EVALUATION_POLICY.maxTurns)throw new Error('Provide a short interview transcript before generating a report.');
  let characters=0;
@@ -23,7 +23,7 @@ function createEvaluationLimits(pool){
    const result=await pool.query("SELECT attempts,completed FROM evaluation_daily_usage WHERE user_id=$1 AND usage_day=(NOW() AT TIME ZONE 'UTC')::date",[userId]);
    const row=result.rows[0]||{},used=Number(row.completed||0),attempts=Number(row.attempts||0);
    const reset=new Date();reset.setUTCHours(24,0,0,0);
-   return {limit:EVALUATION_POLICY.daily,used,remaining:Math.max(0,EVALUATION_POLICY.daily-used),attemptsRemaining:Math.max(0,EVALUATION_POLICY.attempts-attempts),resetsAt:reset.toISOString()};
+   return {limit:null,unlimited:true,used,attempts,remaining:null,attemptsRemaining:null,resetsAt:reset.toISOString()};
  }
  async function reserve(userId){
    const token=crypto.randomBytes(16).toString('hex');
@@ -34,7 +34,7 @@ function createEvaluationLimits(pool){
        completed=CASE WHEN evaluation_daily_usage.usage_day=EXCLUDED.usage_day THEN evaluation_daily_usage.completed ELSE 0 END,
        lease_token=EXCLUDED.lease_token,lease_until=EXCLUDED.lease_until
      WHERE (evaluation_daily_usage.lease_until IS NULL OR evaluation_daily_usage.lease_until<=NOW())
-       AND (evaluation_daily_usage.usage_day<>EXCLUDED.usage_day OR (evaluation_daily_usage.attempts<$4 AND evaluation_daily_usage.completed<$5))
+       AND (evaluation_daily_usage.usage_day<>EXCLUDED.usage_day OR (($4::integer IS NULL OR evaluation_daily_usage.attempts<$4) AND ($5::integer IS NULL OR evaluation_daily_usage.completed<$5)))
      RETURNING attempts`,[userId,token,EVALUATION_POLICY.leaseSeconds,EVALUATION_POLICY.attempts,EVALUATION_POLICY.daily]);
    return result.rows.length?token:null;
  }
