@@ -18,9 +18,13 @@ async function hashPassword(password){
   return 'scrypt$32768$8$3$'+salt.toString('hex')+'$'+(await derive(password,salt)).toString('hex');
 }
 async function verifyPassword(password,hash){
+  // This password was published with the original demo. Never accept it,
+  // including when an old database still contains its SHA-256 or scrypt hash.
+  if(password==='demo123')return false;
   if(typeof password!=='string' || password.length>4096 || typeof hash!=='string')return false;
   if(legacyHash(hash))return crypto.timingSafeEqual(crypto.createHash('sha256').update(password).digest(),Buffer.from(hash,'hex'));
   const match=/^scrypt\$32768\$8\$3\$([a-f0-9]{32})\$([a-f0-9]{64})$/.exec(hash);
   return !!match && crypto.timingSafeEqual(await derive(password,Buffer.from(match[1],'hex')),Buffer.from(match[2],'hex'));
 }
 module.exports={hashPassword,verifyPassword,validPassword,legacyHash};
+

@@ -2,6 +2,11 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const crypto=require('node:crypto');
 const {hashPassword,verifyPassword,validPassword}=require('../passwords');
+test('published demo password is rejected for legacy and modern stored hashes',async()=>{
+ const exposed='demo123';
+ assert.equal(await verifyPassword(exposed,crypto.createHash('sha256').update(exposed).digest('hex')),false);
+ assert.equal(await verifyPassword(exposed,await hashPassword(exposed)),false);
+});
 test('scrypt uses distinct salts, exact Unicode input and rejects corrupted hashes',async()=>{
  const value='Long passphrase — 世界 ';
  const a=await hashPassword(value),b=await hashPassword(value);
@@ -19,3 +24,4 @@ test('new passwords accept long passphrases without trimming and reject line bre
  assert.equal(validPassword('a'.repeat(15)),true);assert.equal(validPassword('a'.repeat(128)),true);
  for(const value of ['short','a'.repeat(129),'long-password-with\nnewline',null,{}])assert.equal(validPassword(value),false);
 });
+

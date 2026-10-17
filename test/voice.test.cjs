@@ -6,7 +6,7 @@ const code=html.slice(html.indexOf('// Voice lifecycle:'),html.indexOf('async fu
 function setup(){
  const els=new Map(),sent=[],lines=[],timers=new Map();let next=0;
  const track={enabled:false,stop(){this.stopped=true}};
- const ctx=vm.createContext({console,AbortController,JSON,refreshVoiceUsage(){},navigator:{},RTCPeerConnection:function(){},setTimeout:fn=>{timers.set(++next,fn);return next},clearTimeout:id=>timers.delete(id),$:id=>{if(!els.has(id))els.set(id,{value:'athlete1',dataset:{},replaceChildren(){}});return els.get(id)},addLine:(role,text)=>lines.push({role,text}),fetch(){}});
+ const ctx=vm.createContext({console,AbortController,JSON,confirm:()=>true,refreshVoiceUsage(){},navigator:{},RTCPeerConnection:function(){},setTimeout:fn=>{timers.set(++next,fn);return next},clearTimeout:id=>timers.delete(id),$:id=>{if(!els.has(id))els.set(id,{value:'athlete1',dataset:{},replaceChildren(){}});return els.get(id)},addLine:(role,text)=>lines.push({role,text}),fetch(){}});
  vm.runInContext('let pc=null,dc=null,stream=null,transcript=[];'+code,ctx);
  ctx.channel={readyState:'open',send:s=>sent.push(JSON.parse(s)),close(){}};ctx.mic={getAudioTracks:()=>[track],getTracks:()=>[track]};
  vm.runInContext('voice={connected:true,busy:false,playing:false,waiting:false,pendingItem:null};dc=channel;stream=mic',ctx);
@@ -14,6 +14,17 @@ function setup(){
  return {ctx,sent,track,els,lines,timers,run,event:e=>{ctx.ev=e;run('voiceEvent(voice,ev)')},responses:()=>sent.filter(e=>e.type==='response.create').length};
 }
 const commit=id=>({type:'input_audio_buffer.committed',item_id:id});
+test('declining either voice notice leaves microphone and connection untouched',async()=>{
+ for(const mode of ['learn','mock']){
+  const s=setup();s.run('stopVoice()');let notice='';
+  s.ctx.confirm=text=>{notice=text;return false};
+  s.ctx.navigator.mediaDevices={getUserMedia:()=>{throw new Error('Must not request microphone')}};
+  await s.run('startVoice("'+mode+'")');
+  assert.equal(s.run('voice'),null);
+  assert.match(notice,/OpenAI/);assert.match(notice,/Cancel/);
+  assert.match(notice,mode==='learn'?/does not save the tutor conversation/:/saves the mock transcript/);
+ }
+});
 const transcript=(id,text)=>({type:'conversation.item.input_audio_transcription.completed',item_id:id,transcript:text});
 test('hands-free accepts an answer automatically once, after transcription',()=>{
  const s=setup();s.run('voiceReady(voice)');assert.equal(s.track.enabled,true);
