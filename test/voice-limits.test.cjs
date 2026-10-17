@@ -8,7 +8,7 @@ function fixture(){
    if(sql.startsWith('INSERT INTO voice_mode_usage')){
      assert.match(sql,/ON CONFLICT \(user_id,mode\) DO UPDATE/);assert.match(sql,/RETURNING starts/);
      const previous=daily.get(args[0]+':'+args[2]),n=previous?.day===day?previous.starts+1:1;
-     if(n>args[1])return {rows:[]};daily.set(args[0]+':'+args[2],{day,starts:n});return {rows:[{starts:n}]};
+     if(args[1]!==null&&n>args[1])return {rows:[]};daily.set(args[0]+':'+args[2],{day,starts:n});return {rows:[{starts:n}]};
    }
    if(sql.startsWith('SELECT starts FROM voice_mode_usage')){const row=daily.get(args[0]+':'+args[1]);return {rows:row?.day===day?[row]:[]};}
    if(sql.startsWith('INSERT INTO voice_call_limits')){if(failTrack)throw Error('DB unavailable');calls.set(args[0],args[1]);return {rows:[]};}
@@ -22,10 +22,10 @@ function fixture(){
 }
 test('eight mock starts persist across limiter instances; tutoring has twelve separate starts and UTC rollover resets',async()=>{
  const f=fixture();await f.make().init();
- const results=await Promise.all(Array.from({length:10},()=>f.make().reserve('u1')));
- assert.equal(results.filter(Boolean).length,8);assert.equal(await f.make().reserve('u1'),false);
+ const results=await Promise.all(Array.from({length:10},()=>f.make().reserve('u1',8)));
+ assert.equal(results.filter(Boolean).length,8);assert.equal(await f.make().reserve('u1',8),false);
  const tutors=await Promise.all(Array.from({length:14},()=>f.make().reserve('u1',12,'learn')));assert.equal(tutors.filter(Boolean).length,12);assert.equal((await f.make().status('u1',8,'mock')).used,8);
- assert.equal(await f.make().reserve('u2'),true);f.nextDay();assert.equal(await f.make().reserve('u1'),true);
+ assert.equal(await f.make().reserve('u2'),true);f.nextDay();assert.equal(await f.make().reserve('u1',8),true);
 });
 test('tester allowance is capped at 18 and changing access does not erase usage',async()=>{
  const f=fixture(),limiter=f.make();
@@ -37,7 +37,7 @@ test('tester allowance is capped at 18 and changing access does not erase usage'
  await assert.rejects(limiter.reserve('tester',100));
  f.nextDay();assert.equal((await limiter.status('tester',18)).remaining,18);
  const {dailyLimit}=require('../voice-limits');
- assert.equal(dailyLimit({role:'owner'}),8);assert.equal(dailyLimit({voiceTester:true}),18);assert.equal(dailyLimit({voiceTester:'true'}),8);
+ assert.equal(dailyLimit({role:'owner'}),null);assert.equal(dailyLimit({voiceTester:true}),null);assert.equal(dailyLimit({voiceTester:'true'}),null);
 });
 test('server stores mode-specific deadlines and can expire a call after restart',async()=>{
  const f=fixture();assert.equal(await f.make().track('https://api.openai.com/v1/realtime/calls/rtc_one','learn'),480);
@@ -56,5 +56,12 @@ test('persistence failure hangs up the call rather than allowing an untracked se
  const f=fixture();f.failTrack();await assert.rejects(f.make().track('/v1/realtime/calls/rtc_one','learn'));
  assert.equal(f.requests.length,1);assert.equal(f.calls.size,0);
  assert.equal(POLICY.learn.tokens,1024);assert.equal(POLICY.mock.tokens,512);
+});
+
+
+test('all roles have unlimited default voice starts while usage is tracked',async()=>{
+ const f=fixture();for(let i=0;i<40;i++)assert.equal(await f.make().reserve('unlimited'),true);
+ const usage=await f.make().status('unlimited');assert.equal(usage.used,40);assert.equal(usage.unlimited,true);assert.equal(usage.remaining,null);assert.equal(usage.limit,null);
+ for(const role of ['athlete','coach','owner'])for(const mode of ['learn','mock'])assert.equal(require('../voice-limits').dailyLimit({role},mode),null);
 });
 

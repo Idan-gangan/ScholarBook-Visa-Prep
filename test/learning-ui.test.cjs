@@ -16,7 +16,7 @@ function fixture(){
    else if(route==='/api/owner/accounts')data=store.ownerData;
    else if(route==='/api/owner/role')data={ok:true};
    else if(route==='/api/owner/voice-access')data={ok:true};
-   else if(route==='/api/voice-usage')data={learn:{limit:12,used:2,remaining:10,resetsAt:'2026-10-17T00:00:00.000Z'},mock:{limit:6,used:1,remaining:5,resetsAt:'2026-10-17T00:00:00.000Z'},reports:{limit:6,used:1,remaining:5,attemptsRemaining:11,resetsAt:'2026-10-17T00:00:00.000Z'}};
+   else if(route==='/api/voice-usage')data=store.usage||{learn:{limit:12,used:2,remaining:10,resetsAt:'2026-10-17T00:00:00.000Z'},mock:{limit:6,used:1,remaining:5,resetsAt:'2026-10-17T00:00:00.000Z'},reports:{limit:6,used:1,remaining:5,attemptsRemaining:11,resetsAt:'2026-10-17T00:00:00.000Z'}};
    else if(route==='/api/profile-options')data=JSON.parse(JSON.stringify(require('../profile-options')));
    else if(route==='/api/athletes')data=[student];else if(route==='/api/reports')data=[];else if(route==='/api/my-profile')data=student;
    else if(route.startsWith('/api/learning/')){
@@ -32,6 +32,11 @@ function fixture(){
  vm.runInContext(html.match(/<script>([\s\S]*?)<\/script>/)[1].replace('boot().catch(()=>{if(new URLSearchParams(location.search).get("signin")==="1")backToLogin()});',''),ctx);
  return {elements,store,ctx,run:code=>vm.runInContext(code,ctx)};
 }
+test('unlimited usage is readable without null counters or reset promises',async()=>{
+ const f=fixture();f.store.usage={learn:{unlimited:true,limit:null,remaining:null},mock:{unlimited:true,limit:null,remaining:null},reports:{unlimited:true,limit:null,remaining:null}};
+ await f.run('boot()');await f.run('refreshVoiceUsage()');
+ for(const id of ['lessonVoiceUsage','mockVoiceUsage','reportUsage']){assert.match(f.elements.get(id).textContent,/Unlimited/);assert.doesNotMatch(f.elements.get(id).textContent,/null|Resets|left today/);}
+});
 test('student dashboard uses latest feedback and omits staff-only columns',()=>{
  const f=fixture();f.run(`me={id:'u1',role:'athlete'};athletes=[{id:'s1',userId:'u1',name:'Test',mocks:2,currentScore:0,mainConcern:'New student — not yet assessed'}];reports=[{id:'old',athleteId:'s1',createdAt:'2026-01-01',overall:45},{id:'new',athleteId:'s1',createdAt:'2026-02-01',overall:75,feedback:'Clear study plans',nextStep:'Check your funding details'}];renderAll()`);
  assert.match(f.elements.get('dashCards').innerHTML,/75\/100/);
