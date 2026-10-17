@@ -1,5 +1,5 @@
 const crypto=require('node:crypto');
-const EVALUATION_POLICY=Object.freeze({daily:6,attempts:12,timeoutMs:90000,leaseSeconds:180,outputTokens:4096,maxCharacters:40000,maxTurns:200});
+const EVALUATION_POLICY=Object.freeze({daily:8,attempts:12,timeoutMs:90000,leaseSeconds:180,outputTokens:4096,maxCharacters:40000,maxTurns:200});
 function normalizeTranscript(value){
  if(!Array.isArray(value)||value.length<1||value.length>EVALUATION_POLICY.maxTurns)throw new Error('Provide a short interview transcript before generating a report.');
  let characters=0;

@@ -106,7 +106,7 @@ test('owner can grant extra voice starts without changing permissions; password 
  assert.equal(h.db.users[1].voiceTester,true);assert.equal(h.db.users[1].role,'athlete');
  assert.equal(h.db.securityAudit.at(-1).action,'voice-access');
  assert.equal((await h.request('GET','/api/voice-usage',undefined,false)).status,401);
- assert.equal((await h.request('GET','/api/voice-usage')).body.mock.limit,6);
+ assert.equal((await h.request('GET','/api/voice-usage')).body.mock.limit,8);
  h.db.users[0].voiceTester=true;
  assert.equal((await h.request('GET','/api/voice-usage')).body.mock.limit,18);
 });
@@ -353,13 +353,13 @@ test('voice admission is checked before upstream calls and rejects malformed SDP
  const h=harness();const route='/api/realtime-session?athleteId=s1';
  assert.equal((await h.request('POST',route,'not-sdp')).status,400);
  assert.equal(h.calls.length,0);
- for(let i=0;i<6;i++){
+ for(let i=0;i<8;i++){
    const r=await h.request('POST',route,'v=0\r\noffer');assert.equal(r.status,200);
    assert.equal(r.headers['X-Voice-Limit-Seconds'],'720');
  }
  assert.equal(h.calls[0].session.max_output_tokens,512);
  assert.equal((await h.request('POST',route,'v=0\r\noffer')).status,429);
- assert.equal(h.calls.length,6);
+ assert.equal(h.calls.length,8);
 });
 test('evaluation cannot overwrite report ownership and metadata through model output',async()=>{
  const h=harness();
@@ -409,12 +409,12 @@ test('completed transcript retries reuse the report without a provider call',asy
  assert.equal(first.status,200);assert.equal(second.body.id,first.body.id);assert.equal(h.calls.length,1);assert.equal(h.db.reports.length,1);
  assert.equal(h.calls[0].request.max_output_tokens,4096);assert.equal(h.calls[0].request.store,false);
 });
-test('six distinct reports are admitted and malformed transcripts never call provider',async()=>{
+test('eight distinct reports are admitted and malformed transcripts never call provider',async()=>{
  const h=harness();
  assert.equal((await h.request('POST','/api/evaluate',{athleteId:'s1',transcript:[]})).status,400);
  assert.equal((await h.request('POST','/api/evaluate',{athleteId:'s1',transcript:[{role:'athlete',text:'x'.repeat(40001)}]})).status,400);
- for(let i=0;i<7;i++)assert.equal((await h.request('POST','/api/evaluate',{athleteId:'s1',transcript:[{role:'athlete',text:'Answer '+i}]})).status,i<6?200:429);
- assert.equal(h.calls.length,6);
+ for(let i=0;i<9;i++)assert.equal((await h.request('POST','/api/evaluate',{athleteId:'s1',transcript:[{role:'athlete',text:'Answer '+i}]})).status,i<8?200:429);
+ assert.equal(h.calls.length,8);
 });
 test('provider timeout gives a useful error and releases admission',async()=>{
  const h=harness();h.run(`fetch=async()=>{throw Object.assign(new Error('private provider details'),{name:'TimeoutError'})}`);
@@ -464,7 +464,7 @@ test('tutoring and mock allowances are independent and their remaining counts ar
  for(let i=0;i<12;i++)assert.equal((await h.request('POST','/api/realtime-session?athleteId=s1&mode=learn&lesson=funding','v=0\r\noffer')).status,200);
  assert.equal((await h.request('POST','/api/realtime-session?athleteId=s1&mode=learn&lesson=funding','v=0\r\noffer')).status,429);
  const mock=await h.request('POST','/api/realtime-session?athleteId=s1','v=0\r\noffer');assert.equal(mock.status,200);assert.match(mock.headers['X-Mock-Session-Id'],/^mock_/);
- const usage=(await h.request('GET','/api/voice-usage')).body;assert.equal(usage.learn.remaining,0);assert.equal(usage.mock.remaining,5);assert.equal(usage.reports.remaining,6);
+ const usage=(await h.request('GET','/api/voice-usage')).body;assert.equal(usage.learn.remaining,0);assert.equal(usage.mock.remaining,7);assert.equal(usage.reports.remaining,8);
  const prompt=h.calls.at(-1).session.instructions;assert.match(prompt,/no intimidation, praise, scoring/);assert.match(prompt,/feedback comes after/);assert.match(prompt,/never as a real consular officer/);
 });
 test('reports require the issued mock session and freeze its first submitted answers',async()=>{
@@ -474,7 +474,7 @@ test('reports require the issued mock session and freeze its first submitted ans
  const mockSessionId=started.headers['X-Mock-Session-Id'];
  const first=await h.request('POST','/api/evaluate',{athleteId:'s1',transcript,mockSessionId});assert.equal(first.status,200);
  const repeat=await h.request('POST','/api/evaluate',{athleteId:'s1',transcript:[{role:'athlete',text:'Changed answer'}],mockSessionId});assert.equal(repeat.body.id,first.body.id);
- assert.equal(h.db.reports.length,1);assert.equal((await h.request('GET','/api/voice-usage')).body.reports.remaining,5);
+ assert.equal(h.db.reports.length,1);assert.equal((await h.request('GET','/api/voice-usage')).body.reports.remaining,7);
  h.db.mockSessions[0].userId='someone-else';assert.equal((await h.request('POST','/api/evaluate',{athleteId:'s1',transcript,mockSessionId})).status,400);
 });
 test('failed reports can retry without consuming the successful report allowance',async()=>{
@@ -482,7 +482,7 @@ test('failed reports can retry without consuming the successful report allowance
  const body={athleteId:'s1',transcript:[{role:'athlete',text:'Answer'}]};
  for(let i=0;i<12;i++)assert.equal((await h.request('POST','/api/evaluate',body)).status,504);
  assert.equal((await h.request('POST','/api/evaluate',body)).status,429);
- const usage=(await h.request('GET','/api/voice-usage')).body.reports;assert.equal(usage.remaining,6);assert.equal(usage.attemptsRemaining,0);
+ const usage=(await h.request('GET','/api/voice-usage')).body.reports;assert.equal(usage.remaining,8);assert.equal(usage.attemptsRemaining,0);
 });
 
 test('mock modes are validated before spending, persisted, and passed to interviewer',async()=>{

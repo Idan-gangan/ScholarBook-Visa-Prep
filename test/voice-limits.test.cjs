@@ -20,11 +20,11 @@ function fixture(){
  const make=()=>createVoiceLimits(pool,'test-key',request);
  return {make,daily,calls,requests,nextDay:()=>day++,failHangup:value=>failHangup=value,failTrack:()=>failTrack=true};
 }
-test('six mock starts persist across limiter instances; tutoring has twelve separate starts and UTC rollover resets',async()=>{
+test('eight mock starts persist across limiter instances; tutoring has twelve separate starts and UTC rollover resets',async()=>{
  const f=fixture();await f.make().init();
- const results=await Promise.all(Array.from({length:8},()=>f.make().reserve('u1')));
- assert.equal(results.filter(Boolean).length,6);assert.equal(await f.make().reserve('u1'),false);
- const tutors=await Promise.all(Array.from({length:14},()=>f.make().reserve('u1',12,'learn')));assert.equal(tutors.filter(Boolean).length,12);assert.equal((await f.make().status('u1',6,'mock')).used,6);
+ const results=await Promise.all(Array.from({length:10},()=>f.make().reserve('u1')));
+ assert.equal(results.filter(Boolean).length,8);assert.equal(await f.make().reserve('u1'),false);
+ const tutors=await Promise.all(Array.from({length:14},()=>f.make().reserve('u1',12,'learn')));assert.equal(tutors.filter(Boolean).length,12);assert.equal((await f.make().status('u1',8,'mock')).used,8);
  assert.equal(await f.make().reserve('u2'),true);f.nextDay();assert.equal(await f.make().reserve('u1'),true);
 });
 test('tester allowance is capped at 18 and changing access does not erase usage',async()=>{
@@ -32,12 +32,12 @@ test('tester allowance is capped at 18 and changing access does not erase usage'
  const results=await Promise.all(Array.from({length:20},()=>limiter.reserve('tester',18)));
  assert.equal(results.filter(Boolean).length,18);
  assert.deepEqual((({limit,used,remaining})=>({limit,used,remaining}))(await limiter.status('tester',18)),{limit:18,used:18,remaining:0});
- assert.equal(await limiter.reserve('tester',6),false);
- assert.equal((await limiter.status('tester',6)).remaining,0);
+ assert.equal(await limiter.reserve('tester',8),false);
+ assert.equal((await limiter.status('tester',8)).remaining,0);
  await assert.rejects(limiter.reserve('tester',100));
  f.nextDay();assert.equal((await limiter.status('tester',18)).remaining,18);
  const {dailyLimit}=require('../voice-limits');
- assert.equal(dailyLimit({role:'owner'}),6);assert.equal(dailyLimit({voiceTester:true}),18);assert.equal(dailyLimit({voiceTester:'true'}),6);
+ assert.equal(dailyLimit({role:'owner'}),8);assert.equal(dailyLimit({voiceTester:true}),18);assert.equal(dailyLimit({voiceTester:'true'}),8);
 });
 test('server stores mode-specific deadlines and can expire a call after restart',async()=>{
  const f=fixture();assert.equal(await f.make().track('https://api.openai.com/v1/realtime/calls/rtc_one','learn'),480);
