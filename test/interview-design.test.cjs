@@ -2,6 +2,18 @@ const {test}=require('node:test'),assert=require('node:assert/strict');
 const design=require('../interview-design');
 const transcript=design.TOPICS.flatMap(([id])=>[{role:'assistant',text:'A question about '+id},{role:'athlete',text:'My actual answer about '+id}]);
 const complete=()=>({summary:'Your answers covered your study plans and funding.',strengths:[{text:'You explained your funding clearly.',answerTurn:9}],assessments:design.TOPICS.map(([topic],i)=>({topic,status:'assessed',questionTurn:i*2,answerTurn:i*2+1,score:8,feedback:'Keep your explanation clear.',action:'Practise explaining this in your own words.'}))});
+test('every mock mode opens with VisaAtlas identity and waits for an audio check',()=>{
+ for(const mode of Object.keys(design.MODES)){
+  const prompt=design.mockInstructions({},mode,[], 'test');
+  assert.match(prompt,/Hello, I'm your AI mock interviewer for VisaAtlas/);
+  assert.match(prompt,/Can you hear me clearly/);
+  assert.match(prompt,/STOP and WAIT/);
+  assert.match(prompt,/Only after confirmation, ask ONE/);
+  assert.match(prompt,/Do not assume confirmation from silence/);
+  assert.match(prompt,/Never invent or guess a name/);
+  assert.match(design.evaluationPrompt({},[],mode),/Audio checks, greetings and troubleshooting are NOT interview answers/);
+ }
+});
 test('unasked refusals are not weaknesses and cannot contribute zero points',()=>{
  const input=complete();input.assessments[6]={topic:'circumstances',status:'not_covered',score:0,feedback:'Your refusals are a problem.'};
  const report=design.normalizeEvidenceReport(input,transcript,{previousRefusal:'Yes',previousAttempts:3},'standard');
