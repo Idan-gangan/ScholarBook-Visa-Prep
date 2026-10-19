@@ -707,7 +707,9 @@ Do not predict whether a visa will be approved and do not give a visa approval p
 If an answer sounds memorized, vague, inconsistent, or unsupported, probe naturally.
 Keep each interviewer turn concise, usually one question.
 Start with the opening guidance in INTERVIEW DESIGN below.`;
-      if(mode==='mock')instructions+=interviewDesign.mockInstructions(athlete,difficulty,interviewDesign.recentQuestions(db.mockSessions||[],u.id,athlete.id),crypto.randomBytes(4).toString('hex'));
+      const variation=crypto.randomBytes(4).toString('hex');
+      const interviewPlan=mode==='mock'?interviewDesign.sessionPlan(athlete,db.mockSessions||[],u.id,athlete.id,variation):null;
+      if(mode==='mock')instructions+=interviewDesign.mockInstructions(athlete,difficulty,interviewDesign.recentQuestions(db.mockSessions||[],u.id,athlete.id),variation,interviewPlan);
 
       if(mode==="learn"){
         const saved=await pool.query("SELECT data FROM learning_progress WHERE student_id=$1 AND lesson_id=$2",[athlete.id,url.searchParams.get("lesson")]);
@@ -756,7 +758,7 @@ Start with the opening guidance in INTERVIEW DESIGN below.`;
           current.mockSessions??=[];
           // Retain unreported sessions for 30 days. Existing reports remain available.
           current.mockSessions=current.mockSessions.filter(x=>Date.parse(x.createdAt)>Date.now()-30*86400000);
-          current.mockSessions.push({id:mockSessionId,userId:u.id,athleteId:athlete.id,createdAt:new Date().toISOString(),difficulty,evaluationVersion:3,profile:interviewDesign.profileSnapshot(athlete)});
+          current.mockSessions.push({id:mockSessionId,userId:u.id,athleteId:athlete.id,createdAt:new Date().toISOString(),difficulty,plan:interviewPlan,evaluationVersion:3,profile:interviewDesign.profileSnapshot(athlete)});
         });
       }
       res.writeHead(rr.status,{"Content-Type":"application/sdp","Cache-Control":"no-store","X-Voice-Limit-Seconds":String(seconds),...(mockSessionId?{'X-Mock-Session-Id':mockSessionId}:{})});
