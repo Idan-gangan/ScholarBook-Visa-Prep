@@ -140,7 +140,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
         <div id="learn_voiceStatus" role="status" aria-live="polite">Not connected</div>
         <div id="learn_voiceLimitNotice" class="small muted" role="status" aria-live="polite"></div>
         <p id="lessonVoiceUsage" class="small muted" role="status"></p>
-        <p class="small muted">Voice lessons last up to 8 minutes. Tutoring and mock interviews have separate daily allowances. Starting a connection uses one start, even if it fails. Reading and notes remain available.</p>
+        <p class="small muted">Voice lessons last up to 8 minutes. Daily practice attempts are unlimited. Reading and notes remain available.</p>
         <div class="lesson-actions"><button class="btn primary" id="learn_startBtn" onclick="startLearningTutor()">Start voice lesson</button><button class="btn danger" id="learn_stopBtn" onclick="stopVoice()" disabled>End lesson conversation</button></div>
         <div id="learn_transcript" class="lesson-transcript" aria-label="Tutor conversation"></div>
         <p class="small muted">Your conversation is for learning, with no readiness score. Save the points you want to keep in your notes; the conversation itself is not saved.</p>
@@ -182,7 +182,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
       <div class="voiceBox">
         <div class="card">
           <div id="voiceStatus" class="status">Not connected</div>
-          <p class="small muted">Mock interviews last up to 12 minutes. Tutoring and mock interviews have separate daily allowances. Starting a connection uses one start, even if it fails.</p>
+          <p class="small muted">Mock interviews last up to 12 minutes. Daily practice attempts are unlimited.</p>
           <p id="mockVoiceUsage" class="small muted" role="status"></p>
           <div id="voiceLimitNotice" class="small muted" role="status" aria-live="polite"></div>
           <h2 style="margin-bottom:4px">AI mock interviewer</h2>
@@ -202,7 +202,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
           <h3>After the interview</h3>
           <p class="muted">End your interview to see what went well and what to practise next. Coaching and corrections appear here, after the conversation.</p>
           <button class="btn primary" style="width:100%" id="feedbackBtn" onclick="generateReport()">View my feedback</button>
-          <p class="muted small">Up to six new reports each day, one per mock interview. Opening saved reports uses no allowance. If generation fails, you can retry, with a maximum of twelve generation attempts per day. Limits reset at midnight UTC.</p>
+          <p class="muted small">Daily feedback reports are unlimited, with one saved report per mock interview. Generate one report at a time. If generation fails, you can retry.</p>
 <p id="reportUsage" class="small muted" role="status"></p>
 <div id="evalStatus" class="small muted" style="margin-top:12px"></div>
         </div>
@@ -610,6 +610,10 @@ function voiceEvent(v,ev){
 async function startVoice(mode="mock"){
   if(voice)return;
   if(reportGenerating){$("evalStatus").textContent="Please wait for your report before starting another session.";return}
+  const privacy=mode==='learn'
+    ? 'Voice tutoring: your microphone audio, study profile and saved lesson notes are sent to OpenAI to provide the lesson. VisaAtlas does not save the tutor conversation; notes you save are stored and available to authorized staff.'
+    : 'Mock interview: your microphone audio and study profile are sent to OpenAI. Your speech is transcribed. VisaAtlas saves the mock transcript when you end the session and uses it to create a saved feedback report. Authorized staff can access your student records and reports.';
+  if(!confirm(privacy+'\n\nVisaAtlas does not save audio or video recordings. You can stop microphone sharing by ending the session. Select OK to agree and continue, or Cancel to stay on this page.'))return;
   voiceScreen=mode;
   if(!voiceEl("athleteSelect").value){voiceEl("voiceStatus").textContent="Select a student first.";return}
   if(mode==='mock'&&typeof window!=='undefined'&&window.VisaAtlasProfile){const p=athletes.find(a=>a.id===voiceEl("athleteSelect").value);const missing=window.VisaAtlasProfile.missing(p);if(missing.length){voiceEl("voiceStatus").textContent='Complete My Profile first: '+missing.join(', ');return}}
