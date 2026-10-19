@@ -14,6 +14,7 @@ function fixture(){
    if(route==='/api/change-password'){if(store.failPassword)return {ok:false,json:async()=>({error:'Current password is incorrect.'})};data={ok:true};}
    else if(route==='/api/me')data=store.user||{id:'u1',name:'Test Student',role:'athlete'};
    else if(route==='/api/owner/accounts')data=store.ownerData;
+   else if(route==='/api/voice/end')data={ok:true};
    else if(route==='/api/owner/role')data={ok:true};
    else if(route==='/api/owner/voice-access')data={ok:true};
    else if(route==='/api/voice-usage')data=store.usage||{learn:{limit:12,used:2,remaining:10,resetsAt:'2026-10-17T00:00:00.000Z'},mock:{limit:6,used:1,remaining:5,resetsAt:'2026-10-17T00:00:00.000Z'},reports:{limit:6,used:1,remaining:5,attemptsRemaining:11,resetsAt:'2026-10-17T00:00:00.000Z'}};

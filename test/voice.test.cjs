@@ -6,7 +6,7 @@ const code=html.slice(html.indexOf('// Voice lifecycle:'),html.indexOf('async fu
 function setup(){
  const els=new Map(),sent=[],lines=[],timers=new Map();let next=0;
  const track={enabled:false,stop(){this.stopped=true}};
- const ctx=vm.createContext({console,AbortController,JSON,confirm:()=>true,refreshVoiceUsage(){},navigator:{},RTCPeerConnection:function(){},setTimeout:fn=>{timers.set(++next,fn);return next},clearTimeout:id=>timers.delete(id),$:id=>{if(!els.has(id))els.set(id,{value:'athlete1',dataset:{},replaceChildren(){}});return els.get(id)},addLine:(role,text)=>lines.push({role,text}),fetch(){}});
+ const ctx=vm.createContext({console,AbortController,JSON,confirm:()=>true,refreshVoiceUsage(){},navigator:{},RTCPeerConnection:function(){},setTimeout:fn=>{timers.set(++next,fn);return next},clearTimeout:id=>timers.delete(id),$:id=>{if(!els.has(id))els.set(id,{value:'athlete1',dataset:{},replaceChildren(){}});return els.get(id)},addLine:(role,text)=>lines.push({role,text}),api:async()=>({ok:true}),fetch(){}});
  ctx.requestVoiceConsent=(mode,agree)=>agree();
  vm.runInContext('let pc=null,dc=null,stream=null,transcript=[];'+code,ctx);
  ctx.channel={readyState:'open',send:s=>sent.push(JSON.parse(s)),close(){}};ctx.mic={getAudioTracks:()=>[track],getTracks:()=>[track]};
@@ -109,4 +109,21 @@ test('mock closing waits until both response generation and playback finish, the
 });
 test('tutor transcript cannot trigger the mock closing behaviour',()=>{
  const s=setup();s.run("voice.mode='learn';voiceRespond(voice)");s.event({type:'response.output_audio_transcript.done',transcript:require('../interview-design').CLOSE});assert.notEqual(s.run('voice'),null);assert.equal(s.run('voice.closing'),undefined);
+});
+
+test('ending while connection is being created closes the late server call without reconnecting media',async()=>{
+ const s=setup();s.run('stopVoice()');
+ let resolve,requested=false;const ended=[],token='b'.repeat(48);
+ s.ctx.api=async(url,options)=>{ended.push({url,body:JSON.parse(options.body)});return {ok:true};};
+ s.ctx.navigator.mediaDevices={getUserMedia:async()=>s.ctx.mic};
+ s.ctx.document={createElement:()=>({pause(){}})};
+ s.ctx.RTCPeerConnection=class{addTrack(){}createDataChannel(){return {addEventListener(){},close(){}}}async createOffer(){return {sdp:'v=0'}}async setLocalDescription(){}async setRemoteDescription(){throw Error('Stopped session must not connect');}close(){}};
+ s.ctx.fetch=()=>{requested=true;return new Promise(r=>resolve=r);};
+ const pending=s.run('startVoice()');
+ while(!requested)await new Promise(r=>setImmediate(r));
+ s.run('stopVoice()');
+ resolve({ok:true,text:async()=> 'answer',headers:{get:name=>name==='X-Voice-Token'?token:'720'}});
+ await pending;
+ assert.equal(s.track.stopped,true);assert.equal(s.run('voice'),null);
+ assert.deepEqual(ended,[{url:'/api/voice/end',body:{token}}]);assert.equal(s.timers.size,0);
 });

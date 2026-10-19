@@ -21,6 +21,7 @@ function changeRole(db, actorId, targetId, role) {
   }
   const previousRole = target.role;
   target.role = role;
+  if(previousRole!==role)for(const student of db.athletes)if(Array.isArray(student.staffIds))student.staffIds=student.staffIds.filter(id=>id!==target.id);
   audit(db, actorId, target, previousRole, 'role-change');
   return {id: target.id, name: target.name, email: target.email, role: target.role};
 }
@@ -34,4 +35,14 @@ function selectOwnerTarget(db, email) {
   }
   return matches[0];
 }
-module.exports = {isStaff, isOwner, changeRole, selectOwnerTarget, audit};
+function assignStudent(db, actorId, studentId, staffIds) {
+  if(!isOwner(db.users.find(u=>u.id===actorId)))throw fail(403,'Owner access required.');
+  const student=db.athletes.find(s=>s.id===studentId);
+  if(!student)throw fail(404,'Student not found.');
+  if(!Array.isArray(staffIds)||staffIds.length>100||staffIds.some(id=>typeof id!=='string'||!db.users.some(u=>u.id===id&&['coach','supervisor','manager'].includes(u.role))))throw fail(400,'Choose valid staff accounts.');
+  const previous=student.staffIds||[];
+  student.staffIds=[...new Set(staffIds)];
+  db.securityAudit=[...(db.securityAudit||[]),{action:'student-assignment',actorId,targetId:student.id,previousRole:previous.join(', ')||'No staff',role:student.staffIds.join(', ')||'No staff',at:new Date().toISOString()}].slice(-1000);
+  return {id:student.id,staffIds:student.staffIds};
+}
+module.exports = {assignStudent, isStaff, isOwner, changeRole, selectOwnerTarget, audit};

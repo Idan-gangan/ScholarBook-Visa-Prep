@@ -226,12 +226,13 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
       <div id="ownerStats" class="grid g3"></div>
       <div class="card" style="margin-top:16px">
         <h2>Account permissions</h2>
-        <p>Staff roles can access every student's profile, learning and reports. Coach and Supervisor can also add human reviews. Only Owner can change account roles. Grant staff access only to trusted team members.</p>
+        <p>Staff can access only their assigned students’ profiles, learning and reports. The owner can access all students. Coach and Supervisor can also add human reviews. Only Owner can change account roles. Grant staff access only to trusted team members.</p>
         <p class="small muted">Role changes require your current password and sign the affected user out. Owner access cannot be assigned or removed here.</p>
-        <div class="field"><label for="ownerPassword">Your current password (required for each role change)</label><input id="ownerPassword" type="password" autocomplete="current-password"></div>
+        <div class="field"><label for="ownerPassword">Your current password (required for permission changes)</label><input id="ownerPassword" type="password" autocomplete="current-password"></div>
         <button type="button" class="btn secondary" onclick="loadOwner()">Refresh accounts</button>
         <p id="ownerStatus" role="status" aria-live="polite"></p>
         <div style="overflow:auto" id="ownerAccounts"></div>
+        <h2>Student assignments</h2><p>Select the staff who may access each student. No selection means owner-only staff access.</p><div id="ownerAssignments"></div>
       </div>
       <div class="card" style="margin-top:16px"><h2>Recent permission changes</h2><div style="overflow:auto" id="ownerAudit"></div></div>
       <div class="notice" style="margin-top:16px">Use Student Manager View, My Learning and Readiness Reports to work with students. Daily attempts are unlimited for everyone. Session time limits still apply. Hosting, API keys, billing and deployment settings remain in Render/GitHub and are not exposed here.</div>
@@ -358,7 +359,7 @@ function levelOptions(current){
 }
 function clearOwnerView(){
  $('ownerPassword').value='';
- for(const id of ['ownerStats','ownerAccounts','ownerAudit'])$(id).replaceChildren();
+ for(const id of ['ownerStats','ownerAccounts','ownerAudit','ownerAssignments'])$(id).replaceChildren();
  $('ownerStatus').textContent='';
 }
 async function loadOwner(){
@@ -370,6 +371,9 @@ async function loadOwner(){
   const roles=[['athlete','Student'],['coach','Coach'],['supervisor','Supervisor'],['manager','Manager']];
   $('ownerAccounts').innerHTML='<table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Action</th><th>Daily voice access</th></tr></thead><tbody>'+data.users.map(u=>`<tr><td>${escapeHtml(u.name)}</td><td>${escapeHtml(u.email)}</td><td>${u.role==='owner'?'Owner (protected)':`<select aria-label="Role for ${escapeHtml(u.email)}">${roles.map(([value,label])=>`<option value="${value}"${u.role===value?' selected':''}>${label}</option>`).join('')}</select>`}</td><td>${u.role==='owner'?'—':`<button type="button" class="btn secondary" data-owner-user="${escapeHtml(u.id)}">Save role</button>`}</td><td>Unlimited for everyone</td></tr>`).join('')+'</tbody></table>';
   $('ownerAccounts').querySelectorAll('[data-owner-user]').forEach(button=>button.addEventListener('click',()=>saveAccountRole(button)));
+  const staff=data.users.filter(u=>['coach','supervisor','manager'].includes(u.role));
+  $('ownerAssignments').innerHTML=(data.students||[]).map(s=>`<div class="card"><h3>${escapeHtml(s.name)}</h3><select multiple aria-label="Staff for ${escapeHtml(s.name)}" data-student-staff="${escapeHtml(s.id)}">${staff.map(u=>`<option value="${escapeHtml(u.id)}"${s.staffIds.includes(u.id)?' selected':''}>${escapeHtml(u.name)} — ${escapeHtml(u.email)}</option>`).join('')}</select><p class="small">Use Ctrl / Command to select multiple staff on a computer.</p><button class="btn secondary" data-save-assignment="${escapeHtml(s.id)}">Save assignment</button></div>`).join('');
+  $('ownerAssignments').querySelectorAll('[data-save-assignment]').forEach(button=>button.addEventListener('click',()=>saveStudentAssignment(button)));
   const label=id=>data.users.find(u=>u.id===id)?.email||id;
   $('ownerAudit').innerHTML=data.audit.length?'<table><thead><tr><th>When</th><th>Account</th><th>Change</th><th>By</th></tr></thead><tbody>'+data.audit.map(entry=>`<tr><td>${escapeHtml(entry.at)}</td><td>${escapeHtml(label(entry.targetId))}</td><td>${escapeHtml(entry.previousRole)} → ${escapeHtml(entry.role)}</td><td>${escapeHtml(label(entry.actorId))}</td></tr>`).join('')+'</tbody></table>':'<p>No permission changes recorded.</p>';
   $('ownerStatus').textContent='Accounts loaded.';
@@ -378,11 +382,22 @@ async function loadOwner(){
 async function saveAccountRole(button){
  const row=button.closest('tr'), role=row.querySelector('select').value, currentPassword=$('ownerPassword').value;
  if(!currentPassword){$('ownerStatus').textContent='Enter your current password first.';return;}
- if(!confirm('Change '+row.cells[1].textContent+' to '+(role==='athlete'?'Student':role)+'? Staff can access all students.'))return;
+ if(!confirm('Change '+row.cells[1].textContent+' to '+(role==='athlete'?'Student':role)+'? Staff will need student assignments.'))return;
  button.disabled=true;$('ownerStatus').textContent='Saving…';
  try{
   await api('/api/owner/role',{method:'POST',body:JSON.stringify({userId:button.dataset.ownerUser,role,currentPassword})});
   await loadOwner();$('ownerStatus').textContent='Role saved. The affected user must sign in again.';
+ }catch(error){$('ownerStatus').textContent=error.message;}
+ finally{$('ownerPassword').value='';button.disabled=false;}
+}
+async function saveStudentAssignment(button){
+ const currentPassword=$('ownerPassword').value;
+ if(!currentPassword){$('ownerStatus').textContent='Enter your current password first.';return;}
+ const staffIds=Array.from(button.closest('.card').querySelector('select').selectedOptions,o=>o.value);
+ button.disabled=true;
+ try{
+  await api('/api/owner/student-access',{method:'POST',body:JSON.stringify({studentId:button.dataset.saveAssignment,staffIds,currentPassword})});
+  await loadOwner();$('ownerStatus').textContent='Student access updated.';
  }catch(error){$('ownerStatus').textContent=error.message;}
  finally{$('ownerPassword').value='';button.disabled=false;}
 }
@@ -646,9 +661,12 @@ async function startVoice(mode="mock",consented=false){
     dc.addEventListener("message",e=>{if(voice===v){try{voiceEvent(v,JSON.parse(e.data))}catch{stopVoice("Interview stopped: invalid voice event. Please restart.")}}});
     const offer=await peer.createOffer();if(voice!==v)return;
     await peer.setLocalDescription(offer);if(voice!==v)return;
+    await voiceEnd;if(voice!==v)return;
     v.abort=new AbortController();
     const r=await fetch("/api/realtime-session?athleteId="+encodeURIComponent(v.athleteId)+"&mode="+mode+(mode==="learn"?"&lesson="+encodeURIComponent(activeLessonId)+reportPracticeQuery():"&difficulty="+encodeURIComponent(v.difficulty)),{method:"POST",body:offer.sdp,headers:{"Content-Type":"application/sdp"},signal:v.abort.signal});
-    const answer=await r.text();refreshVoiceUsage();if(voice!==v)return;
+    const answer=await r.text();refreshVoiceUsage();
+    v.serverToken=r.ok?r.headers.get('X-Voice-Token'):null;
+    if(voice!==v){if(r.ok&&v.serverToken)endServerVoice(v.serverToken);return;}
     if(!r.ok){let message=answer;try{message=JSON.parse(answer).error||answer}catch{}if(r.status===401 && message==="Unauthorized"){returnToSignIn();return}throw new Error(message)}
     if(mode==='mock')mockSessionId=r.headers.get('X-Mock-Session-Id');
     const seconds=Number(r.headers.get('X-Voice-Limit-Seconds'));
@@ -659,8 +677,15 @@ async function startVoice(mode="mock",consented=false){
     await peer.setRemoteDescription({type:"answer",sdp:answer});
   }catch(e){if(voice===v)stopVoice("Could not start: "+e.message)}
 }
+let voiceEnd=Promise.resolve();
+function endServerVoice(token){
+ voiceEnd=api('/api/voice/end',{method:'POST',body:JSON.stringify({token}),keepalive:true}).catch(()=>{
+   if(me)voiceEl('voiceStatus').textContent='Voice stopped on this device. Server cleanup is pending; please wait before restarting.';
+ });
+ return voiceEnd;
+}
 function stopVoice(message=voiceScreen==="learn"?"Lesson conversation ended":"Interview ended"){
-  const v=voice;voice=null;clearTimeout(v?.inputTimer);clearTimeout(v?.limitTimer);clearTimeout(v?.warningTimer);v?.abort?.abort();
+  const v=voice;voice=null;clearTimeout(v?.inputTimer);clearTimeout(v?.limitTimer);clearTimeout(v?.warningTimer);if(v?.serverToken)endServerVoice(v.serverToken);
   if(stream)stream.getTracks().forEach(t=>t.stop());if(dc)dc.close();if(pc)pc.close();
   if(v?.audio){v.audio.pause();v.audio.srcObject=null}
   if(v?.mode==='mock'){
