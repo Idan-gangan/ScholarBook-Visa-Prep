@@ -58,10 +58,11 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
   <main>
     <section class="welcome-hero">
       <span class="welcome-tag">FOR STUDENTS PREPARING TO STUDY IN THE U.S.</span>
-      <h1>Your next chapter<br>starts with<br>preparation.</h1>
-      <p>Learn, practise, and prepare for your F-1 interview.</p>
+      <h1>A world of possibility.<br><em>Prepare for yours.</em></h1>
+      <p>Turn your study plans into a story you can explain with clarity. Learn with your AI tutor, practise your interview, and discover your next step.</p>
       <div class="welcome-actions"><button class="btn primary" onclick="showRegistration()">Start learning <span class="button-arrow" aria-hidden="true">→</span></button><button class="btn secondary" onclick="document.getElementById('how-it-works').scrollIntoView({behavior:'smooth'})">Explore the platform</button></div>
       <p class="small">For high-school, undergraduate, master’s, and PhD students. Athletics is optional.</p>
+      <div class="hero-path" aria-label="Your preparation journey"><span>01 <b>Learn</b></span><span>02 <b>Practise</b></span><span>03 <b>Grow</b></span></div>
     </section>
     <div class="section-heading" id="how-it-works"><h2>A clearer path to preparation.</h2><p>Learn at your pace. Practise with purpose.</p></div>
     <section class="welcome-steps" aria-label="How VisaAtlas works">
@@ -177,14 +178,14 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
       <p class="muted small">Practice scores describe your preparation, not your chances of visa approval.</p>
     </section>
     <section id="interview" class="screen">
-      <h1>Live AI Mock Interview</h1>
+      <div class="page-heading"><span class="eyebrow">YOUR PRACTICE ROOM</span><h1>Live AI Mock Interview</h1><p class="muted">A focused conversation. A clearer next step.</p></div>
       <div class="notice">Answer one question at a time. Your interviewer will ask follow-up questions. You will get feedback after you end the interview.</div>
-      <div class="field"><label>Student</label><select id="athleteSelect"></select></div>
+      <div class="field"><label for="athleteSelect">Student</label><select id="athleteSelect"></select></div>
       <div class="field"><label for="interviewDifficulty">Interview mode</label><select id="interviewDifficulty"><option value="standard">Standard</option><option value="challenging">Challenging</option><option value="intensive">Intensive</option></select><p class="small muted">Standard: direct questions. Challenging: more follow-ups. Intensive: deeper questioning. All modes use simple language and the same scoring standard.</p></div>
       <div class="voiceBox">
         <div class="card">
           <div id="voiceStatus" class="status">Not connected</div>
-          <p class="small muted">Mock interviews last up to 12 minutes. Daily practice attempts are unlimited.</p>
+          <p class="small muted">Up to 12 minutes per interview.</p>
           <p id="mockVoiceUsage" class="small muted" role="status"></p>
           <div id="voiceLimitNotice" class="small muted" role="status" aria-live="polite"></div>
           <h2 style="margin-bottom:4px">AI mock interviewer</h2>
@@ -193,9 +194,8 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
             <div class="interviewer-caption"><span id="interviewerActivity" role="status">Ready when you are</span><span class="interviewer-wave" aria-hidden="true"><i></i><i></i><i></i><i></i></span></div>
           </div>
           <p class="small muted">AI practice with a still portrait, not a real consular officer. Microphone only; no camera or video recording.</p>
-          <p class="muted">The interviewer asks one question at a time and follows up based on the student’s spoken answer.</p>
           <div style="display:flex;gap:10px;flex-wrap:wrap;margin:16px 0">
-            <button class="btn primary" id="startBtn" onclick="startVoice()">🎙 Start Voice Interview</button>
+            <button class="btn primary" id="startBtn" onclick="startVoice()">Start voice interview <span aria-hidden="true">→</span></button>
             <button class="btn danger" id="stopBtn" onclick="stopVoice()" disabled>End Interview</button>
           </div>
           <p class="muted">Answer naturally after each question. Pause when you finish; the interviewer will respond automatically.</p><div id="transcript" class="transcript"></div>
@@ -204,7 +204,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
           <h3>After the interview</h3>
           <p class="muted">End your interview to see what went well and what to practise next. Coaching and corrections appear here, after the conversation.</p>
           <button class="btn primary" style="width:100%" id="feedbackBtn" onclick="generateReport()">View my feedback</button>
-          <p class="muted small">Daily feedback reports are unlimited, with one saved report per mock interview. Generate one report at a time. If generation fails, you can retry.</p>
+          <p class="muted small">One saved report per mock interview. If generation fails, you can retry.</p>
 <p id="reportUsage" class="small muted" role="status"></p>
 <div id="evalStatus" class="small muted" style="margin-top:12px"></div>
         </div>
