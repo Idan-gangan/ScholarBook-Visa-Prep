@@ -490,7 +490,7 @@ test('topic review filters unrelated evidence before saving and failures do not 
   const response=await h.request('POST','/api/evaluate',{athleteId:'s1',mockSessionId:start.headers['X-Mock-Session-Id'],transcript});
   assert.equal(h.run('reviewCalls'),2,JSON.stringify([response,h.logs]));
   if(reviewFails){assert.equal(response.status,502);assert.equal(h.db.reports.length,0);}
-  else {assert.equal(response.status,200);assert.equal(response.body.overall,null);assert.equal(response.body.partialScore,80);assert.equal(response.body.coverage.assessed,6);assert.equal(h.db.reports[0].scores.circumstances,undefined);}
+  else {assert.equal(response.status,200);assert.equal(response.body.overall,69);assert.equal(response.body.answeredTopicScore,80);assert.equal(response.body.coverage.assessed,6);assert.equal(h.db.reports[0].scores.circumstances,undefined);}
  }
 });
 test('failed reports can retry without consuming the successful report allowance',async()=>{
