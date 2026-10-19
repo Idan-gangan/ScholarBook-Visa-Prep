@@ -314,3 +314,10 @@ test('incomplete reports show mode and uncovered topics without a misleading num
  f.run(`reports=[{id:'r1',athleteId:'s1',formatVersion:3,difficulty:'intensive',overall:null,coverage:{assessed:5,required:7},notCovered:['Previous applications and travel','<img src=x>'],feedback:'Your answers covered five areas.',biggestWeakness:'Explain your school choice.',strengths:[],clarifications:['Explain your school choice.'],nextSteps:['Research one course at your school.']}];renderReports()`);
  const markup=f.elements.get('reportsList').innerHTML;assert.match(markup,/Intensive/);assert.match(markup,/Not enough information to score/);assert.match(markup,/Not covered — not counted against you/);assert.doesNotMatch(markup,/null\/100|High Concern|<img src=x>/);assert.match(markup,/&lt;img/);
 });
+test('partial report and dashboard label the score without a full readiness badge',async()=>{
+ const f=fixture();await f.run('boot()');
+ f.run(`reports=[{id:'r1',athleteId:'s1',formatVersion:3,overall:null,partialScore:75,scoreType:'partial',scoreExplanation:'Unanswered topics are excluded.',coverage:{assessed:6,required:7},notCovered:['Future plans'],feedback:'Useful answers.',strengths:[],clarifications:[],nextSteps:[],assessments:[{label:'School choice',status:'assessed',score:7,feedback:'Give a specific reason.'}]}];renderAll()`);
+ const markup=f.elements.get('reportsList').innerHTML;
+ assert.match(markup,/Partial practice score/);assert.match(markup,/75\/100/);assert.match(markup,/How your score was calculated/);
+ assert.doesNotMatch(markup,/Almost Ready|High Concern/);assert.match(f.elements.get('dashCards').innerHTML,/75\/100 \(partial\)/);
+});
