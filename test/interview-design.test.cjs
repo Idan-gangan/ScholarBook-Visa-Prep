@@ -71,3 +71,38 @@ test('explicit strengths never become clarifications even with a middling topic 
  const r=design.normalizeEvidenceReport(input,transcript,{},'standard');
  assert.ok(r.strengths.includes(input.assessments[2].feedback));assert.deepEqual(r.clarifications,[]);
 });
+test('early-stop regression: education activities cannot survive a rejected travel classification',()=>{
+ const input=complete();
+ input.assessments[6]={...input.assessments[6],questionTurn:6,answerTurn:7,score:8,feedback:'You described running and earning a Cisco certificate.'};
+ const turns=transcript.map(t=>({...t}));
+ turns[6].text='What have you been doing since you finished high school?';
+ turns[7].text='I have been running, studying and earning a Cisco cybersecurity certificate.';
+ const review={reviews:input.assessments.map(a=>({topic:a.topic,questionTurn:a.questionTurn,answerTurn:a.answerTurn,supported:a.topic!=='circumstances'}))};
+ const filtered=design.applyEvidenceReview(input,review);
+ const report=design.normalizeEvidenceReport(filtered,turns,{previousRefusal:'Yes'},'standard');
+ assert.equal(report.overall,null);assert.equal(report.partialScore,80);
+ assert.deepEqual(report.coverage,{assessed:6,required:7});
+ assert.equal(report.scores.circumstances,undefined);assert.equal(report.scores.education,8);
+ assert.deepEqual(report.notCovered,['Previous applications and travel']);
+ assert.ok(!report.strengths.includes(input.assessments[6].feedback));
+ // The review is blind to proposed scores and profile claims, but sees context.
+ const prompt=design.evidenceReviewPrompt(input,turns);
+ assert.doesNotMatch(prompt,/"score":/);assert.match(prompt,/Cisco/);
+ assert.match(prompt,/NOT visa applications or travel history/);
+});
+test('topic review fails closed on missing, duplicate, mismatched or nonboolean decisions',()=>{
+ const input=complete();
+ const make=()=>({reviews:input.assessments.map(a=>({topic:a.topic,questionTurn:a.questionTurn,answerTurn:a.answerTurn,supported:true}))});
+ for(const mutate of [r=>r.reviews.pop(),r=>r.reviews[0].supported='yes',r=>r.reviews[0].answerTurn=99,r=>r.reviews[1]=r.reviews[0]]){
+  const review=make();mutate(review);assert.throws(()=>design.applyEvidenceReview(input,review),/Invalid topic evidence review/);
+ }
+ assert.deepEqual(design.applyEvidenceReview(input,make()),input);
+});
+test('rejected evidence cannot produce a score, clarification or isolated strength',()=>{
+ const input=complete();
+ const review={reviews:input.assessments.map(a=>({topic:a.topic,questionTurn:a.questionTurn,answerTurn:a.answerTurn,supported:false}))};
+ const report=design.normalizeEvidenceReport(design.applyEvidenceReview(input,review),transcript,{},'standard');
+ assert.equal(report.overall,null);assert.equal(report.partialScore,null);
+ assert.deepEqual(report.strengths,[]);assert.deepEqual(report.clarifications,[]);
+ assert.equal(report.coverage.assessed,0);
+});
