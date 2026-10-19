@@ -8,7 +8,7 @@ const student={id:'s1',userId:'u1',name:'Test student',major:'Biology',universit
 function harness(user={id:'u1',role:'athlete'},env={}){
  let handler;const starts=new Map();const progress=new Map(),calls=[],logs=[];
  const credentials=new Map([[user.id,{password_hash:user.passwordHash||'fixture-unusable',version:0}]]);
- const evaluationUsage=new Map();
+ const evaluationUsage=new Map(),admission=new Map();let voiceClock=Date.now();
  const db={users:[user],athletes:[{academicLevel:'Undergraduate',...structuredClone(student)},{id:'s2',userId:'u2'}],reports:[],transcripts:[]};
  const pool={query:async(sql,args)=>{
    if(sql.trim().startsWith('ALTER TABLE') || sql.trim().startsWith('CREATE TABLE') || sql.trim().startsWith('INSERT INTO app_state'))return {rows:[]};
@@ -27,6 +27,19 @@ function harness(user={id:'u1',role:'athlete'},env={}){
    }
    if(sql.startsWith('UPDATE evaluation_daily_usage')){const row=evaluationUsage.get(args[0]);if(row?.token===args[1]){row.token=null;if(sql.includes('completed=completed+1')){row.completed++;return {rows:[{user_id:args[0]}]};}}return {rows:[]};}
    if(sql.startsWith('SELECT attempts,completed'))return {rows:evaluationUsage.has(args[0])?[evaluationUsage.get(args[0])]:[]};
+   if(sql.startsWith('INSERT INTO voice_admission')){
+     const row=admission.get(args[0]);if(row&&((row.token&&(row.call_id||row.until>voiceClock))||row.started>voiceClock-10000))return {rows:[]};
+     admission.set(args[0],{token:args[1],call_id:null,until:voiceClock+90000,started:voiceClock});return {rows:[{token:args[1]}]};
+   }
+   if(sql.startsWith('UPDATE voice_admission SET call_id=$3')){
+     const row=admission.get(args[0]);if(!row||row.token!==args[1]||row.call_id||row.until<=voiceClock)return {rows:[]};
+     row.call_id=args[2];return {rows:[{token:row.token}]};
+   }
+   if(sql.startsWith('SELECT call_id FROM voice_admission')){const row=admission.get(args[0]);return {rows:row?.token===args[1]?[row]:[]};}
+   if(sql.startsWith('UPDATE voice_admission SET token=NULL')){
+     const row=admission.get(args[0]);if(row?.token===args[1]){row.token=null;row.call_id=null;}return {rows:[]};
+   }
+   if(sql.startsWith('DELETE FROM voice_call_limits'))return {rows:[]};
    if(sql.startsWith('INSERT INTO voice_mode_usage')){const key=args[0]+':'+args[2],n=starts.get(key)||0;if(args[1]!==null&&n>=args[1])return {rows:[]};starts.set(key,n+1);return {rows:[{starts:n+1}]};}
    if(sql.startsWith('SELECT starts FROM voice_mode_usage'))return {rows:[{starts:starts.get(args[0]+':'+args[1])||0}]};
    if(sql.startsWith('INSERT INTO voice_call_limits'))return {rows:[]};
@@ -50,7 +63,7 @@ function harness(user={id:'u1',role:'athlete'},env={}){
      return pool.query(sql,args);
    },release(){if(unlock)unlock();}};
  };
- const context=vm.createContext({require:id=>id==='./interview-design'?require('../interview-design'):id==='./public/profile-requirements'?require('../public/profile-requirements'):id==='./interview-posts.json'?require('../interview-posts.json'):id==='./email-verification'?require('../email-verification'):id==='./profile-options'?require('../profile-options'):id==='./owner-access'?require('../owner-access'):id==='./report-practice'?require('../report-practice'):id==='http'?{createServer:fn=>{handler=fn;return {}}}:id==='pg'?{Pool:function(){return pool}}:id==='fs'?{...fs,readFileSync:(file,...args)=>file===path.resolve(__dirname,'../data/db.json')?'{}':fs.readFileSync(file,...args)}:id==='./evaluation-limits'?require('../evaluation-limits'):id==='./voice-limits'?require('../voice-limits'):id==='./learning'?learning:id==='./passwords'?passwords:id==='./password-recovery'?require('../password-recovery'):require(id),__dirname:path.resolve(__dirname,'..'),process:{env:{OPENAI_API_KEY:'test-only',...env}},console:{log:(...args)=>logs.push(args.join(' ')),warn:(...args)=>logs.push(args.join(' ')),error:(...args)=>logs.push(args.join(' '))},Buffer,URL,FormData,AbortSignal,fetch:async(url,options)=>{if(url.endsWith('/responses')){calls.push({url,request:JSON.parse(options.body)});return {ok:true,json:async()=>({output_text:JSON.stringify(JSON.parse(options.body).input.includes('VISAATLAS_EVIDENCE_REPORT_V3')?{summary:'Only limited answers were captured.',strengths:[],assessments:require('../interview-design').TOPICS.map(([topic])=>({topic,status:'not_covered'}))}:{scores:{},overall:45,readiness:'High Concern',biggestWeakness:'Test',feedback:'Test feedback',nextStep:'Practice'})})};}calls.push({url,session:JSON.parse(options.body.get('session'))});return {ok:true,status:200,headers:{get:()=>'/v1/realtime/calls/rtc_test'},text:async()=> 'test-sdp-answer'}}});
+ const context=vm.createContext({require:id=>id==='./interview-design'?require('../interview-design'):id==='./public/profile-requirements'?require('../public/profile-requirements'):id==='./interview-posts.json'?require('../interview-posts.json'):id==='./email-verification'?require('../email-verification'):id==='./profile-options'?require('../profile-options'):id==='./owner-access'?require('../owner-access'):id==='./report-practice'?require('../report-practice'):id==='http'?{createServer:fn=>{handler=fn;return {}}}:id==='pg'?{Pool:function(){return pool}}:id==='fs'?{...fs,readFileSync:(file,...args)=>file===path.resolve(__dirname,'../data/db.json')?'{}':fs.readFileSync(file,...args)}:id==='./evaluation-limits'?require('../evaluation-limits'):id==='./voice-limits'?require('../voice-limits'):id==='./learning'?learning:id==='./passwords'?passwords:id==='./password-recovery'?require('../password-recovery'):require(id),__dirname:path.resolve(__dirname,'..'),process:{env:{OPENAI_API_KEY:'test-only',...env}},console:{log:(...args)=>logs.push(args.join(' ')),warn:(...args)=>logs.push(args.join(' ')),error:(...args)=>logs.push(args.join(' '))},Buffer,URL,FormData,AbortSignal,fetch:async(url,options)=>{if(url.endsWith('/hangup'))return {ok:true,status:200};if(url.endsWith('/responses')){calls.push({url,request:JSON.parse(options.body)});return {ok:true,json:async()=>({output_text:JSON.stringify(JSON.parse(options.body).input.includes('VISAATLAS_EVIDENCE_REPORT_V3')?{summary:'Only limited answers were captured.',strengths:[],assessments:require('../interview-design').TOPICS.map(([topic])=>({topic,status:'not_covered'}))}:{scores:{},overall:45,readiness:'High Concern',biggestWeakness:'Test',feedback:'Test feedback',nextStep:'Practice'})})};}calls.push({url,session:JSON.parse(options.body.get('session'))});return {ok:true,status:200,headers:{get:()=>'/v1/realtime/calls/rtc_test'},text:async()=> 'test-sdp-answer'}}});
  let source=fs.readFileSync(path.join(__dirname,'../server.js'),'utf8');source=source.slice(0,source.indexOf('initDb().then('));vm.runInContext(source,context);vm.runInContext(`sessions.set('test-token',{userId:${JSON.stringify(user.id)},version:0,expires:Date.now()+60000})`,context);
  async function request(method,url,body,authenticated=true){
    // Existing evaluation fixtures represent distinct server-issued mock sessions.
@@ -64,7 +77,7 @@ function harness(user={id:'u1',role:'athlete'},env={}){
    const req=Readable.from(body===undefined?[]:[Buffer.from(typeof body==='string'?body:JSON.stringify(body))]);req.method=method;req.url=url;req.headers={'content-type':'application/json',host:'localhost',cookie:authenticated?'sb_session=test-token':''};
    const result={};await handler(req,{writeHead:(status,headers)=>{result.status=status;result.headers=headers;},end:text=>{result.text=text;try{result.body=JSON.parse(text)}catch{}}});return result;
  }
- return {request,progress,calls,db,logs,credentials,init:()=>vm.runInContext('initDb()',context),run:code=>vm.runInContext(code,context)};
+ return {request,progress,calls,db,logs,credentials,admission,advanceVoice:()=>voiceClock+=10000,finishVoice:async()=>{const row=admission.get(user.id);if(row?.token)await request('POST','/api/voice/end',{token:row.token});voiceClock+=10000;},init:()=>vm.runInContext('initDb()',context),run:code=>vm.runInContext(code,context)};
 }
 test('unverified users cannot spend voice or evaluation allowance; me never exposes verification tokens',async()=>{
  const h=harness({id:'u1',role:'athlete',verificationRequired:true,email:'test@example.test',emailVerification:{hash:'secret-hash'}});
@@ -263,9 +276,9 @@ test('students can save their own transcript and generate their own report',asyn
  assert.equal(h.calls.length,1);assert.equal(h.db.reports[0].athleteId,'s1');
  assert.equal(h.db.athletes.find(a=>a.id==='s2').currentScore,undefined);
 });
-test('existing staff access is preserved while unrelated roles cannot write another student',async()=>{
+test('assigned staff access is preserved while unrelated roles cannot write another student',async()=>{
  for(const role of ['coach','supervisor','manager']){
-   const h=harness({id:'staff',role});
+   const h=harness({id:'staff',role});h.db.athletes[1].staffIds=['staff'];
    for(const route of ['/api/save-transcript','/api/evaluate'])assert.equal((await h.request('POST',route,{athleteId:'s2',transcript:[{role:'athlete',text:'My study plans'}]})).status,200);
  }
  const h=harness({id:'other',role:'unknown'});
@@ -346,7 +359,8 @@ test('mock role stays separate and unknown lesson/mode makes no API call',async(
  assert.equal(h.calls.length,0);await h.request('POST','/api/realtime-session?athleteId=s1','v=0\r\noffer');assert.match(h.calls[0].session.instructions,/Do not coach during the interview/);
 });
 test('staff can coach a student while unrelated roles cannot access their learning',async()=>{
- assert.equal((await harness({id:'staff',role:'coach'}).request('GET','/api/learning/study-purpose?athleteId=s1')).status,200);
+ const h=harness({id:'staff',role:'coach'});h.db.athletes[0].staffIds=['staff'];
+ assert.equal((await h.request('GET','/api/learning/study-purpose?athleteId=s1')).status,200);
  assert.equal(learning.canAccessStudent({id:'other',role:'unknown'},student),false);
 });
 test('voice admission is checked before upstream calls and rejects malformed SDP',async()=>{
@@ -355,7 +369,7 @@ test('voice admission is checked before upstream calls and rejects malformed SDP
  assert.equal(h.calls.length,0);
  for(let i=0;i<25;i++){
    const r=await h.request('POST',route,'v=0\r\noffer');assert.equal(r.status,200);
-   assert.equal(r.headers['X-Voice-Limit-Seconds'],'720');
+   assert.equal(r.headers['X-Voice-Limit-Seconds'],'720');await h.finishVoice();
  }
  assert.equal(h.calls[0].session.max_output_tokens,512);
  assert.equal((await h.request('POST',route,'v=0\r\noffer')).status,200);
@@ -461,8 +475,9 @@ test('mock sessions receive the saved academic preparation path',async()=>{
 
 test('tutoring and mock allowances are independent and their remaining counts are exposed',async()=>{
  const h=harness();
- for(let i=0;i<12;i++)assert.equal((await h.request('POST','/api/realtime-session?athleteId=s1&mode=learn&lesson=funding','v=0\r\noffer')).status,200);
+ for(let i=0;i<12;i++){assert.equal((await h.request('POST','/api/realtime-session?athleteId=s1&mode=learn&lesson=funding','v=0\r\noffer')).status,200);await h.finishVoice();}
  assert.equal((await h.request('POST','/api/realtime-session?athleteId=s1&mode=learn&lesson=funding','v=0\r\noffer')).status,200);
+ await h.finishVoice();
  const mock=await h.request('POST','/api/realtime-session?athleteId=s1','v=0\r\noffer');assert.equal(mock.status,200);assert.match(mock.headers['X-Mock-Session-Id'],/^mock_/);
  const usage=(await h.request('GET','/api/voice-usage')).body;assert.equal(usage.learn.remaining,null);assert.equal(usage.mock.remaining,null);assert.equal(usage.reports.remaining,null);
  const prompt=h.calls.at(-1).session.instructions;assert.match(prompt,/no intimidation, praise, scoring/);assert.match(prompt,/feedback comes after/);assert.match(prompt,/never as a real consular officer/);
@@ -507,7 +522,7 @@ test('mock modes are validated before spending, persisted, and passed to intervi
  for(const difficulty of ['standard','challenging','intensive']){
   const response=await h.request('POST','/api/realtime-session?athleteId=s1&difficulty='+difficulty,'v=0\r\noffer');assert.equal(response.status,200);
   const session=h.db.mockSessions.at(-1);assert.equal(session.difficulty,difficulty);assert.equal(session.evaluationVersion,3);assert.equal(session.profile.phone,undefined);
-  assert.ok(h.calls.at(-1).session.instructions.includes(require('../interview-design').MODES[difficulty]+' mode'));
+  assert.ok(h.calls.at(-1).session.instructions.includes(require('../interview-design').MODES[difficulty]+' mode'));await h.finishVoice();
  }
 });
 test('ending a mock saves question history without generating a paid report; repeat context is scoped',async()=>{
@@ -521,6 +536,63 @@ test('ending a mock saves question history without generating a paid report; rep
  h.db.athletes[0].university='Changed after session';
  const report=await h.request('POST','/api/evaluate',{...body,mockSessionId:id,transcript,difficulty:'intensive'});assert.equal(report.status,200);assert.equal(report.body.overall,null);assert.equal(report.body.difficulty,'standard');
  assert.match(h.calls.at(-1).request.input,/Example University/);assert.doesNotMatch(h.calls.at(-1).request.input,/Changed after session/);
- await h.request('POST','/api/realtime-session?athleteId=s1','v=0\r\noffer');assert.match(h.calls.at(-1).session.instructions,/Why this particular school/);
+ await h.finishVoice();await h.request('POST','/api/realtime-session?athleteId=s1','v=0\r\noffer');assert.match(h.calls.at(-1).session.instructions,/Why this particular school/);
  h.db.mockSessions[0].userId='other';assert.equal((await h.request('POST','/api/mock-session/end',{mockSessionId:id,transcript})).status,403);
+});
+
+test('staff lists and every student endpoint require assignment, including human review and forged profile updates',async()=>{
+ for(const role of ['coach','supervisor','manager']){
+  const h=harness({id:'staff',role});h.db.reports.push({id:'r1',athleteId:'s1'});
+  assert.deepEqual((await h.request('GET','/api/athletes')).body,[]);
+  assert.deepEqual((await h.request('GET','/api/reports')).body,[]);
+  for(const method of ['GET','PUT'])assert.equal((await h.request(method,'/api/learning/funding?athleteId=s1',{})).status,403);
+  for(const route of ['/api/save-transcript','/api/evaluate'])assert.equal((await h.request('POST',route,{athleteId:'s1'})).status,403);
+  assert.equal((await h.request('POST','/api/realtime-session?athleteId=s1','v=0')).status,403);
+  assert.equal((await h.request('POST','/api/human-review',{reportId:'r1',score:99})).status,403);
+  h.db.athletes[0].staffIds=['staff'];
+  assert.equal((await h.request('GET','/api/athletes')).body.length,1);
+  assert.equal((await h.request('GET','/api/reports')).body.length,1);
+  assert.equal((await h.request('GET','/api/learning/funding?athleteId=s1')).status,200);
+  assert.equal((await h.request('POST','/api/human-review',{reportId:'r1',score:80})).status,role==='manager'?403:200);
+  h.db.athletes[0].staffIds=[];
+  assert.equal((await h.request('GET','/api/learning/funding?athleteId=s1')).status,403);
+ }
+ const h=harness();await h.request('PUT','/api/my-profile',{staffIds:['attacker']});
+ assert.equal(h.db.athletes[0].staffIds,undefined);
+});
+test('owner assignments require password, validate staff roles, audit grants and revoke on role changes',async()=>{
+ const h=harness({id:'u1',role:'owner'}),password='owner-assignment-password';
+ h.credentials.get('u1').password_hash=await passwords.hashPassword(password);
+ h.db.users.push({id:'staff',role:'coach'});
+ const route='/api/owner/student-access',body={studentId:'s1',staffIds:['staff'],currentPassword:password};
+ assert.equal((await h.request('POST',route,{...body,currentPassword:'wrong'})).status,403);
+ for(const staffIds of [['u1'],['missing'],'staff',null])assert.equal((await h.request('POST',route,{...body,staffIds})).status,400);
+ assert.equal((await h.request('POST',route,body)).status,200);
+ assert.deepEqual(h.db.athletes[0].staffIds,['staff']);assert.equal(h.db.securityAudit.at(-1).action,'student-assignment');
+ const {changeRole}=require('../owner-access');changeRole(h.db,'u1','staff','manager');
+ assert.deepEqual(h.db.athletes[0].staffIds,[]);
+ assert.equal((await harness({id:'staff',role:'coach'}).request('POST',route,body)).status,403);
+});
+test('voice sessions block parallel tabs and modes, cannot be ended by another account, and recover after early stop',async()=>{
+ const h=harness(),route='/api/realtime-session?athleteId=s1';
+ const starts=await Promise.all([h.request('POST',route,'v=0'),h.request('POST',route,'v=0')]);
+ assert.deepEqual(starts.map(r=>r.status).sort(),[200,429]);assert.equal(h.calls.length,1);
+ const token=starts.find(r=>r.status===200).headers['X-Voice-Token'];
+ assert.match(token,/^[a-f0-9]{48}$/);
+ assert.equal((await h.request('POST','/api/voice/end',{token},false)).status,401);
+ assert.equal((await h.request('POST','/api/voice/end',{token:'a'.repeat(48)})).status,200);
+ assert.equal((await h.request('POST',route+'&mode=learn&lesson=funding','v=0')).status,429);
+ assert.equal((await h.request('POST','/api/voice/end',{token})).status,200);
+ assert.equal((await h.request('POST',route,'v=0')).status,429);
+ h.advanceVoice();assert.equal((await h.request('POST',route,'v=0')).status,200);
+ await h.request('POST','/api/voice/end',{token}); // stale request cannot stop new call
+ assert.equal((await h.request('POST',route,'v=0')).status,429);
+});
+test('provider failure releases pending admission but rapid retries are still throttled',async()=>{
+ const h=harness(),route='/api/realtime-session?athleteId=s1';
+ h.run("fetch=async()=>({ok:false,status:503,text:async()=>''})");
+ assert.equal((await h.request('POST',route,'v=0')).status,502);
+ assert.equal(h.admission.get('u1').token,null);
+ assert.equal((await h.request('POST',route,'v=0')).status,429);
+ h.advanceVoice();assert.equal((await h.request('POST',route,'v=0')).status,502);
 });

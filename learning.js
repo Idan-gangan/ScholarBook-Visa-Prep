@@ -3,7 +3,7 @@ const LESSON_ID = 'study-purpose';
 const LESSON_TITLE = 'Why do you want to study in the United States?';
 const NOTE_FIELDS = ['subjectReason', 'studyOpportunity', 'futureUse', 'draftAnswer'];
 function canAccessStudent(user, student) {
-  return !!user && !!student && ((user.role === 'athlete' && student.userId === user.id) || ['owner', 'coach', 'supervisor', 'manager'].includes(user.role));
+  return !!user && !!student && ((user.role === 'athlete' && student.userId === user.id) || user.role === 'owner' || (['coach', 'supervisor', 'manager'].includes(user.role) && Array.isArray(student.staffIds) && student.staffIds.includes(user.id)));
 }
 function normalizeProgress(body) {
   const notes = {};

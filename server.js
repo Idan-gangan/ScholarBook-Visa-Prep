@@ -7,7 +7,7 @@ const {hashPassword,verifyPassword,validPassword,legacyHash}=require('./password
 const { Pool } = require("pg");
 const { studyLevelInstructions, LESSONS, LESSON_ID, canAccessStudent, normalizeProgress, tutorInstructions } = require("./learning");
 const { practiceTargets, resolvePractice, practiceInstructions } = require('./report-practice');
-const {isStaff, isOwner, changeRole} = require('./owner-access');
+const {isStaff, isOwner, changeRole, assignStudent} = require('./owner-access');
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
@@ -15,7 +15,7 @@ const pool = new Pool({
 const PORT = process.env.PORT || 3000;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 const {POLICY,createVoiceLimits,dailyLimit}=require('./voice-limits');
-const voiceLimits=createVoiceLimits(pool,OPENAI_API_KEY);
+const voiceLimits=createVoiceLimits(pool,OPENAI_API_KEY,(url,options)=>fetch(url,options));
 const {EVALUATION_POLICY,normalizeTranscript,createEvaluationLimits}=require("./evaluation-limits");
 const evaluationLimits=createEvaluationLimits(pool);
 const {createPasswordRecovery}=require('./password-recovery');
@@ -363,13 +363,14 @@ const server=http.createServer(async (req,res)=>{
       if(req.method==='GET' && url.pathname==='/api/owner/accounts'){
         const db=await loadDb();
         return json(res,200,{
+          students:db.athletes.map(({id,name,staffIds})=>({id,name,staffIds:staffIds||[]})),
           users:db.users.map(({id,name,email,role,voiceTester})=>({id,name,email,role,voiceTester:voiceTester===true})),
           audit:(db.securityAudit||[]).slice(-100).reverse(),
           counts:{accounts:db.users.length,students:db.athletes.length,reports:db.reports.length},
           limits:{unlimited:true,tutorStartsPerDay:null,mockStartsPerDay:null,reportsPerDay:null}
         });
       }
-      if(req.method==='POST' && ['/api/owner/role','/api/owner/voice-access'].includes(url.pathname)){
+      if(req.method==='POST' && ['/api/owner/role','/api/owner/voice-access','/api/owner/student-access'].includes(url.pathname)){
         if(!allowAuth('owner-role:'+u.id))return json(res,429,{error:'Too many attempts. Try again in one minute.'});
         if(!(req.headers['content-type']||'').toLowerCase().startsWith('application/json'))return json(res,415,{error:'JSON required.'});
         let body;
@@ -381,6 +382,7 @@ const server=http.createServer(async (req,res)=>{
           // Recheck identity/role and credential version under the state lock.
           const current=(await client.query('SELECT password_hash, version FROM user_credentials WHERE user_id=$1 FOR UPDATE',[u.id])).rows[0];
           if(!current || current.version!==saved.version || current.password_hash!==saved.password_hash)throw stateError(401,'Sign in again.');
+          if(url.pathname==='/api/owner/student-access')return assignStudent(db,u.id,body.studentId,body.staffIds);
           if(url.pathname==='/api/owner/voice-access'){
             if(!isOwner(db.users.find(user=>user.id===u.id)))throw stateError(403,'Owner access required.');
             if(typeof body.enabled!=='boolean')throw stateError(400,'Choose whether tester access is enabled.');
@@ -437,7 +439,7 @@ const server=http.createServer(async (req,res)=>{
       const db=await loadDb();
       let athletes=db.athletes;
       if(u.role!=="athlete" && !isStaff(u))return json(res,403,{error:'Access denied.'});
-      if(u.role==="athlete") athletes=athletes.filter(a=>a.userId===u.id);
+      athletes=athletes.filter(a=>canAccessStudent(u,a));
       return json(res,200,athletes);
     }
 
@@ -446,10 +448,8 @@ const server=http.createServer(async (req,res)=>{
       const db=await loadDb();
       let reports=db.reports;
       if(u.role!=="athlete" && !isStaff(u))return json(res,403,{error:'Access denied.'});
-      if(u.role==="athlete"){
-        const athlete=db.athletes.find(a=>a.userId===u.id);
-        reports=reports.filter(r=>r.athleteId===athlete?.id);
-      }
+      const allowed=new Set(db.athletes.filter(a=>canAccessStudent(u,a)).map(a=>a.id));
+      reports=reports.filter(r=>allowed.has(r.athleteId));
       return json(res,200,reports.map(report=>({...report,practiceTargets:practiceTargets(report)})));
     }
 
@@ -460,6 +460,7 @@ const server=http.createServer(async (req,res)=>{
       const updated=await mutateDb(async(db)=>{
       const report=db.reports.find(r=>r.id===body.reportId);
       if(!report)throw stateError(404,"Report not found");
+      if(!canAccessStudent(u,db.athletes.find(a=>a.id===report.athleteId)))throw stateError(403,"This student is not assigned to you.");
       report.humanReview={score:Number(body.score),note:String(body.note||""),reviewer:u.name,reviewedAt:new Date().toISOString()};
       return report;
       });
@@ -679,6 +680,15 @@ Use only information in the supplied profile and transcript. Do not reward inven
       return json(res,200,{ok:true});
     }
 
+    if(req.method==='POST' && url.pathname==='/api/voice/end'){
+      const u=await requireUser(req,res);if(!u)return;
+      let body;
+      try{body=JSON.parse((await readBody(req,4096)).toString()||'{}');}
+      catch(error){if(error.status===413)throw error;return json(res,400,{error:'Invalid voice session.'});}
+      if(!body||typeof body.token!=='string'||!/^[a-f0-9]{48}$/.test(body.token))return json(res,400,{error:'Invalid voice session.'});
+      await voiceLimits.end(u.id,body.token);
+      return json(res,200,{ok:true});
+    }
     if(req.method==="POST" && url.pathname==="/api/realtime-session"){
       const u=await requireUser(req,res); if(!u) return;
       if(needsVerification(u))return json(res,403,{error:'Verify your email before starting voice practice.'});
@@ -705,6 +715,10 @@ Use only information in the supplied profile and transcript. Do not reward inven
       }
       const sdp=(await readBody(req)).toString();
       if(!sdp.startsWith('v=0') || sdp.length>64000)return json(res,400,{error:'Invalid voice connection offer.'});
+      const voiceToken=await voiceLimits.acquire(u.id);
+      if(!voiceToken)return json(res,429,{error:'End your current voice session before starting another. After a recent start, wait 10 seconds and try again.'});
+      let voiceDelivered=false;
+      try{
       if(!await voiceLimits.reserve(u.id,dailyLimit(u,mode),mode))return json(res,429,{error:'Unable to start this voice session right now. Please try again shortly.'});
 const embassyKnowledge = loadEmbassyKnowledge(athlete.interviewLocation);
       let instructions=`You are a realistic but fair F-1 student visa mock interviewer for VisaAtlas.
@@ -767,7 +781,8 @@ Start with the opening guidance in INTERVIEW DESIGN below.`;
       });
       const answer=await rr.text();
       if(!rr.ok)return json(res,502,{error:'The voice service could not connect. Please try again later.'});
-      const seconds=await voiceLimits.track(rr.headers.get('location'),mode);
+      const seconds=await voiceLimits.track(rr.headers.get('location'),mode,u.id);
+      await voiceLimits.attach(u.id,voiceToken,rr.headers.get('location'));
       let mockSessionId;
       if(mode==='mock'){
         mockSessionId='mock_'+crypto.randomBytes(16).toString('hex');
@@ -778,8 +793,14 @@ Start with the opening guidance in INTERVIEW DESIGN below.`;
           current.mockSessions.push({id:mockSessionId,userId:u.id,athleteId:athlete.id,createdAt:new Date().toISOString(),difficulty,plan:interviewPlan,evaluationVersion:3,profile:interviewDesign.profileSnapshot(athlete)});
         });
       }
-      res.writeHead(rr.status,{"Content-Type":"application/sdp","Cache-Control":"no-store","X-Voice-Limit-Seconds":String(seconds),...(mockSessionId?{'X-Mock-Session-Id':mockSessionId}:{})});
-      return res.end(answer);
+      if(res.destroyed)return;
+      res.writeHead(rr.status,{"X-Voice-Token":voiceToken,"Content-Type":"application/sdp","Cache-Control":"no-store","X-Voice-Limit-Seconds":String(seconds),...(mockSessionId?{'X-Mock-Session-Id':mockSessionId}:{})});
+      res.end(answer);
+      voiceDelivered=true;
+      return;
+      }finally{
+        if(!voiceDelivered)try{await voiceLimits.end(u.id,voiceToken);}catch{console.error('[voice] SESSION_CLEANUP_RETRY');}
+      }
     }
 
     return serveStatic(req,res);
