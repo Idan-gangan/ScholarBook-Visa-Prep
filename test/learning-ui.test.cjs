@@ -29,6 +29,7 @@ function fixture(){
    else throw new Error('Unexpected route '+route);
    return {ok:true,json:async()=>structuredClone(data)};
  }});
+ ctx.requestVoiceConsent=(mode,agree)=>agree();
  vm.runInContext(html.match(/<script>([\s\S]*?)<\/script>/)[1].replace('boot().catch(()=>{if(new URLSearchParams(location.search).get("signin")==="1")backToLogin()});',''),ctx);
  return {elements,store,ctx,run:code=>vm.runInContext(code,ctx)};
 }
