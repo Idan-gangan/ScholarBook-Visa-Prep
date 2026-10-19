@@ -477,6 +477,22 @@ test('reports require the issued mock session and freeze its first submitted ans
  assert.equal(h.db.reports.length,1);assert.equal((await h.request('GET','/api/voice-usage')).body.reports.remaining,null);
  h.db.mockSessions[0].userId='someone-else';assert.equal((await h.request('POST','/api/evaluate',{athleteId:'s1',transcript,mockSessionId})).status,400);
 });
+test('topic review filters unrelated evidence before saving and failures do not save unreviewed scores',async()=>{
+ const design=require('../interview-design');
+ for(const reviewFails of [false,true]){
+  const h=harness();
+  const start=await h.request('POST','/api/realtime-session?athleteId=s1','v=0\r\noffer');
+  assert.equal(start.status,200);h.db.mockSessions[0].profile.previousRefusal='Yes';
+  const transcript=design.TOPICS.flatMap(([id])=>[{role:'assistant',text:'Question about '+id},{role:'athlete',text:'Answer about '+id}]);
+  const result={summary:'You explained your preparation.',strengths:[],assessments:design.TOPICS.map(([topic],i)=>({topic,status:'assessed',questionTurn:i*2,answerTurn:i*2+1,score:8,feedback:'You explained this clearly.',action:'Keep practising in your own words.'}))};
+  const review={reviews:result.assessments.map(a=>({topic:a.topic,questionTurn:a.questionTurn,answerTurn:a.answerTurn,supported:a.topic!=='circumstances'}))};
+  h.run(`globalThis.reviewCalls=0;fetch=async(url,options)=>{reviewCalls++;const first=JSON.parse(options.body).input.includes('VISAATLAS_EVIDENCE_REPORT_V3');return {ok:first||${!reviewFails},json:async()=>({output_text:JSON.stringify(first?${JSON.stringify(result)}:${JSON.stringify(review)})})}}`);
+  const response=await h.request('POST','/api/evaluate',{athleteId:'s1',mockSessionId:start.headers['X-Mock-Session-Id'],transcript});
+  assert.equal(h.run('reviewCalls'),2,JSON.stringify([response,h.logs]));
+  if(reviewFails){assert.equal(response.status,502);assert.equal(h.db.reports.length,0);}
+  else {assert.equal(response.status,200);assert.equal(response.body.overall,null);assert.equal(response.body.partialScore,80);assert.equal(response.body.coverage.assessed,6);assert.equal(h.db.reports[0].scores.circumstances,undefined);}
+ }
+});
 test('failed reports can retry without consuming the successful report allowance',async()=>{
  const h=harness();h.run(`fetch=async()=>{throw Object.assign(new Error('timeout'),{name:'TimeoutError'})}`);
  const body={athleteId:'s1',transcript:[{role:'athlete',text:'Answer'}]};

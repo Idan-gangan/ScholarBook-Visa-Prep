@@ -552,6 +552,7 @@ Return 0–3 strengths, 1–3 clarifications, and exactly 3 nextSteps. Each item
 Tie feedback to actual answers. If evidence is too limited to identify a strength, return an empty strengths array; never invent praise. Distinguish "not discussed" from "incorrect". If a transcript phrase looks mistranscribed, ask for clarification rather than treating it as an established fact. Do not penalize accent or require native-speaker grammar; assess whether meaning is clear. Do not invent facts, motivations, funding, or post-study plans for the student, and never tell them to replace their genuine intentions with a preferred answer. Do not give legal determinations or visa approval predictions.
 Use only information in the supplied profile and transcript. Do not reward invented facts or memorized-sounding certainty.`;
 
+      const evaluationSignal=AbortSignal.timeout(EVALUATION_POLICY.timeoutMs);
       const r=await fetch("https://api.openai.com/v1/responses",{
         method:"POST",
         headers:{
@@ -559,7 +560,7 @@ Use only information in the supplied profile and transcript. Do not reward inven
           "Content-Type":"application/json",
           "OpenAI-Safety-Identifier":sha(u.id).slice(0,32)
         },
-        signal:AbortSignal.timeout(EVALUATION_POLICY.timeoutMs),
+        signal:evaluationSignal,
         body:JSON.stringify({model:EVALUATION_MODEL,input:prompt,max_output_tokens:EVALUATION_POLICY.outputTokens,store:false})
       });
       const api=await r.json();
@@ -571,7 +572,23 @@ Use only information in the supplied profile and transcript. Do not reward inven
 
       let evidenceReport=null;
       if(mockSession.evaluationVersion===3){
-        try{evidenceReport=interviewDesign.normalizeEvidenceReport(result,interview,mockSession.profile||athlete,mockSession.difficulty);}
+        try{
+          // Validate indices and shape before sending a separate, score-blind topic review.
+          interviewDesign.normalizeEvidenceReport(result,interview,mockSession.profile||athlete,mockSession.difficulty);
+          if(result.assessments.some(a=>a.status==='assessed')){
+          const reviewResponse=await fetch("https://api.openai.com/v1/responses",{
+            method:"POST",
+            headers:{"Authorization":`Bearer ${OPENAI_API_KEY}`,"Content-Type":"application/json","OpenAI-Safety-Identifier":sha(u.id).slice(0,32)},
+            signal:evaluationSignal,
+            body:JSON.stringify({model:EVALUATION_MODEL,input:interviewDesign.evidenceReviewPrompt(result,interview),max_output_tokens:EVALUATION_POLICY.outputTokens,store:false})
+          });
+          const reviewApi=await reviewResponse.json();
+          if(!reviewResponse.ok||reviewApi.status==='incomplete')throw new Error('Evidence review unavailable');
+          const review=JSON.parse(outputText(reviewApi).trim().replace(/^```json\s*/,"").replace(/```$/,"").trim());
+          result=interviewDesign.applyEvidenceReview(result,review);
+          }
+          evidenceReport=interviewDesign.normalizeEvidenceReport(result,interview,mockSession.profile||athlete,mockSession.difficulty);
+        }
         catch{return json(res,502,{error:'The report did not include valid answer evidence. Please try again.'});}
         result={...evidenceReport};
       }
