@@ -321,3 +321,14 @@ test('partial report and dashboard label the score without a full readiness badg
  assert.match(markup,/Partial practice score/);assert.match(markup,/75\/100/);assert.match(markup,/How your score was calculated/);
  assert.doesNotMatch(markup,/Almost Ready|High Concern/);assert.match(f.elements.get('dashCards').innerHTML,/75\/100 \(partial\)/);
 });
+test('all-seven report leads with earned score and shows assessed-only quality in the breakdown',async()=>{
+ const f=fixture();await f.run('boot()');
+ f.run(`reports=[{id:'r1',athleteId:'s1',formatVersion:3,scoringMethod:'all-seven-v1',overall:14,partialScore:null,answeredTopicScore:50,earnedPoints:10,possiblePoints:70,scoreType:'partial',coverage:{assessed:2,required:7},notCovered:['Future plans'],feedback:'Useful answers.',strengths:[],clarifications:[],nextSteps:[],assessments:[{label:'Academic history',status:'assessed',score:6,feedback:'Clarify the training.'},{label:'Funding',status:'assessed',score:4,feedback:'Name the provider.'}]}];renderAll()`);
+ const markup=f.elements.get('reportsList').innerHTML;
+ assert.match(markup,/Overall preparation/);assert.match(markup,/14\/100/);
+ assert.match(markup,/Interview incomplete · 2 of 7/);assert.match(markup,/10 \/ 70/);
+ assert.match(markup,/Answered-topic quality: 50\/100/);
+ assert.match(markup,/Not assessed — no points earned yet/);
+ assert.doesNotMatch(markup,/High Concern|not counted against you|Partial practice score/);
+ assert.match(f.elements.get('dashCards').innerHTML,/14\/100 \(incomplete\)/);
+});

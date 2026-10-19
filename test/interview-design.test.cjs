@@ -17,7 +17,7 @@ test('every mock mode opens with VisaAtlas identity and waits for an audio check
 test('unasked refusals are not weaknesses and cannot contribute zero points',()=>{
  const input=complete();input.assessments[6]={topic:'circumstances',status:'not_covered',score:0,feedback:'Your refusals are a problem.'};
  const report=design.normalizeEvidenceReport(input,transcript,{previousRefusal:'Yes',previousAttempts:3},'standard');
- assert.equal(report.overall,null);assert.deepEqual(report.notCovered,['Previous applications and travel']);assert.deepEqual(report.clarifications,[]);assert.equal(report.scores.circumstances,undefined);assert.doesNotMatch(report.biggestWeakness,/refusal/);
+ assert.equal(report.overall,69);assert.deepEqual(report.notCovered,['Previous applications and travel']);assert.deepEqual(report.clarifications,[]);assert.equal(report.scores.circumstances,undefined);assert.doesNotMatch(report.biggestWeakness,/refusal/);
 });
 test('same evidence has same scoring standard in every mode and priority matches action and lesson',()=>{
  const input=complete();input.assessments[3]={...input.assessments[3],score:4,feedback:'You said 2024, but your profile says 2023. Which year is correct?',action:'Check your school completion year and update your profile.'};
@@ -51,12 +51,25 @@ test('repeat plans avoid the last three opening topics and isolate student histo
  }
  assert.deepEqual(design.sessionPlan({},sessions,'other','s','fixed'),design.sessionPlan({},[],'other','s','fixed'));
 });
-test('partial scores exclude unanswered areas and do not become full readiness scores',()=>{
+test('incomplete scores use all seven areas and retain the assessed-only average separately',()=>{
  const input=complete();input.assessments[5]={topic:'future',status:'not_covered'};
  const r=design.normalizeEvidenceReport(input,transcript,{previousRefusal:'Yes'},'intensive');
- assert.equal(r.overall,null);assert.equal(r.partialScore,80);assert.equal(r.scoreType,'partial');
+ assert.equal(r.overall,69);assert.equal(r.answeredTopicScore,80);assert.equal(r.scoreType,'partial');
  assert.deepEqual(r.coverage,{assessed:6,required:7});assert.deepEqual(r.notCovered,['Future plans']);
- assert.equal(r.scores.future,undefined);assert.match(r.scoreExplanation,/Unanswered topics are excluded/);
+ assert.equal(r.scores.future,undefined);assert.match(r.scoreExplanation,/Unassessed areas earn no points yet/);
+});
+test('six academic points plus four funding points earns 14 out of 100 across seven areas',()=>{
+ const input=complete();input.strengths=[];
+ input.assessments=input.assessments.map(a=>['education','funding'].includes(a.topic)?{...a,score:a.topic==='education'?6:4}:{topic:a.topic,status:'not_covered'});
+ const r=design.normalizeEvidenceReport(input,transcript,{},'standard');
+ assert.equal(r.overall,14);assert.equal(r.earnedPoints,10);assert.equal(r.possiblePoints,70);
+ assert.equal(r.answeredTopicScore,50);assert.equal(r.partialScore,null);
+ assert.equal(r.scoreType,'partial');assert.equal(r.readiness,'Interview incomplete');
+ assert.deepEqual(r.coverage,{assessed:2,required:7});assert.equal(r.notCovered.length,5);
+ assert.equal(r.scores.future,undefined);
+ assert.equal(design.requiredTopics({previousRefusal:'No',previousAttempts:0}).length,7);
+ const full=design.normalizeEvidenceReport(complete(),transcript,{},'standard');
+ assert.equal(full.overall,80);assert.equal(full.answeredTopicScore,80);assert.equal(full.scoreType,'complete');
 });
 test('one answer cannot inflate coverage into a partial score; two distinct answers can',()=>{
  const input=complete();input.strengths=[];
@@ -64,7 +77,7 @@ test('one answer cannot inflate coverage into a partial score; two distinct answ
  input.assessments[0]=complete().assessments[0];
  assert.equal(design.normalizeEvidenceReport(input,transcript,{},'standard').partialScore,null);
  input.assessments[1]=complete().assessments[1];
- assert.equal(design.normalizeEvidenceReport(input,transcript,{},'standard').partialScore,80);
+ assert.equal(design.normalizeEvidenceReport(input,transcript,{},'standard').overall,23);
 });
 test('explicit strengths never become clarifications even with a middling topic score',()=>{
  const input=complete();input.assessments[2]={...input.assessments[2],score:6,feedbackKind:'strength',feedback:'You identified penetration testing as your interest.'};
@@ -80,7 +93,7 @@ test('early-stop regression: education activities cannot survive a rejected trav
  const review={reviews:input.assessments.map(a=>({topic:a.topic,questionTurn:a.questionTurn,answerTurn:a.answerTurn,supported:a.topic!=='circumstances'}))};
  const filtered=design.applyEvidenceReview(input,review);
  const report=design.normalizeEvidenceReport(filtered,turns,{previousRefusal:'Yes'},'standard');
- assert.equal(report.overall,null);assert.equal(report.partialScore,80);
+ assert.equal(report.overall,69);assert.equal(report.answeredTopicScore,80);
  assert.deepEqual(report.coverage,{assessed:6,required:7});
  assert.equal(report.scores.circumstances,undefined);assert.equal(report.scores.education,8);
  assert.deepEqual(report.notCovered,['Previous applications and travel']);
