@@ -145,7 +145,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
         <div class="session-toolbar"><div id="learn_voiceStatus" role="status" aria-live="polite">Ready to start</div><span id="learn_voiceClock" class="voice-clock" aria-label="Voice lesson time remaining">08:00</span></div>
         <div id="learn_voiceLimitNotice" class="small muted" role="status" aria-live="polite"></div>
         <p id="lessonVoiceUsage" class="small muted" role="status"></p>
-        <p class="small muted">Voice lessons last up to 8 minutes. Daily practice attempts are unlimited. Reading and notes remain available.</p>
+        <p class="small muted">Voice lessons last up to 8 minutes. Two tutor sessions per day. Start attempts count toward the limit, including failed connections and sessions ended early. Resets at 00:00 UTC. Reading and notes remain available.</p>
         <div class="lesson-actions"><button class="btn primary" id="learn_startBtn" onclick="startLearningTutor()">Start voice lesson</button><button class="btn danger" id="learn_stopBtn" onclick="stopVoice()" disabled>End lesson conversation</button></div>
         <div id="learn_transcript" class="lesson-transcript" aria-label="Tutor conversation"></div>
         <p class="small muted">Your conversation is for learning, with no readiness score. Save the points you want to keep in your notes; the conversation itself is not saved.</p>
@@ -236,7 +236,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
     <section id="owner" class="screen">
       <div class="owner-heading"><div><span class="eyebrow">WORKSPACE ADMINISTRATION</span><h1>Owner dashboard</h1><p class="muted">Your people, their progress, and who can help them.</p></div><button type="button" class="btn secondary" onclick="loadOwner()">Refresh data</button></div>
       <div id="ownerStats" class="owner-stats"></div>
-      <div class="owner-shortcuts"><button class="btn secondary" onclick="show('manager')">View student progress ↗</button><button class="btn secondary" onclick="show('reports')">Readiness reports ↗</button><span>Unlimited practice · Session time limits apply</span></div>
+      <div class="owner-shortcuts"><button class="btn secondary" onclick="show('manager')">View student progress ↗</button><button class="btn secondary" onclick="show('reports')">Readiness reports ↗</button><span>Daily voice access: 2 tutor sessions + 1 mock interview</span></div>
       <div class="owner-workspace">
         <nav class="owner-tabs" aria-label="Owner dashboard sections"><button type="button" data-owner-tab="accounts" aria-pressed="true" onclick="setOwnerTab('accounts')">Accounts</button><button type="button" data-owner-tab="assignments" aria-pressed="false" onclick="setOwnerTab('assignments')">Staff assignments</button><button type="button" data-owner-tab="activity" aria-pressed="false" onclick="setOwnerTab('activity')">Activity log</button></nav>
         <div class="owner-panel-heading"><div><h2 id="ownerPanelTitle">Account directory</h2><p id="ownerPanelHelp" class="muted">Find accounts and manage their roles.</p></div><span class="owner-badge">Owner access</span></div>
@@ -967,9 +967,9 @@ async function refreshVoiceUsage(){
   const data=await api('/api/voice-usage');
   if(!me||version!==sessionVersion)return;
   for(const [id,mode,label] of [['learningVoiceUsage','learn','tutoring starts'],['lessonVoiceUsage','learn','tutoring starts'],['mockVoiceUsage','mock','mock interviews']]){
-   const usage=data[mode];$(id).textContent=usage.unlimited?'Unlimited '+label+'. Session time limits still apply.':usage.remaining+' of '+usage.limit+' '+label+' left today.';
+   const usage=data[mode];$(id).textContent=usage.unlimited?'Unlimited '+label+'. Session time limits still apply.':usage.remaining+' of '+usage.limit+' '+label+' left today. Resets at 00:00 UTC; failed starts and early endings count.';
   }
-  $('reportUsage').textContent=data.reports.unlimited?'Unlimited feedback reports. Generate one report at a time.':data.reports.remaining+' new reports left today.';
+  $('reportUsage').textContent=data.reports.unlimited?'Unlimited feedback reports. Generate one report at a time.':data.reports.attemptsRemaining+' report-generation attempts left today. Resets at 00:00 UTC. Saved reports remain available.';
  }catch(error){if(me && version===sessionVersion){for(const id of ['learningVoiceUsage','lessonVoiceUsage','mockVoiceUsage','reportUsage'])$(id).textContent='Practice allowance could not be loaded. Try refreshing the page.';}}
 }
 function continueLearning(){return selectLearningModule((curriculum.find(m=>!courseSaved[m.id]?.completed)||curriculum[0]).id)}

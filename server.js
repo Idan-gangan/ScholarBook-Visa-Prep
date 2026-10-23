@@ -368,7 +368,7 @@ const server=http.createServer(async (req,res)=>{
           users:db.users.map(({id,name,email,role,voiceTester})=>({id,name,email,role,voiceTester:voiceTester===true})),
           audit:(db.securityAudit||[]).slice(-100).reverse(),
           counts:{accounts:db.users.length,students:db.athletes.length,reports:db.reports.length},
-          limits:{unlimited:true,tutorStartsPerDay:null,mockStartsPerDay:null,reportsPerDay:null}
+          limits:{unlimited:false,tutorStartsPerDay:dailyLimit(u,'learn'),mockStartsPerDay:dailyLimit(u,'mock'),reportAttemptsPerDay:EVALUATION_POLICY.attempts}
         });
       }
       if(req.method==='POST' && ['/api/owner/role','/api/owner/voice-access','/api/owner/student-access'].includes(url.pathname)){
@@ -526,7 +526,7 @@ const server=http.createServer(async (req,res)=>{
       const previous=db.reports.find(report=>report.evaluationKey===evaluationKey);
       if(previous)return json(res,200,previous);
       const lease=await evaluationLimits.reserve(u.id);
-      if(!lease)return json(res,429,{error:"A report is already processing. Please wait for it to finish before trying again."});
+      if(!lease)return json(res,429,{error:"A report is already processing, or you have used today’s 3 report-generation attempts. Wait for the current report, or try again after 00:00 UTC. Saved reports remain available."});
       try{
       // Recheck after admission in case another request finished between the first lookup and reservation.
       const cached=(await loadDb()).reports.find(report=>report.evaluationKey===evaluationKey);
@@ -737,7 +737,7 @@ Use only information in the supplied profile and transcript. Do not reward inven
       if(!voiceToken)return json(res,429,{error:'End your current voice session before starting another. After a recent start, wait 10 seconds and try again.'});
       let voiceDelivered=false;
       try{
-      if(!await voiceLimits.reserve(u.id,dailyLimit(u,mode),mode))return json(res,429,{error:'Unable to start this voice session right now. Please try again shortly.'});
+      if(!await voiceLimits.reserve(u.id,dailyLimit(u,mode),mode))return json(res,429,{error:'You have used today’s '+(mode==='learn'?'2 tutor sessions':'1 mock interview')+'. Voice access resets at 00:00 UTC. Your lessons and saved reports remain available.'});
 const embassyKnowledge = loadEmbassyKnowledge(athlete.interviewLocation);
       let instructions=`You are a realistic but fair F-1 student visa mock interviewer for VisaAtlas.
 You are speaking with ${athlete.name}.
