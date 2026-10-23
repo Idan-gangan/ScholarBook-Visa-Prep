@@ -23,6 +23,7 @@ const passwordRecovery=createPasswordRecovery(pool,{env:process.env,diagnostic:a
 const {createEmailVerification,needsVerification}=require('./email-verification');
 const emailVerification=createEmailVerification({mutateDb,env:process.env});
 const profileOptions=require('./profile-options');
+const planning=require('./public/planning');
 const profileRequirements=require('./public/profile-requirements');
 const EVALUATION_MODEL = process.env.EVALUATION_MODEL || "gpt-5.6";
 const interviewDesign=require('./interview-design');
@@ -416,6 +417,8 @@ const server=http.createServer(async (req,res)=>{
       const u=await requireUser(req,res); if(!u) return;
       if(u.role!=="athlete" && !isOwner(u)) return json(res,403,{error:"Student access required"});
       const body=JSON.parse((await readBody(req)).toString()||"{}");
+      if('interviewDate' in body && body.interviewDate!=='' && !planning.validDate(body.interviewDate))return json(res,400,{error:'Enter a valid interview date.'});
+      if('welcomeCompleted' in body && typeof body.welcomeCompleted!=='boolean')return json(res,400,{error:'Invalid welcome preference.'});
       const updated=await mutateDb(async(db)=>{
       const athlete=db.athletes.find(a=>a.userId===u.id);
       if(!athlete)throw stateError(404,"Student profile not found");
@@ -428,6 +431,8 @@ const server=http.createServer(async (req,res)=>{
         athlete.previousAttempts=body.previousAttempts===''?'':Number(body.previousAttempts);
       }
       if('interviewCity' in body||'interviewCountry' in body)athlete.interviewLocation=athlete.interviewCity==='Not booked yet'?'Not booked yet':[athlete.interviewCity,athlete.interviewCountry].filter(Boolean).join(', ');
+      if('interviewDate' in body)athlete.interviewDate=body.interviewDate;
+      if('welcomeCompleted' in body)athlete.welcomeCompleted=body.welcomeCompleted;
       athlete.profileStatus=profileRequirements.missing(athlete).length?'Incomplete':'Complete';
       athlete.updatedAt=new Date().toISOString(); return athlete;
       });
