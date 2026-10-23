@@ -372,3 +372,23 @@ test('report next steps lead with three actions while retaining additional guida
  const f=fixture();f.ctx.report={formatVersion:3,strengths:['Strength'],clarifications:['Clarification'],nextSteps:['One','Two','Three','Four'],feedback:'Feedback',biggestWeakness:'Focus'};
  const html=f.run('reportSections(report)');assert.ok(html.indexOf('Your next steps')<html.indexOf('What went well'));assert.match(html,/More next steps/);assert.match(html,/Four/);
 });
+
+test('practice history coverage uses assessed counts even when an attempt has no score',async()=>{
+ const f=fixture();await f.run('boot()');
+ for(const [assessed,required,label] of [[0,7,'Not assessed'],[5,7,'Partial'],[6,7,'Partial'],[7,7,'Full'],[2,3,'Partial']]){
+  f.run(`renderStudentHistory([{mockNumber:1,createdAt:'2026-10-23',overall:null,coverage:{assessed:${assessed},required:${required}}}])`);
+  assert.match(f.elements.get('studentHistory').innerHTML,new RegExp('>'+label+'</span>'));
+ }
+ f.run("renderStudentHistory([{mockNumber:1,createdAt:'2026-10-23',overall:null}])");
+ assert.match(f.elements.get('studentHistory').innerHTML,/Coverage not recorded/);
+ f.run("reports=[{athleteId:'s1',overall:null}];renderAll()");
+ assert.match(f.elements.get('dashCards').innerHTML,/Not scored/);
+});
+
+test('opening a lesson hides the module overview and closing restores it',async()=>{
+ const f=fixture();await f.run('boot()');
+ f.run('lessonOpen=true;renderCourse()');
+ assert.equal(f.elements.get('learningOverview').classList.contains('hidden'),true);
+ f.run('closeLearningModule()');
+ assert.equal(f.elements.get('learningOverview').classList.contains('hidden'),false);
+});

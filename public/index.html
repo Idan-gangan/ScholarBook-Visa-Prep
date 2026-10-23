@@ -125,9 +125,9 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
       <div class="learning-welcome"><div><h1 id="learningGreeting">Welcome back</h1><p>Continue your preparation for your F-1 interview.</p></div><div class="course-status"><p id="courseProgress" role="status">Loading progress…</p><progress id="courseMeter" class="course-meter" max="6" value="0" aria-label="Modules completed"></progress></div></div>
       <div class="field learning-student-picker" id="learningStudentPicker"><label for="learn_athleteSelect">Student</label><select id="learn_athleteSelect" onchange="changeLearningStudent()"></select></div>
       <div class="card course-overview hidden"><img class="course-photo" src="/assets/atlas-study.webp" width="600" height="400" alt="" loading="lazy"><div class="course-feature-copy"><div class="course-feature-top"><span class="eyebrow">YOUR NEXT LESSON</span><span class="pill blue" id="featuredModuleNumber">Module 1 of 6</span></div><h2 id="featuredModuleTitle">Your study plans</h2><p id="featuredModuleSummary">Connect your country, school, and study choices.</p><button class="btn primary" id="continueLearningBtn" onclick="continueLearning()">Continue lesson <span aria-hidden="true">→</span></button></div></div>
-      <h2 class="course-section-title">Your learning path</h2><p class="small muted">Completion tracks your learning, not visa approval or interview readiness.</p>
+      <div id="learningOverview"><h2 class="course-section-title">Choose a module</h2><p class="small muted">Completion tracks your learning, not visa approval or interview readiness.</p>
       <p id="learningVoiceUsage" class="small muted" role="status"></p>
-      <div id="moduleCards" class="module-grid" aria-label="Learning modules"></div>
+      <div id="moduleCards" class="module-grid" aria-label="Learning modules"></div></div>
       <div id="lessonDetails" class="hidden">
       <button class="btn secondary" onclick="closeLearningModule()">← Back to all modules</button>
       <div id="practiceFocus" class="card hidden"><h3>Focused practice</h3><p id="practiceFocusText"></p><p class="muted small">Review this feedback with your tutor. Starting this lesson does not mark the issue as resolved.</p><button class="btn secondary" onclick="clearReportPractice()">Return to regular lesson</button></div><div id="activeLesson" class="lesson-heading lesson-block"><div><p class="small muted" id="moduleNumber">MODULE 1</p><h2 id="moduleTitle">Your study plans</h2><p id="moduleSummary"></p></div><span id="lessonBadge" class="pill blue">Not completed</span></div>
@@ -572,14 +572,18 @@ function studentNext(next){
 }
 function renderStudentHistory(history){
  const safeScore=r=>Number.isFinite(r.overall)?r.overall+'/100':Number.isFinite(r.partialScore)?r.partialScore+'/100':'Not scored';
- const type=r=>r.scoreType==='partial'||Number.isFinite(r.partialScore)?'Partial':r.scoreType==='complete'||r.coverage?.assessed===7?'Full':'Coverage not recorded';
+ const type=r=>{
+  const assessed=r.coverage?.assessed, required=r.coverage?.required??7;
+  if(Number.isInteger(assessed)&&Number.isInteger(required)&&required>0&&assessed>=0&&assessed<=required)return assessed===0?'Not assessed':assessed===required?'Full':'Partial';
+  return 'Coverage not recorded';
+ };
  $('studentHistory').innerHTML=`<section class="card practice-history"><div class="history-heading"><div><span class="eyebrow">YOUR PRACTICE HISTORY</span><h2>See how your preparation develops</h2></div><button class="btn secondary" onclick="show('reports')">All reports →</button></div><p class="small muted">Compare full interviews in the same mode and scoring method. Partial scores cover different amounts of your preparation.</p>${history.length?'<div class="history-scroll"><table><thead><tr><th>Attempt</th><th>Mode</th><th>Coverage</th><th>Score</th><th>Scoring basis</th></tr></thead><tbody>'+history.slice(0,6).map(r=>`<tr><td>Mock #${escapeHtml(r.mockNumber)}<small>${escapeHtml(new Date(r.createdAt).toLocaleDateString())}</small></td><td>${escapeHtml(({standard:'Standard',challenging:'Challenging',intensive:'Intensive'})[r.difficulty]||'Not recorded')}</td><td><span class="pill ${type(r)==='Full'?'green':'amber'}">${type(r)}</span>${Number.isFinite(r.coverage?.assessed)?`<small>${escapeHtml(r.coverage.assessed)} / ${escapeHtml(r.coverage.required||7)} areas</small>`:''}</td><td><strong>${safeScore(r)}</strong></td><td>${r.scoringMethod==='all-seven-v1'?'All seven areas':'Assessed areas only'}</td></tr>`).join('')+'</tbody></table></div>':'<div class="history-empty"><h3>Your first attempt is a starting point</h3><p>Saved interview reports will appear here. Begin with a lesson or try a mock when you feel ready.</p></div>'}</section>`;
 }
 
 function renderAll(){
  const latest=a=>reports.filter(r=>r.athleteId===a.id).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt))[0];
  const student=me?.role==='athlete', own=athletes.find(a=>a.userId===me.id), report=own?latest(own):null;
- const score=r=>Number.isFinite(r?.overall)?r.overall+'/100'+(r.scoringMethod==='all-seven-v1'&&r.scoreType==='partial'?' (incomplete)':''):Number.isFinite(r?.partialScore)?r.partialScore+'/100 (partial)':'—';
+ const score=r=>Number.isFinite(r?.overall)?r.overall+'/100'+(r.scoringMethod==='all-seven-v1'&&r.scoreType==='partial'?' (incomplete)':''):Number.isFinite(r?.partialScore)?r.partialScore+'/100 (partial)':r?'Not scored':'No attempts yet';
  $('dashboardTitle').textContent=student?'Your progress':'Student progress';
  const scored=athletes.map(latest).filter(r=>Number.isFinite(r?.overall));
  const cards=student?[
@@ -832,6 +836,7 @@ let activeLessonId="study-purpose", courseSaved={}, lessonPractice=null, lessonO
 function renderCourse(){
  renderStudentHome();
  $("lessonDetails").classList.toggle("hidden",!lessonOpen);
+ $("learningOverview").classList.toggle("hidden",lessonOpen);
  const done=curriculum.filter(m=>courseSaved[m.id]?.completed).length;
  $("courseProgress").textContent=done+" of "+curriculum.length+" modules completed";
  $("courseMeter").max=curriculum.length;$("courseMeter").value=done;
