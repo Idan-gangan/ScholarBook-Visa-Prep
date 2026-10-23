@@ -4,7 +4,7 @@ const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const html=fs.readFileSync(path.join(__dirname,'../public/index.html'),'utf8');
 function fixture(){
  const elements=new Map();
- function element(){const classes=new Set();return {value:'',textContent:'',innerHTML:'',disabled:false,checked:false,children:[],dataset:{},classList:{add:x=>classes.add(x),remove:x=>classes.delete(x),contains:x=>classes.has(x),toggle:(x,on)=>on?classes.add(x):classes.delete(x)},querySelectorAll(){return []},setAttribute(){},addEventListener(){},append(...items){this.children.push(...items)},appendChild(item){this.children.push(item)},replaceChildren(...items){this.children=items;if(items[0]?.value)this.value=items[0].value},pause(){}}}
+ function element(){const classes=new Set();return {value:'',textContent:'',innerHTML:'',disabled:false,checked:false,children:[],dataset:{},classList:{add:x=>classes.add(x),remove:x=>classes.delete(x),contains:x=>classes.has(x),toggle:(x,on)=>on?classes.add(x):classes.delete(x)},querySelectorAll(){return []},setAttribute(){},addEventListener(){},append(...items){this.children.push(...items)},appendChild(item){this.children.push(item)},replaceChildren(...items){this.children=items;if(items[0]?.value)this.value=items[0].value},pause(){},showModal(){this.open=true},close(){this.open=false}}}
  for(const match of html.matchAll(/id="([^"]+)"/g))elements.set(match[1],element());
  const document={getElementById:id=>{if(!elements.has(id)){if(id.startsWith('p_')||['educationHistory','educationHistoryTitle','interviewCities'].includes(id))elements.set(id,element());else throw new Error('Missing DOM element '+id);}return elements.get(id)},querySelector:selector=>{if(!elements.has(selector))elements.set(selector,element());return elements.get(selector)},querySelectorAll:selector=>selector==='.screen'?['learning','dashboard','interview','profile','reports','manager'].map(id=>elements.get(id)):[],createElement:()=>element(),createTextNode:text=>({textContent:text})};
  const student={id:'s1',userId:'u1',name:'Test Student',university:'Example University',major:'Biology',currentScore:0};
@@ -15,7 +15,7 @@ function fixture(){
    else if(route==='/api/me')data=store.user||{id:'u1',name:'Test Student',role:'athlete'};
    else if(route==='/api/owner/accounts')data=store.ownerData;
    else if(route==='/api/voice/end')data={ok:true};
-   else if(route==='/api/owner/role')data={ok:true};
+   else if(route==='/api/owner/role'||route==='/api/owner/student-access')data={ok:true};
    else if(route==='/api/owner/voice-access')data={ok:true};
    else if(route==='/api/voice-usage')data=store.usage||{learn:{limit:12,used:2,remaining:10,resetsAt:'2026-10-17T00:00:00.000Z'},mock:{limit:6,used:1,remaining:5,resetsAt:'2026-10-17T00:00:00.000Z'},reports:{limit:6,used:1,remaining:5,attemptsRemaining:11,resetsAt:'2026-10-17T00:00:00.000Z'}};
    else if(route==='/api/profile-options')data=JSON.parse(JSON.stringify(require('../profile-options')));
@@ -56,9 +56,10 @@ test('owner dashboard escapes account details and clears password after role cha
  assert.ok(f.run("navItems().some(x=>x[1]==='owner')"));
  assert.match(f.elements.get('ownerAccounts').innerHTML,/Owner \(protected\)/);
  assert.doesNotMatch(f.elements.get('ownerAccounts').innerHTML,/<img|<script>/);
- f.ctx.testButton={dataset:{ownerUser:'u2'},closest:()=>({querySelector:()=>({value:'coach'}),cells:[{}, {textContent:'student@example.com'}]})};
- await f.run('saveAccountRole(testButton)');assert.equal(f.store.requests.some(r=>r.url==='/api/owner/role'),false);
- f.elements.get('ownerPassword').value='current-password';await f.run('saveAccountRole(testButton)');
+ f.run("openOwnerEdit('role','u2')");
+ f.elements.set('ownerNewRole',{value:'coach'});
+ await f.run('submitOwnerEdit()');assert.equal(f.store.requests.some(r=>r.url==='/api/owner/role'),false);
+ f.elements.get('ownerPassword').value='current-password';await f.run('submitOwnerEdit()');
  assert.equal(JSON.parse(f.store.requests.find(r=>r.url==='/api/owner/role').body).userId,'u2');
  assert.equal(f.elements.get('ownerPassword').value,'');
 });
@@ -332,4 +333,23 @@ test('all-seven report leads with earned score and shows assessed-only quality i
  assert.match(markup,/Not assessed — no points earned yet/);
  assert.doesNotMatch(markup,/High Concern|not counted against you|Partial practice score/);
  assert.match(f.elements.get('dashCards').innerHTML,/14\/100 \(incomplete\)/);
+});
+
+test('owner directory paginates and filters accounts, assignments and activity independently',async()=>{
+ const f=fixture();f.store.user={id:'owner',name:'Owner',role:'owner'};
+ f.store.ownerData={counts:{accounts:26,students:25,reports:2},users:[f.store.user,...Array.from({length:25},(_,i)=>({id:'u'+i,name:'Student '+i,email:'person'+i+'@example.invalid',role:'athlete'}))],students:[{id:'s1',name:'Assigned',staffIds:['coach']},{id:'s2',name:'Unassigned',staffIds:[]}],audit:[]};
+ await f.run('boot()');assert.match(f.elements.get('ownerRange').textContent,/1–10 of 26/);
+ f.run('ownerPage=3;renderOwnerDirectory()');assert.match(f.elements.get('ownerRange').textContent,/21–26/);
+ f.elements.get('ownerSearch').value='person24@';f.run('renderOwnerDirectory()');assert.match(f.elements.get('ownerRange').textContent,/1–1 of 1/);
+ f.run("setOwnerTab('assignments')");f.elements.get('ownerFilter').value='unassigned';f.run('renderOwnerDirectory()');assert.match(f.elements.get('ownerAssignments').innerHTML,/Unassigned/);assert.doesNotMatch(f.elements.get('ownerAssignments').innerHTML,/>Assigned</);
+ f.run("setOwnerTab('activity')");assert.match(f.elements.get('ownerAudit').innerHTML,/No results/);assert.equal(f.elements.get('ownerNext').disabled,true);
+ f.run("openOwnerEdit('role','owner')");assert.equal(f.elements.get('ownerEdit').open,undefined);
+});
+test('owner assignment dialog submits checked staff and clears the confirmation password',async()=>{
+ const f=fixture();f.store.user={id:'owner',name:'Owner',role:'owner'};
+ f.store.ownerData={counts:{accounts:2,students:1,reports:0},users:[f.store.user,{id:'coach',name:'Coach',email:'coach@example.invalid',role:'coach'}],students:[{id:'s1',name:'Student',staffIds:[]}],audit:[]};
+ await f.run('boot()');f.run("openOwnerEdit('assignment','s1')");
+ f.elements.get('ownerEditFields').querySelectorAll=()=>[{value:'coach'}];f.elements.get('ownerPassword').value='current-password';
+ await f.run('submitOwnerEdit()');
+ const request=f.store.requests.find(r=>r.url==='/api/owner/student-access');assert.deepEqual(JSON.parse(request.body),{studentId:'s1',staffIds:['coach'],currentPassword:'current-password'});assert.equal(f.elements.get('ownerPassword').value,'');
 });

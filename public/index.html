@@ -51,6 +51,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
 <link rel="stylesheet" href="/atlas.css">
 <meta name="theme-color" content="#0750cf">
 <link rel="stylesheet" href="/profile.css">
+<link rel="stylesheet" href="/owner.css">
 </head>
 <body>
 <div id="welcome" class="welcome">
@@ -221,21 +222,21 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
     </section>
     <section id="manager" class="screen"><h1>Student Manager View</h1><div class="card" style="overflow:auto"><div id="managerTable"></div></div></section>
     <section id="owner" class="screen">
-      <h1>Owner dashboard</h1>
-      <p class="muted">Manage account permissions and oversee all students, learning and readiness reports.</p>
-      <div id="ownerStats" class="grid g3"></div>
-      <div class="card" style="margin-top:16px">
-        <h2>Account permissions</h2>
-        <p>Staff can access only their assigned students’ profiles, learning and reports. The owner can access all students. Coach and Supervisor can also add human reviews. Only Owner can change account roles. Grant staff access only to trusted team members.</p>
-        <p class="small muted">Role changes require your current password and sign the affected user out. Owner access cannot be assigned or removed here.</p>
-        <div class="field"><label for="ownerPassword">Your current password (required for permission changes)</label><input id="ownerPassword" type="password" autocomplete="current-password"></div>
-        <button type="button" class="btn secondary" onclick="loadOwner()">Refresh accounts</button>
+      <div class="owner-heading"><div><span class="eyebrow">WORKSPACE ADMINISTRATION</span><h1>Owner dashboard</h1><p class="muted">Your people, their progress, and who can help them.</p></div><button type="button" class="btn secondary" onclick="loadOwner()">Refresh data</button></div>
+      <div id="ownerStats" class="owner-stats"></div>
+      <div class="owner-shortcuts"><button class="btn secondary" onclick="show('manager')">View student progress ↗</button><button class="btn secondary" onclick="show('reports')">Readiness reports ↗</button><span>Unlimited practice · Session time limits apply</span></div>
+      <div class="owner-workspace">
+        <nav class="owner-tabs" aria-label="Owner dashboard sections"><button type="button" data-owner-tab="accounts" aria-pressed="true" onclick="setOwnerTab('accounts')">Accounts</button><button type="button" data-owner-tab="assignments" aria-pressed="false" onclick="setOwnerTab('assignments')">Staff assignments</button><button type="button" data-owner-tab="activity" aria-pressed="false" onclick="setOwnerTab('activity')">Activity log</button></nav>
+        <div class="owner-panel-heading"><div><h2 id="ownerPanelTitle">Account directory</h2><p id="ownerPanelHelp" class="muted">Find accounts and manage their roles.</p></div><span class="owner-badge">Owner access</span></div>
+        <div class="owner-toolbar"><div class="field"><label for="ownerSearch">Search</label><input id="ownerSearch" type="search" placeholder="Search name or email…" oninput="ownerPage=1;renderOwnerDirectory()"></div><div class="field"><label for="ownerFilter">Filter</label><select id="ownerFilter" onchange="ownerPage=1;renderOwnerDirectory()"><option value="">All roles</option><option value="athlete">Students</option><option value="staff">Staff</option><option value="owner">Owner</option></select></div></div>
         <p id="ownerStatus" role="status" aria-live="polite"></p>
-        <div style="overflow:auto" id="ownerAccounts"></div>
-        <h2>Student assignments</h2><p>Select the staff who may access each student. No selection means owner-only staff access.</p><div id="ownerAssignments"></div>
+        <div id="ownerAccounts" class="owner-table-wrap"></div><div id="ownerAssignments" class="owner-table-wrap hidden"></div><div id="ownerAudit" class="owner-table-wrap hidden"></div>
+        <div class="owner-pagination"><span id="ownerRange" role="status" aria-live="polite"></span><div><button id="ownerPrev" class="btn secondary" onclick="ownerPage--;renderOwnerDirectory()">Previous</button><button id="ownerNext" class="btn secondary" onclick="ownerPage++;renderOwnerDirectory()">Next</button></div></div>
       </div>
-      <div class="card" style="margin-top:16px"><h2>Recent permission changes</h2><div style="overflow:auto" id="ownerAudit"></div></div>
-      <div class="notice" style="margin-top:16px">Use Student Manager View, My Learning and Readiness Reports to work with students. Daily attempts are unlimited for everyone. Session time limits still apply. Hosting, API keys, billing and deployment settings remain in Render/GitHub and are not exposed here.</div>
+      <p class="owner-footnote">Staff see only their assigned students. Only you can manage roles and assignments.</p>
+      <dialog id="ownerEdit" class="owner-dialog" aria-labelledby="ownerEditTitle" onclose="$('ownerPassword').value=''" oncancel="if(ownerSaving)event.preventDefault()">
+        <form onsubmit="event.preventDefault();submitOwnerEdit()"><span class="eyebrow">ACCESS MANAGEMENT</span><h2 id="ownerEditTitle">Manage access</h2><p id="ownerEditPerson"></p><div id="ownerEditFields"></div><p id="ownerEditHelp" class="small muted"></p><div class="field"><label for="ownerPassword">Confirm with your current password</label><input id="ownerPassword" type="password" autocomplete="current-password" required></div><p id="ownerEditStatus" role="status" aria-live="polite"></p><div class="owner-dialog-actions"><button id="ownerEditCancel" type="button" class="btn secondary" onclick="$('ownerEdit').close()">Cancel</button><button id="ownerEditSave" type="submit" class="btn primary">Save changes</button></div></form>
+      </dialog>
     </section>
     <section id="account" class="screen"><h1>Account security</h1>
       <form class="card" style="max-width:560px" onsubmit="event.preventDefault();changePassword()">
@@ -357,49 +358,110 @@ function levelOptions(current){
  if(current && !values.includes(current))values.push(current);
  return values.map(value=>`<option value="${escapeHtml(value)}"${value===(current||"")?' selected':''}>${escapeHtml(value||"Select academic level")}</option>`).join("");
 }
+let ownerData=null, ownerTab='accounts', ownerPage=1, ownerEditTarget=null, ownerSaving=false;
+const ownerRoles=[['athlete','Student'],['coach','Coach'],['supervisor','Supervisor'],['manager','Manager']];
+const ownerRoleLabel=role=>role==='owner'?'Owner':ownerRoles.find(r=>r[0]===role)?.[1]||role||'Unknown';
 function clearOwnerView(){
- $('ownerPassword').value='';
- for(const id of ['ownerStats','ownerAccounts','ownerAudit','ownerAssignments'])$(id).replaceChildren();
- $('ownerStatus').textContent='';
+ ownerData=null;ownerEditTarget=null;ownerPage=1;
+ $('ownerPassword').value='';$('ownerSearch').value='';
+ if($('ownerEdit').open)$('ownerEdit').close();
+ for(const id of ['ownerStats','ownerAccounts','ownerAudit','ownerAssignments','ownerEditFields'])$(id).replaceChildren();
+ $('ownerStatus').textContent='';$('ownerRange').textContent='';
 }
 async function loadOwner(){
  if(me?.role!=='owner')return;
- $('ownerStatus').textContent='Loading accounts…';
+ $('ownerStatus').textContent='Loading workspace…';
  try{
   const data=await api('/api/owner/accounts');
-  $('ownerStats').innerHTML=Object.entries(data.counts).map(([label,value])=>`<div class="card"><div class="muted">${escapeHtml(label)}</div><div class="kpi">${escapeHtml(value)}</div></div>`).join('');
-  const roles=[['athlete','Student'],['coach','Coach'],['supervisor','Supervisor'],['manager','Manager']];
-  $('ownerAccounts').innerHTML='<table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Action</th><th>Daily voice access</th></tr></thead><tbody>'+data.users.map(u=>`<tr><td>${escapeHtml(u.name)}</td><td>${escapeHtml(u.email)}</td><td>${u.role==='owner'?'Owner (protected)':`<select aria-label="Role for ${escapeHtml(u.email)}">${roles.map(([value,label])=>`<option value="${value}"${u.role===value?' selected':''}>${label}</option>`).join('')}</select>`}</td><td>${u.role==='owner'?'—':`<button type="button" class="btn secondary" data-owner-user="${escapeHtml(u.id)}">Save role</button>`}</td><td>Unlimited for everyone</td></tr>`).join('')+'</tbody></table>';
-  $('ownerAccounts').querySelectorAll('[data-owner-user]').forEach(button=>button.addEventListener('click',()=>saveAccountRole(button)));
+  if(me?.role!=='owner')return;
+  ownerData=data;
   const staff=data.users.filter(u=>['coach','supervisor','manager'].includes(u.role));
-  $('ownerAssignments').innerHTML=(data.students||[]).map(s=>`<div class="card"><h3>${escapeHtml(s.name)}</h3><select multiple aria-label="Staff for ${escapeHtml(s.name)}" data-student-staff="${escapeHtml(s.id)}">${staff.map(u=>`<option value="${escapeHtml(u.id)}"${s.staffIds.includes(u.id)?' selected':''}>${escapeHtml(u.name)} — ${escapeHtml(u.email)}</option>`).join('')}</select><p class="small">Use Ctrl / Command to select multiple staff on a computer.</p><button class="btn secondary" data-save-assignment="${escapeHtml(s.id)}">Save assignment</button></div>`).join('');
-  $('ownerAssignments').querySelectorAll('[data-save-assignment]').forEach(button=>button.addEventListener('click',()=>saveStudentAssignment(button)));
-  const label=id=>data.users.find(u=>u.id===id)?.email||id;
-  $('ownerAudit').innerHTML=data.audit.length?'<table><thead><tr><th>When</th><th>Account</th><th>Change</th><th>By</th></tr></thead><tbody>'+data.audit.map(entry=>`<tr><td>${escapeHtml(entry.at)}</td><td>${escapeHtml(label(entry.targetId))}</td><td>${escapeHtml(entry.previousRole)} → ${escapeHtml(entry.role)}</td><td>${escapeHtml(label(entry.actorId))}</td></tr>`).join('')+'</tbody></table>':'<p>No permission changes recorded.</p>';
-  $('ownerStatus').textContent='Accounts loaded.';
+  const unassigned=(data.students||[]).filter(s=>!s.staffIds?.length).length;
+  const stats=[['Total accounts',data.counts.accounts,'Registered in your workspace'],['Student profiles',data.counts.students,unassigned+' without assigned staff'],['Staff members',staff.length,'Coaches, supervisors & managers'],['Readiness reports',data.counts.reports,'Saved practice feedback']];
+  $('ownerStats').innerHTML=stats.map(([label,value,help],i)=>`<div class="owner-stat"><span class="owner-stat-index">0${i+1}</span><div class="muted">${escapeHtml(label)}</div><div class="kpi">${escapeHtml(value)}</div><p>${escapeHtml(help)}</p></div>`).join('');
+  renderOwnerDirectory();$('ownerStatus').textContent='';
  }catch(error){$('ownerStatus').textContent=error.message;}
 }
-async function saveAccountRole(button){
- const row=button.closest('tr'), role=row.querySelector('select').value, currentPassword=$('ownerPassword').value;
- if(!currentPassword){$('ownerStatus').textContent='Enter your current password first.';return;}
- if(!confirm('Change '+row.cells[1].textContent+' to '+(role==='athlete'?'Student':role)+'? Staff will need student assignments.'))return;
- button.disabled=true;$('ownerStatus').textContent='Saving…';
- try{
-  await api('/api/owner/role',{method:'POST',body:JSON.stringify({userId:button.dataset.ownerUser,role,currentPassword})});
-  await loadOwner();$('ownerStatus').textContent='Role saved. The affected user must sign in again.';
- }catch(error){$('ownerStatus').textContent=error.message;}
- finally{$('ownerPassword').value='';button.disabled=false;}
+function setOwnerTab(tab){
+ if(!['accounts','assignments','activity'].includes(tab))return;
+ ownerTab=tab;ownerPage=1;$('ownerSearch').value='';
+ $('ownerFilter').innerHTML=tab==='accounts'?'<option value="">All roles</option><option value="athlete">Students</option><option value="staff">Staff</option><option value="owner">Owner</option>':tab==='assignments'?'<option value="">All students</option><option value="unassigned">No assigned staff</option><option value="assigned">Has assigned staff</option>':'<option value="">All changes</option><option value="role-change">Role changes</option><option value="student-assignment">Assignments</option>';
+ $('ownerFilter').value='';
+ const copy={accounts:['Account directory','Find accounts and manage their roles.'],assignments:['Staff assignments','Choose the staff who can support each student.'],activity:['Activity log','The latest 100 recorded permission changes.']}[tab];
+ $('ownerPanelTitle').textContent=copy[0];$('ownerPanelHelp').textContent=copy[1];
+ $('ownerSearch').placeholder=tab==='accounts'?'Search name or email…':'Search student, staff or account…';
+ document.querySelectorAll('[data-owner-tab]').forEach(el=>el.setAttribute('aria-pressed',String(el.dataset.ownerTab===tab)));
+ for(const [key,id] of [['accounts','ownerAccounts'],['assignments','ownerAssignments'],['activity','ownerAudit']])$(id).classList.toggle('hidden',key!==tab);
+ renderOwnerDirectory();
 }
-async function saveStudentAssignment(button){
- const currentPassword=$('ownerPassword').value;
- if(!currentPassword){$('ownerStatus').textContent='Enter your current password first.';return;}
- const staffIds=Array.from(button.closest('.card').querySelector('select').selectedOptions,o=>o.value);
- button.disabled=true;
+function ownerName(id){return ownerData.users.find(u=>u.id===id)?.name||(ownerData.students||[]).find(s=>s.id===id)?.name||id||'Unknown';}
+function ownerStaffNames(ids){return (ids||[]).map(ownerName).join(', ')||'Owner only';}
+function renderOwnerDirectory(){
+ if(!ownerData)return;
+ const q=$('ownerSearch').value.trim().toLowerCase(),filter=$('ownerFilter').value;
+ let rows=ownerTab==='accounts'?ownerData.users:ownerTab==='assignments'?(ownerData.students||[]):ownerData.audit||[];
+ rows=rows.filter(row=>{
+  const search=ownerTab==='activity'?[ownerName(row.targetId),ownerName(row.actorId),row.action]:[row.name,row.email,ownerTab==='assignments'?ownerStaffNames(row.staffIds):''];
+  if(!search.join(' ').toLowerCase().includes(q))return false;
+  if(!filter)return true;
+  if(ownerTab==='accounts')return filter==='staff'?['coach','supervisor','manager'].includes(row.role):row.role===filter;
+  if(ownerTab==='assignments')return filter==='assigned'?!!row.staffIds?.length:!row.staffIds?.length;
+  return row.action===filter;
+ });
+ const total=rows.length,pages=Math.max(1,Math.ceil(total/10));ownerPage=Math.min(Math.max(ownerPage,1),pages);
+ const start=(ownerPage-1)*10,visible=rows.slice(start,start+10);
+ $('ownerRange').textContent=total?`${start+1}–${Math.min(start+10,total)} of ${total} · Page ${ownerPage} of ${pages}`:'0 results';
+ $('ownerPrev').disabled=ownerPage<=1;$('ownerNext').disabled=ownerPage>=pages;
+ const person=row=>`<div class="owner-person"><span class="owner-initial">${escapeHtml((row.name||'?').trim().slice(0,1).toUpperCase())}</span><div><strong>${escapeHtml(row.name)}</strong>${row.email?`<span>${escapeHtml(row.email)}</span>`:''}</div></div>`;
+ let headings,body,target;
+ if(ownerTab==='accounts'){
+  target='ownerAccounts';headings=['Account','Role','Access'];
+  body=visible.map(u=>`<tr><td data-label="Account">${person(u)}</td><td data-label="Role"><span class="owner-badge ${u.role==='athlete'?'student':''}">${escapeHtml(ownerRoleLabel(u.role))}</span></td><td data-label="Access">${u.role==='owner'?'<span class="small muted">Owner (protected)</span>':`<button class="btn secondary" data-edit-role="${escapeHtml(u.id)}">Manage role</button>`}</td></tr>`).join('');
+ }else if(ownerTab==='assignments'){
+  target='ownerAssignments';headings=['Student','Assigned staff','Access'];
+  body=visible.map(s=>`<tr><td data-label="Student">${person(s)}</td><td data-label="Assigned staff">${escapeHtml(ownerStaffNames(s.staffIds))}</td><td data-label="Access"><button class="btn secondary" data-edit-assignment="${escapeHtml(s.id)}">Manage staff</button></td></tr>`).join('');
+ }else{
+  target='ownerAudit';headings=['When','Account / student','Change','Changed by'];
+  body=visible.map(entry=>{
+   const assignment=entry.action==='student-assignment';
+   const describe=value=>assignment?ownerStaffNames(value==='No staff'?[]:String(value||'').split(', ').filter(Boolean)):ownerRoleLabel(value);
+   const date=new Date(entry.at),when=Number.isNaN(date.getTime())?'Unknown date':date.toLocaleString();
+   return `<tr><td data-label="When">${escapeHtml(when)}</td><td data-label="Account / student">${escapeHtml(ownerName(entry.targetId))}</td><td data-label="Change"><strong>${assignment?'Staff assignment':'Role change'}</strong><div class="small">${escapeHtml(describe(entry.previousRole))} → ${escapeHtml(describe(entry.role))}</div></td><td data-label="Changed by">${escapeHtml(ownerName(entry.actorId))}</td></tr>`;
+  }).join('');
+ }
+ $(target).innerHTML=visible.length?`<table><thead><tr>${headings.map(h=>`<th scope="col">${h}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table>`:'<div class="owner-empty"><h3>No results here</h3><p>Try another search or filter. New records will appear here as your workspace grows.</p></div>';
+ $(target).querySelectorAll('[data-edit-role]').forEach(button=>button.addEventListener('click',()=>openOwnerEdit('role',button.dataset.editRole)));
+ $(target).querySelectorAll('[data-edit-assignment]').forEach(button=>button.addEventListener('click',()=>openOwnerEdit('assignment',button.dataset.editAssignment)));
+}
+function openOwnerEdit(kind,id){
+ if(me?.role!=='owner'||!ownerData)return;
+ const row=(kind==='role'?ownerData.users:ownerData.students||[]).find(u=>u.id===id);
+ if(!row||(kind==='role'&&row.role==='owner'))return;
+ ownerEditTarget={kind,id};$('ownerPassword').value='';$('ownerEditStatus').textContent='';
+ $('ownerEditTitle').textContent=kind==='role'?'Manage account role':'Assign staff';
+ $('ownerEditPerson').textContent=row.name+(row.email?' · '+row.email:'');
+ if(kind==='role'){
+  $('ownerEditFields').innerHTML=`<div class="field"><label for="ownerNewRole">Account role</label><select id="ownerNewRole">${ownerRoles.map(([value,label])=>`<option value="${value}"${row.role===value?' selected':''}>${label}</option>`).join('')}</select></div>`;
+  $('ownerEditHelp').textContent='Staff see assigned students only. Coaches and supervisors can add human reviews. Changing a role signs this account out and removes its existing staff assignments.';
+ }else{
+  const staff=ownerData.users.filter(u=>['coach','supervisor','manager'].includes(u.role));
+  $('ownerEditFields').innerHTML=staff.length?`<fieldset class="owner-staff-list"><legend>Staff with access</legend>${staff.map(u=>`<label><input type="checkbox" value="${escapeHtml(u.id)}"${(row.staffIds||[]).includes(u.id)?' checked':''}><span><strong>${escapeHtml(u.name)}</strong><small>${escapeHtml(u.email)} · ${escapeHtml(ownerRoleLabel(u.role))}</small></span></label>`).join('')}</fieldset>`:'<p>No staff accounts yet. Assign a staff role in Accounts first.</p>';
+  $('ownerEditHelp').textContent='Selected staff can access this student’s profile, learning and reports. Leave everyone unchecked for owner-only staff access.';
+ }
+ $('ownerEdit').showModal();
+}
+async function submitOwnerEdit(){
+ if(ownerSaving||!ownerEditTarget||me?.role!=='owner')return;
+ const currentPassword=$('ownerPassword').value;if(!currentPassword)return;
+ const {kind,id}=ownerEditTarget;
+ const body=kind==='role'?{userId:id,role:$('ownerNewRole').value,currentPassword}:{studentId:id,staffIds:Array.from($('ownerEditFields').querySelectorAll('input:checked'),el=>el.value),currentPassword};
+ ownerSaving=true;$('ownerEditSave').disabled=true;$('ownerEditCancel').disabled=true;$('ownerEditStatus').textContent='Saving changes…';
  try{
-  await api('/api/owner/student-access',{method:'POST',body:JSON.stringify({studentId:button.dataset.saveAssignment,staffIds,currentPassword})});
-  await loadOwner();$('ownerStatus').textContent='Student access updated.';
- }catch(error){$('ownerStatus').textContent=error.message;}
- finally{$('ownerPassword').value='';button.disabled=false;}
+  await api(kind==='role'?'/api/owner/role':'/api/owner/student-access',{method:'POST',body:JSON.stringify(body)});
+  $('ownerEdit').close();await loadOwner();
+  if(!$('ownerStatus').textContent)$('ownerStatus').textContent=kind==='role'?'Role saved. The account must sign in again.':'Staff assignments saved.';
+ }catch(error){$('ownerEditStatus').textContent=error.message;}
+ finally{$('ownerPassword').value='';ownerSaving=false;$('ownerEditSave').disabled=false;$('ownerEditCancel').disabled=false;}
 }
 let profileChoices={countries:[],sports:[],fundingSources:[]};
 function selectOptions(values,current,placeholder='Choose an option'){
