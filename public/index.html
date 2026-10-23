@@ -52,6 +52,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
 <meta name="theme-color" content="#0750cf">
 <link rel="stylesheet" href="/profile.css">
 <link rel="stylesheet" href="/owner.css">
+<link rel="stylesheet" href="/student.css">
 </head>
 <body>
 <div id="welcome" class="welcome">
@@ -141,7 +142,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
       <div class="card lesson-block">
         <h2>2. Practise with your tutor</h2>
         <p>Your tutor explains, gives an example, and helps you practise in your own words. Ask “explain more” if you need help, or say “next” to move on.</p>
-        <div id="learn_voiceStatus" role="status" aria-live="polite">Not connected</div>
+        <div class="session-toolbar"><div id="learn_voiceStatus" role="status" aria-live="polite">Ready to start</div><span id="learn_voiceClock" class="voice-clock" aria-label="Voice lesson time remaining">08:00</span></div>
         <div id="learn_voiceLimitNotice" class="small muted" role="status" aria-live="polite"></div>
         <p id="lessonVoiceUsage" class="small muted" role="status"></p>
         <p class="small muted">Voice lessons last up to 8 minutes. Daily practice attempts are unlimited. Reading and notes remain available.</p>
@@ -173,32 +174,32 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
       </div>
     </section>
     <section id="dashboard" class="screen">
-      <h1 id="dashboardTitle">Your progress</h1><p class="muted">See how your practice is going and what to work on next.</p>
+      <div id="studentHome" class="hidden"></div><div class="page-heading"><span class="eyebrow">PREPARATION AT A GLANCE</span><h1 id="dashboardTitle">Your progress</h1><p class="muted">See how your practice is going and what to work on next.</p></div>
       <div id="dashCards" class="grid g4"></div>
-      <div id="athleteTable" style="margin-top:20px"></div>
+      <div id="athleteTable" style="margin-top:20px"></div><div id="studentHistory"></div>
       <p class="muted small">Practice scores describe your preparation, not your chances of visa approval.</p>
     </section>
     <section id="interview" class="screen">
       <div class="page-heading"><span class="eyebrow">YOUR PRACTICE ROOM</span><h1>Live AI Mock Interview</h1><p class="muted">A focused conversation. A clearer next step.</p></div>
       <div class="notice">Answer one question at a time. Your interviewer will ask follow-up questions. You will get feedback after you end the interview.</div>
-      <div class="field"><label for="athleteSelect">Student</label><select id="athleteSelect"></select></div>
+      <div class="field" id="mockStudentPicker"><label for="athleteSelect">Student</label><select id="athleteSelect"></select></div>
       <div class="field"><label for="interviewDifficulty">Interview mode</label><select id="interviewDifficulty"><option value="standard">Standard</option><option value="challenging">Challenging</option><option value="intensive">Intensive</option></select><p class="small muted">Standard: direct questions. Challenging: more follow-ups. Intensive: deeper questioning. All modes use simple language and the same scoring standard.</p></div>
       <div class="voiceBox">
         <div class="card">
-          <div id="voiceStatus" class="status">Not connected</div>
+          <div class="session-toolbar"><div><span class="eyebrow">MICROPHONE SESSION</span><div id="voiceStatus" class="status" role="status" aria-live="polite">Ready to start</div></div><span id="voiceClock" class="voice-clock" aria-label="Voice session time remaining">12:00</span></div>
           <p class="small muted">Up to 12 minutes per interview.</p>
           <p id="mockVoiceUsage" class="small muted" role="status"></p>
           <div id="voiceLimitNotice" class="small muted" role="status" aria-live="polite"></div>
+          <div class="interview-controls">
+            <button class="btn primary" id="startBtn" onclick="startVoice()">Start voice interview <span aria-hidden="true">→</span></button>
+            <button class="btn danger" id="stopBtn" onclick="stopVoice()" disabled>End Interview</button>
+          </div>
           <h2 style="margin-bottom:4px">AI mock interviewer</h2>
           <div id="interviewerStage" class="interviewer-stage" data-state="idle">
             <img src="/assets/ai-interviewer.webp" alt="Fictional AI interviewer portrait" width="640" height="640">
             <div class="interviewer-caption"><span id="interviewerActivity" role="status">Ready when you are</span><span class="interviewer-wave" aria-hidden="true"><i></i><i></i><i></i><i></i></span></div>
           </div>
           <p class="small muted">AI practice with a still portrait, not a real consular officer. Microphone only; no camera or video recording.</p>
-          <div style="display:flex;gap:10px;flex-wrap:wrap;margin:16px 0">
-            <button class="btn primary" id="startBtn" onclick="startVoice()">Start voice interview <span aria-hidden="true">→</span></button>
-            <button class="btn danger" id="stopBtn" onclick="stopVoice()" disabled>End Interview</button>
-          </div>
           <p class="muted">Answer naturally after each question. Pause when you finish; the interviewer will respond automatically.</p><div id="transcript" class="transcript"></div>
         </div>
         <div class="card">
@@ -213,12 +214,12 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
     </section>
 
     <section id="profile" class="screen">
-      <h1>My Student Profile</h1>
+      <div class="page-heading"><span class="eyebrow">YOUR PREPARATION STARTS HERE</span><h1>My Student Profile</h1><p class="muted">Save as you go. Your details personalise your lessons and interviews.</p></div>
       <div class="notice">Keep this information accurate because the mock interviewer uses your profile as context. Do not enter passport numbers, DS-160 details, or upload sensitive financial documents in this prototype.</div>
-      <div class="card"><div id="profileForm" class="formgrid"></div><button class="btn primary" onclick="saveProfile()">Save Profile Changes</button><span id="profileStatus" class="small muted" style="margin-left:10px"></span></div>
+      <div class="card"><div id="profileForm" class="formgrid"></div><div class="profile-save-bar"><button class="btn primary" onclick="saveProfile()">Save Profile Changes</button><button class="btn secondary" onclick="show('dashboard')">Back to home</button><span id="profileStatus" class="small muted" role="status"></span></div></div>
     </section>
     <section id="reports" class="screen">
-      <h1>Readiness Reports</h1><div id="reportsList"></div>
+      <div class="page-heading"><span class="eyebrow">LEARN FROM EVERY ATTEMPT</span><h1>Readiness Reports</h1><p class="muted">Review your coverage, find your next steps, and practise again.</p></div><div id="reportsList"></div>
     </section>
     <section id="manager" class="screen"><h1>Student Manager View</h1><div class="card" style="overflow:auto"><div id="managerTable"></div></div></section>
     <section id="owner" class="screen">
@@ -270,7 +271,7 @@ function returnToSignIn(message=sessionMessage){
  $('verificationStatus').textContent='';renderVerification();
  clearOwnerView();
  lessonFields.forEach(field=>$('learn_'+field).value='');$('learn_reflected').checked=false;
- for(const id of ['profileForm','reportsList','athleteTable','managerTable','dashCards','nav','transcript','learn_transcript','athleteSelect','learn_athleteSelect'])$(id).replaceChildren();
+ for(const id of ['studentHome','studentHistory','profileForm','reportsList','athleteTable','managerTable','dashCards','nav','transcript','learn_transcript','athleteSelect','learn_athleteSelect'])$(id).replaceChildren();
  $('who').textContent='';$('role').textContent='';
  $('app').classList.add('hidden');backToLogin();$('loginErr').textContent=message;
 }
@@ -323,6 +324,7 @@ async function changePassword(){
  finally{button.disabled=false;}
 }
 function navItems(){
+ if(me.role==='athlete')return [["Home","dashboard"],["Learning","learning"],["Mock Interview","interview"],["Reports","reports"],["My Profile","profile"],["Account security","account"]];
  const base=[["My Learning","learning"],["Dashboard","dashboard"],["Live Mock Interview","interview"],["Readiness Reports","reports"]];
  if(me.role==="athlete" || (me.role==='owner' && athletes.some(a=>a.userId===me.id))) base.splice(1,0,["My Profile","profile"]);
  if(["owner","coach","manager","supervisor"].includes(me.role)) base.push(["Student Manager View","manager"]);
@@ -345,12 +347,12 @@ async function boot(){
  me=await api("/api/me"); athletes=await api("/api/athletes"); reports=await api("/api/reports");
  ["welcome","login","registration"].forEach(id=>$(id).classList.add("hidden"));$("password").value="";$("app").classList.remove("hidden");$("who").textContent=me.name;$("role").textContent=me.role==="athlete"?"Student":me.role==='owner'?'Owner':me.role;
  $("accountAvatar").textContent=String(me.name||'S').trim().split(/\s+/).slice(0,2).map(part=>part[0]||'').join('').toUpperCase();
- $("nav").innerHTML=navItems().map((x,i)=>`<button type="button" data-screen="${x[1]}" class="nav ${i===0?"on":""}" onclick="show('${x[1]}',this)">${navIcon(x[1])}<span>${x[0]}</span></button>`).join("");
+ $("nav").innerHTML=navItems().map((x,i)=>`<button type="button" data-screen="${x[1]}" class="nav ${i===0?"on":""} ${me.role==='athlete'&&x[1]==='profile'?'nav-secondary-start':''}" onclick="show('${x[1]}',this)">${navIcon(x[1])}<span>${x[0]}</span></button>`).join("");
  $("athleteSelect").replaceChildren(...athletes.map(a=>new Option(a.name+" — "+(a.university||""),a.id)));
  $("learn_athleteSelect").replaceChildren(...athletes.map(a=>new Option(a.name+" — "+(a.university||""),a.id)));
  renderAll(); if(me.role==="athlete" || (me.role==='owner' && athletes.some(a=>a.userId===me.id))) await renderProfile();
  if(me.role==='owner')await loadOwner();else clearOwnerView();
- renderVerification();show(me.role==='owner'?'owner':me.role==="athlete"?(athletes.find(a=>a.userId===me.id)?.profileStatus==='Incomplete'?'profile':'learning'):"dashboard");
+ renderVerification();show(me.role==='owner'?'owner':"dashboard");
  await loadLesson();await refreshVoiceUsage();
 }
 function levelOptions(current){
@@ -539,6 +541,41 @@ function preparationStatus(report){
  if(!Number.isFinite(report.overall))return 'More answers needed';
  return report.overall>=85?'Strong preparation':report.overall>=70?'Building confidence':report.overall>=55?'Keep practising':'Focus on the basics';
 }
+function reportCoverageSummary(report){
+ if(!Number.isFinite(report.coverage?.assessed)||!Number.isFinite(report.coverage?.required))return '';
+ return `<div class="coverage-summary"><strong>${escapeHtml(report.coverage.assessed)} / ${escapeHtml(report.coverage.required)} areas assessed</strong><span>${report.scoreType==='partial'?'Partial interview · keep practising the remaining areas':'Interview coverage'}</span></div>`;
+}
+function ownStudentReports(){
+ const own=athletes.find(a=>a.userId===me?.id);
+ return own?reports.filter(r=>r.athleteId===own.id).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt)):[];
+}
+function renderStudentHome(){
+ const student=me?.role==='athlete';$('studentHome').classList.toggle('hidden',!student);
+ $('mockStudentPicker').classList.toggle('hidden',student&&athletes.length===1);
+ if(!student){$('studentHome').replaceChildren();$('studentHistory').replaceChildren();return;}
+ const own=athletes.find(a=>a.userId===me.id),history=ownStudentReports(),latest=history[0];
+ const missing=window.VisaAtlasProfile&&own?window.VisaAtlasProfile.missing(own):[];
+ const complete=!!own&&own.profileStatus!=='Incomplete'&&!missing.length;
+ const loaded=courseLoadState==='ready',done=curriculum.filter(m=>courseSaved[m.id]?.completed).length;
+ const next=!complete?'profile':!loaded?'learning':done<curriculum.length?'learning':latest?'reports':'interview';
+ const titles={profile:'Make your preparation personal',learning:'One lesson closer to feeling prepared',interview:'Put your preparation into practice',reports:'Turn your feedback into your next step'};
+ const descriptions={profile:'Complete your study profile so your interviewer can ask questions relevant to you.',learning:'Build clear answers in your own words. Pick up your saved learning whenever you’re ready.',interview:'Try a voice mock interview, then review what went well and where to improve.',reports:'Review your latest feedback and choose one area to practise next.'};
+ const cta={profile:'Complete my profile',learning:loaded?'Continue preparing':'Open my learning',interview:'Start mock practice',reports:'Review my feedback'};
+ $('studentHome').innerHTML=`<div class="student-hero"><div><span class="eyebrow">YOUR F-1 PREPARATION</span><p class="home-greeting">Welcome back, ${escapeHtml(String(me.name||'Student').trim().split(/\s+/)[0])}</p><h2>${titles[next]}</h2><p>${descriptions[next]}</p><button class="btn primary" data-home-next="${next}">${cta[next]} →</button></div><div class="home-course"><span class="eyebrow">LEARNING PROGRESS</span><strong>${loaded?done+' / '+curriculum.length:'—'}</strong><span>${loaded?'modules completed':courseLoadState==='error'?'Progress unavailable · open Learning to retry':'Loading saved progress…'}</span><progress max="${curriculum.length}" value="${loaded?done:0}" aria-label="Learning modules completed"></progress><small>Learn at your own pace. Revisit any lesson.</small></div></div><nav class="preparation-path" aria-label="Your preparation journey">${[['profile','Complete profile',complete?'Details saved':'Your first step'],['learning','Learn',loaded?done+' of '+curriculum.length+' modules':'Your learning modules'],['interview','Practise',history.length?'Keep building confidence':'Try a mock interview'],['reports','Review feedback',history.length?history.length+' saved reports':'Your next steps']].map(([id,title,note],i)=>`<button class="path-step ${id===next?'current':''}" data-home-next="${id}"${id===next?' aria-current="step"':''}><span>${i+1}</span><div><strong>${title}</strong><small>${escapeHtml(note)}</small></div></button>`).join('')}</nav>`;
+ $('studentHome').querySelectorAll('[data-home-next]').forEach(button=>button.addEventListener('click',()=>studentNext(button.dataset.homeNext)));
+ renderStudentHistory(history);
+}
+function studentNext(next){
+ if(!['profile','learning','interview','reports'].includes(next))return;
+ show(next);
+ if(next==='learning'&&courseLoadState==='ready')continueLearning();
+}
+function renderStudentHistory(history){
+ const safeScore=r=>Number.isFinite(r.overall)?r.overall+'/100':Number.isFinite(r.partialScore)?r.partialScore+'/100':'Not scored';
+ const type=r=>r.scoreType==='partial'||Number.isFinite(r.partialScore)?'Partial':r.scoreType==='complete'||r.coverage?.assessed===7?'Full':'Coverage not recorded';
+ $('studentHistory').innerHTML=`<section class="card practice-history"><div class="history-heading"><div><span class="eyebrow">YOUR PRACTICE HISTORY</span><h2>See how your preparation develops</h2></div><button class="btn secondary" onclick="show('reports')">All reports →</button></div><p class="small muted">Compare full interviews in the same mode and scoring method. Partial scores cover different amounts of your preparation.</p>${history.length?'<div class="history-scroll"><table><thead><tr><th>Attempt</th><th>Mode</th><th>Coverage</th><th>Score</th><th>Scoring basis</th></tr></thead><tbody>'+history.slice(0,6).map(r=>`<tr><td>Mock #${escapeHtml(r.mockNumber)}<small>${escapeHtml(new Date(r.createdAt).toLocaleDateString())}</small></td><td>${escapeHtml(({standard:'Standard',challenging:'Challenging',intensive:'Intensive'})[r.difficulty]||'Not recorded')}</td><td><span class="pill ${type(r)==='Full'?'green':'amber'}">${type(r)}</span>${Number.isFinite(r.coverage?.assessed)?`<small>${escapeHtml(r.coverage.assessed)} / ${escapeHtml(r.coverage.required||7)} areas</small>`:''}</td><td><strong>${safeScore(r)}</strong></td><td>${r.scoringMethod==='all-seven-v1'?'All seven areas':'Assessed areas only'}</td></tr>`).join('')+'</tbody></table></div>':'<div class="history-empty"><h3>Your first attempt is a starting point</h3><p>Saved interview reports will appear here. Begin with a lesson or try a mock when you feel ready.</p></div>'}</section>`;
+}
+
 function renderAll(){
  const latest=a=>reports.filter(r=>r.athleteId===a.id).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt))[0];
  const student=me?.role==='athlete', own=athletes.find(a=>a.userId===me.id), report=own?latest(own):null;
@@ -548,17 +585,17 @@ function renderAll(){
  const cards=student?[
   ['Latest practice score',score(report)],['Mock interviews',own?.mocks||0],['Feedback reports',reports.filter(r=>r.athleteId===own?.id).length],['Preparation status',preparationStatus(report)]
  ]:[['Students',athletes.length],['Strong preparation',scored.filter(r=>r.overall>=85&&r.scoreType!=='partial').length],['Latest score average',scored.length?Math.round(scored.reduce((s,r)=>s+r.overall,0)/scored.length)+'/100':'—'],['Feedback reports',reports.length]];
- $('dashCards').innerHTML=cards.map(([label,value])=>`<div class="card"><div class="muted small">${escapeHtml(label)}</div><div class="${label==='Preparation status'?'progress-status':'kpi'}">${escapeHtml(value)}</div></div>`).join('');
+ $('dashCards').innerHTML=cards.map(([label,value])=>`<div class="card"><div class="muted small">${escapeHtml(label)}</div><div class="${label==='Preparation status'?'progress-status':'kpi'}">${label==='Latest practice score'?escapeHtml(value).replace(/ (\(.*\))$/,'<small class="score-qualifier">$1</small>'):escapeHtml(value)}</div></div>`).join('');
  const rows=athletes.map(a=>{const r=latest(a);return `<tr><td><b>${escapeHtml(a.name)}</b></td><td>${escapeHtml(a.mocks||0)}</td><td>${score(r)}</td><td>${escapeHtml(preparationStatus(r))}</td><td>${escapeHtml(r?.biggestWeakness||'Complete a mock interview to get personalised feedback.')}</td></tr>`}).join('');
  const table=`<div style="overflow:auto"><table><thead><tr><th>Student</th><th>Mock interviews</th><th>Latest score</th><th>Preparation status</th><th>Practice focus</th></tr></thead><tbody>${rows}</tbody></table></div>`;
  $('managerTable').innerHTML=table;
  $('athleteTable').innerHTML=student?`<div class="progress-overview"><section class="card"><div class="muted small">YOUR NEXT STEP</div><h2>${report?'Turn feedback into progress':'Start with a lesson'}</h2><p>${escapeHtml(report?.nextSteps?.[0]||report?.nextStep||'Explore your learning modules, then try a mock interview when you feel ready.')}</p><button class="btn" onclick="show('learning')">Continue learning</button> <button class="btn secondary" onclick="show('interview')">Start a mock interview</button></section><section class="card"><h3>Latest feedback</h3><p>${escapeHtml(report?.feedback||'Your feedback will appear here after your first assessed mock interview.')}</p>${report?'<button class="btn secondary" onclick="show(\'reports\')">View my feedback</button>':''}</section></div>`:table;
- renderReports();
+ renderReports();renderStudentHome();
 }
 function reportSections(r){
  const list=(items,ordered=false)=>`<${ordered?'ol':'ul'}>${items.map(item=>`<li>${escapeHtml(item)}</li>`).join('')}</${ordered?'ol':'ul'}>`;
  if([2,3].includes(r.formatVersion)&&Array.isArray(r.strengths)&&Array.isArray(r.clarifications)&&Array.isArray(r.nextSteps)){
-   return `<p class="report-summary">${escapeHtml(r.feedback)}</p><p class="report-priority"><strong>Focus first:</strong> ${escapeHtml(r.biggestWeakness)}</p><div class="report-grid"><section class="report-section"><h4>What went well</h4>${r.strengths.length?list(r.strengths):'<p>There is not enough evidence in this interview to identify a clear strength yet.</p>'}</section><section class="report-section"><h4>Points to clarify</h4>${r.clarifications.length?list(r.clarifications):"<p>No specific improvement identified in the answers assessed.</p>"}</section><section class="report-section report-actions"><h4>Your next steps</h4>${list(r.nextSteps,true)}</section></div>`;
+   return `<p class="report-summary">${escapeHtml(r.feedback)}</p><p class="report-priority"><strong>Focus first:</strong> ${escapeHtml(r.biggestWeakness)}</p><div class="report-grid"><section class="report-section report-actions report-next"><h4>Your next steps</h4>${list(r.nextSteps.slice(0,3),true)}${r.nextSteps.length>3?`<details><summary>More next steps</summary>${list(r.nextSteps.slice(3),true)}</details>`:''}</section><section class="report-section"><h4>What went well</h4>${r.strengths.length?list(r.strengths):'<p>There is not enough evidence in this interview to identify a clear strength yet.</p>'}</section><section class="report-section"><h4>Points to clarify</h4>${r.clarifications.length?list(r.clarifications):"<p>No specific improvement identified in the answers assessed.</p>"}</section></div>`;
  }
  return `<div class="report-legacy"><h4>Focus first</h4><p>${escapeHtml(r.biggestWeakness)}</p><h4>Interview feedback</h4><p>${escapeHtml(r.feedback)}</p><h4>Next step</h4><p>${escapeHtml(r.nextStep)}</p></div>`;
 }
@@ -588,12 +625,12 @@ function reportScoreDetails(report){
  return '<details class="report-section"><summary>How your score was calculated</summary><p>'+(report.scoringMethod==='all-seven-v1'?escapeHtml(report.earnedPoints)+' / '+escapeHtml(report.possiblePoints)+' points across all seven areas × 100. Not assessed means no points earned yet; it does not mean a wrong answer.':'Each assessed topic is scored out of 10. The average is converted to a score out of 100. Unanswered topics are excluded.')+'</p>'+(report.scoringMethod==='all-seven-v1'&&Number.isFinite(report.answeredTopicScore)?'<p>Answered-topic quality: '+escapeHtml(report.answeredTopicScore)+'/100. This average covers assessed areas only.</p>':'')+'<ul>'+items.map(a=>'<li><strong>'+escapeHtml(a.label)+': '+escapeHtml(a.score)+'/10</strong> — '+escapeHtml(a.feedback)+'</li>').join('')+'</ul></details>';
 }
 function renderReports(){
- $("reportsList").innerHTML=reports.slice().reverse().map(r=>{
+ $("reportsList").innerHTML=reports.slice().sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt)).map(r=>{
    const a=athletes.find(x=>x.id===r.athleteId)||{};
    const h=r.humanReview?`<div class="card" style="margin-top:10px"><b>Human review — ${escapeHtml(r.humanReview.reviewer)}</b><p>Adjusted score: <b>${escapeHtml(r.humanReview.score)}/100</b></p><p>${escapeHtml(r.humanReview.note)}</p></div>`:"";
    const reviewBtn=(["owner","coach","supervisor"].includes(me.role))?`<button class="btn secondary" data-report-id="${escapeHtml(r.id)}" data-report-score="${escapeHtml(r.overall)}">Add human review</button>`:"";
-   return `<article class="card report-card" style="margin-bottom:16px"><div class="report-header"><div><h3>${escapeHtml(a.name||"Student")} · Mock #${escapeHtml(r.mockNumber)}</h3><div class="muted small">${new Date(r.createdAt).toLocaleString()}</div></div><div class="report-score"><div class="muted small">${r.formatVersion===3?escapeHtml(({standard:"Standard",challenging:"Challenging",intensive:"Intensive"})[r.difficulty]||"Standard")+" · ":""}${r.scoringMethod==='all-seven-v1'?'Overall preparation':Number.isFinite(r.partialScore)?'Partial practice score':'Practice readiness'}</div>${Number.isFinite(r.overall)?`<span class="kpi">${escapeHtml(r.overall)}/100</span> ${r.scoringMethod==='all-seven-v1'&&r.scoreType==='partial'?'<p class="small">Interview incomplete · '+escapeHtml(r.coverage?.assessed)+' of 7 areas assessed</p>':pill(r.overall)}`:Number.isFinite(r.partialScore)?`<span class="kpi">${escapeHtml(r.partialScore)}/100</span><p class="small">Partial interview · assessed answers only</p>`:'<p>Not enough information to score</p>'}</div></div><p class="muted small">Feedback on this practice interview, not a prediction of visa approval.</p>${r.scoreExplanation?`<p class="notice">${escapeHtml(r.scoreExplanation)}</p>`:""}${reportSections(r)}${reportScoreDetails(r)}${r.formatVersion===3?`<section class="report-section"><h4>Interview coverage</h4><p>${escapeHtml(r.coverage?.assessed)} of ${escapeHtml(r.coverage?.required)} relevant areas assessed.</p><h4>${r.scoringMethod==='all-seven-v1'?'Not assessed — no points earned yet':'Not covered — not counted against you'}</h4>${r.notCovered?.length?`<ul>${r.notCovered.map(x=>`<li>${escapeHtml(x)}</li>`).join("")}</ul>`:"<p>All relevant main areas were covered.</p>"}</section>`:""}${reportPractice(r)}${reviewBtn}${h}</article>`
- }).join("")||'<div class="card">No reports yet.</div>';
+   return `<article class="card report-card" style="margin-bottom:16px"><div class="report-header"><div><h3>${escapeHtml(a.name||"Student")} · Mock #${escapeHtml(r.mockNumber)}</h3><div class="muted small">${new Date(r.createdAt).toLocaleString()}</div></div><div class="report-score"><div class="muted small">${r.formatVersion===3?escapeHtml(({standard:"Standard",challenging:"Challenging",intensive:"Intensive"})[r.difficulty]||"Standard")+" · ":""}${r.scoringMethod==='all-seven-v1'?'Overall preparation':Number.isFinite(r.partialScore)?'Partial practice score':'Practice readiness'}</div>${Number.isFinite(r.overall)?`<span class="kpi">${escapeHtml(r.overall)}/100</span> ${r.scoringMethod==='all-seven-v1'&&r.scoreType==='partial'?'<p class="small">Interview incomplete · '+escapeHtml(r.coverage?.assessed)+' of 7 areas assessed</p>':pill(r.overall)}`:Number.isFinite(r.partialScore)?`<span class="kpi">${escapeHtml(r.partialScore)}/100</span><p class="small">Partial interview · assessed answers only</p>`:'<p>Not enough information to score</p>'}</div></div><p class="muted small">Feedback on this practice interview, not a prediction of visa approval.</p>${r.scoreExplanation?`<p class="notice">${escapeHtml(r.scoreExplanation)}</p>`:""}${reportCoverageSummary(r)}${reportSections(r)}${reportScoreDetails(r)}${r.formatVersion===3?`<section class="report-section"><h4>Interview coverage</h4><p>${escapeHtml(r.coverage?.assessed)} of ${escapeHtml(r.coverage?.required)} relevant areas assessed.</p><h4>${r.scoringMethod==='all-seven-v1'?'Not assessed — no points earned yet':'Not covered — not counted against you'}</h4>${r.notCovered?.length?`<ul>${r.notCovered.map(x=>`<li>${escapeHtml(x)}</li>`).join("")}</ul>`:"<p>All relevant main areas were covered.</p>"}</section>`:""}${reportPractice(r)}${reviewBtn}${h}</article>`
+ }).join("")||'<div class="card empty-state"><span class="eyebrow">YOUR FEEDBACK STARTS HERE</span><h2>No reports yet</h2><p>Answer questions in a mock interview, end the conversation, then choose View my feedback.</p><button class="btn primary" onclick="show(\'interview\')">Go to mock interview</button></div>';
  $("reportsList").querySelectorAll('[data-report-id]').forEach(button=>button.addEventListener('click',()=>humanReview(button.dataset.reportId,button.dataset.reportScore)));
  $("reportsList").querySelectorAll('[data-practice-report]').forEach(button=>button.addEventListener('click',()=>openReportPractice(button.dataset.practiceReport,Number(button.dataset.focus))));
 }
@@ -615,8 +652,16 @@ function addLine(role,text,mode=voiceScreen){
 let voice=null, voiceScreen="mock", learningTranscript=[], mockStudentId=null;
 function voiceEl(id){return $(voiceScreen==="learn"?"learn_"+id:id)}
 function voiceSend(v,type,details={}){if(voice===v && dc?.readyState==="open")dc.send(JSON.stringify({type,...details}))}
-function voiceMic(v,on){if(voice===v)stream?.getAudioTracks().forEach(t=>t.enabled=on)}
+function voiceMic(v,on){if(voice===v){stream?.getAudioTracks().forEach(t=>t.enabled=on);const meter=$(v.mode==='learn'?'learn_voiceStatus':'voiceStatus');if(meter?.dataset)meter.dataset.listening=String(on)}}
 let mockSessionId=null, mockSave=Promise.resolve();
+function tickVoiceClock(v){
+ if(voice!==v)return;
+ const left=Math.max(0,Math.ceil((v.deadline-Date.now())/1000));
+ const clock=$(v.mode==='learn'?'learn_voiceClock':'voiceClock');
+ if(clock)clock.textContent=String(Math.floor(left/60)).padStart(2,'0')+':'+String(left%60).padStart(2,'0');
+ if(left>0)v.clockTimer=setTimeout(()=>tickVoiceClock(v),1000);
+}
+
 function interviewerState(state){
  const stage=$('interviewerStage'),label=$('interviewerActivity');
  if(!stage||!label)return;
@@ -733,6 +778,7 @@ async function startVoice(mode="mock",consented=false){
     if(mode==='mock')mockSessionId=r.headers.get('X-Mock-Session-Id');
     const seconds=Number(r.headers.get('X-Voice-Limit-Seconds'));
     if(!Number.isFinite(seconds)||seconds<=0)throw new Error('Voice session limit is missing. Please refresh and try again.');
+    v.deadline=Date.now()+seconds*1000;tickVoiceClock(v);
     v.limitTimer=setTimeout(()=>{if(voice===v)stopVoice(mode==='learn'?'Lesson time limit reached. Save your notes; you can continue later.':'Mock time limit reached. You can generate a report from this transcript.')},seconds*1000);
     v.warningTimer=setTimeout(()=>{if(voice===v)voiceEl('voiceLimitNotice').textContent='One minute remaining in this voice session.'},Math.max(0,seconds-60)*1000);
     voiceEl('voiceLimitNotice').textContent=`Up to ${Math.round(seconds/60)} minutes. Voice stops automatically at the limit.`;
@@ -747,7 +793,7 @@ function endServerVoice(token){
  return voiceEnd;
 }
 function stopVoice(message=voiceScreen==="learn"?"Lesson conversation ended":"Interview ended"){
-  const v=voice;voice=null;clearTimeout(v?.inputTimer);clearTimeout(v?.limitTimer);clearTimeout(v?.warningTimer);if(v?.serverToken)endServerVoice(v.serverToken);
+  const v=voice;voice=null;clearTimeout(v?.inputTimer);clearTimeout(v?.limitTimer);clearTimeout(v?.warningTimer);clearTimeout(v?.clockTimer);const status=voiceEl("voiceStatus");if(status?.dataset)status.dataset.listening="false";if(v?.serverToken)endServerVoice(v.serverToken);
   if(stream)stream.getTracks().forEach(t=>t.stop());if(dc)dc.close();if(pc)pc.close();
   if(v?.audio){v.audio.pause();v.audio.srcObject=null}
   if(v?.mode==='mock'){
@@ -782,13 +828,14 @@ async function generateReport(){
 }
 
 const curriculum=window.VisaAtlasCurriculum;
-let activeLessonId="study-purpose", courseSaved={}, lessonPractice=null, lessonOpen=false;
+let activeLessonId="study-purpose", courseSaved={}, lessonPractice=null, lessonOpen=false, courseLoadState="loading";
 function renderCourse(){
+ renderStudentHome();
  $("lessonDetails").classList.toggle("hidden",!lessonOpen);
  const done=curriculum.filter(m=>courseSaved[m.id]?.completed).length;
  $("courseProgress").textContent=done+" of "+curriculum.length+" modules completed";
  $("courseMeter").max=curriculum.length;$("courseMeter").value=done;
- $("learningGreeting").textContent=me?.role==='athlete'?"Welcome back, "+String(me.name||'Student').trim().split(/\s+/)[0]:"Your students’ learning";
+ $("learningGreeting").textContent=me?.role==='athlete'?"Your learning path":"Your students’ learning";
  $("learningStudentPicker").classList.toggle('hidden',me?.role==='athlete'&&athletes.length===1);
  const featured=curriculum.find(m=>!courseSaved[m.id]?.completed)||curriculum[0];
  $("featuredModuleTitle").textContent=featured.title;$("featuredModuleSummary").textContent=featured.summary;
@@ -824,7 +871,7 @@ function renderCourse(){
 async function selectLearningModule(id){
  if(lessonSaving || lessonLoading || !curriculum.some(m=>m.id===id))return;
  if(lessonDirty && !confirm("Switch modules without saving these notes?"))return;
- if(voice)stopVoice();lessonPractice=null;lessonOpen=true;activeLessonId=id;await loadLesson();
+ if(voice)stopVoice();lessonPractice=null;lessonOpen=true;activeLessonId=id;show('learning');await loadLesson();
  $("activeLesson").scrollIntoView?.({behavior:"smooth",block:"start"});
 }
 function closeLearningModule(){
@@ -863,7 +910,7 @@ async function changeLearningStudent(){
  if(voice)stopVoice();lessonPractice=null;lessonOpen=false;courseSaved={};activeLessonId="study-purpose";await loadLesson();
 }
 async function loadLesson(){
- $('optionalNotes').open=false;
+ $('optionalNotes').open=false;courseLoadState='loading';
  const version=++lessonVersion;lessonStudentId=$("learn_athleteSelect").value;lessonDirty=false;lessonCompleted=false;lessonLoading=true;
  if(lessonPractice && (lessonPractice.studentId!==lessonStudentId || lessonPractice.lessonId!==activeLessonId))lessonPractice=null;
  renderPracticeFocus();
@@ -875,13 +922,13 @@ async function loadLesson(){
    const entries=await Promise.all(curriculum.map(async module=>[module.id,(await api("/api/learning/"+module.id+"?athleteId="+encodeURIComponent(lessonStudentId))).progress]));
    const data={progress:Object.fromEntries(entries)[activeLessonId]};
    if(version!==lessonVersion)return;
-   courseSaved=Object.fromEntries(entries);
+   courseSaved=Object.fromEntries(entries);courseLoadState="ready";
    lessonFields.forEach(field=>$("learn_"+field).value=data.progress[field]||"");
    $("learn_reflected").checked=data.progress.reflected===true;lessonCompleted=data.progress.completed===true;
    $("lessonBadge").textContent=lessonCompleted?"Completed":data.progress.updatedAt?"In progress":"Not completed";
    setLessonStatus("");
    lessonControls(false);lessonFields.forEach(field=>$("learn_"+field).disabled=false);$("learn_reflected").disabled=false;
- }catch(e){if(version===lessonVersion){setLessonStatus("Could not load notes: "+e.message);$("retryLessonBtn").classList.remove("hidden")}}
+ }catch(e){if(version===lessonVersion){courseLoadState="error";setLessonStatus("Could not load notes: "+e.message);$("retryLessonBtn").classList.remove("hidden")}}
  finally{if(version===lessonVersion){lessonLoading=false;renderCourse()}}
 }
 async function saveLesson(complete=false){

@@ -152,14 +152,14 @@ test('password change shows errors, then clears secrets and asks for a new sign-
  assert.equal(f.elements.get('login').classList.contains('hidden'),false);
  assert.match(f.elements.get('loginErr').textContent,/Password changed/);
 });
-test('students land in learning and saved notes/completion reload',async()=>{
- const f=fixture();await f.run('boot()');assert.equal(f.elements.get('learning').classList.contains('on'),true);
+test('students land at home and saved notes/completion reload',async()=>{
+ const f=fixture();await f.run('boot()');assert.equal(f.elements.get('dashboard').classList.contains('on'),true);
  for(const name of ['subjectReason','studyOpportunity','futureUse','draftAnswer'])f.elements.get('learn_'+name).value='My '+name;
  f.elements.get('learn_reflected').checked=true;assert.equal(await f.run('saveLesson(true)'),true);
  f.elements.get('learn_draftAnswer').value='unsaved';await f.run('loadLesson()');assert.equal(f.elements.get('learn_draftAnswer').value,'My draftAnswer');assert.equal(f.elements.get('lessonBadge').textContent,'Completed');
 });
 test('tutor routes separately, preserves mock transcript, and navigation stops microphone',async()=>{
- const f=fixture();await f.run('boot()');f.run('addLine("athlete","Mock answer","mock")');await f.run('startLearningTutor()');
+ const f=fixture();await f.run('boot()');f.run('show("learning");addLine("athlete","Mock answer","mock")');await f.run('startLearningTutor()');
  assert.match(f.store.requests.find(r=>r.url.includes('realtime-session')).url,/mode=learn&lesson=study-purpose/);
  f.run('addLine("assistant","<img src=x>")');assert.equal(f.run('transcript.length'),1);assert.equal(f.run('learningTranscript.length'),1);
  assert.equal(f.elements.get('learn_transcript').children[0].children[1].textContent,'<img src=x>');
@@ -265,7 +265,7 @@ test('modules keep separate progress, resume the next lesson and pass selected m
 test('module switch respects unsaved notes and stops an active tutor',async()=>{
  const f=fixture();await f.run('boot()');f.run('lessonEdited()');f.ctx.confirm=()=>false;
  await f.run('selectLearningModule("funding")');assert.equal(f.run('activeLessonId'),'study-purpose');
- f.ctx.confirm=()=>true;await f.run('startLearningTutor()');await f.run('selectLearningModule("funding")');
+ f.ctx.confirm=()=>true;f.run('show("learning")');await f.run('startLearningTutor()');await f.run('selectLearningModule("funding")');
  assert.equal(f.store.tracks[0].stopped,true);assert.equal(f.run('activeLessonId'),'funding');
 });
 
@@ -296,7 +296,7 @@ test('lesson cards show a profile-specific structure and example as safe text',a
 
 test('redesigned overview uses saved progress and the next incomplete lesson',async()=>{
  const f=fixture();await f.run('boot()');
- assert.equal(f.elements.get('learningGreeting').textContent,'Welcome back, Test');
+ assert.equal(f.elements.get('learningGreeting').textContent,'Your learning path');
  f.run(`courseSaved={'study-purpose':{completed:true},'academic-journey':{completed:true}};renderCourse()`);
  assert.equal(f.elements.get('courseMeter').value,2);
  assert.equal(f.elements.get('featuredModuleTitle').textContent,'Your funding');
@@ -321,7 +321,7 @@ test('partial report and dashboard label the score without a full readiness badg
  f.run(`reports=[{id:'r1',athleteId:'s1',formatVersion:3,overall:null,partialScore:75,scoreType:'partial',scoreExplanation:'Unanswered topics are excluded.',coverage:{assessed:6,required:7},notCovered:['Future plans'],feedback:'Useful answers.',strengths:[],clarifications:[],nextSteps:[],assessments:[{label:'School choice',status:'assessed',score:7,feedback:'Give a specific reason.'}]}];renderAll()`);
  const markup=f.elements.get('reportsList').innerHTML;
  assert.match(markup,/Partial practice score/);assert.match(markup,/75\/100/);assert.match(markup,/How your score was calculated/);
- assert.doesNotMatch(markup,/Almost Ready|High Concern/);assert.match(f.elements.get('dashCards').innerHTML,/75\/100 \(partial\)/);
+ assert.doesNotMatch(markup,/Almost Ready|High Concern/);assert.match(f.elements.get('dashCards').innerHTML,/75\/100<small[^>]*>\(partial\)/);
 });
 test('all-seven report leads with earned score and shows assessed-only quality in the breakdown',async()=>{
  const f=fixture();await f.run('boot()');
@@ -332,7 +332,7 @@ test('all-seven report leads with earned score and shows assessed-only quality i
  assert.match(markup,/Answered-topic quality: 50\/100/);
  assert.match(markup,/Not assessed — no points earned yet/);
  assert.doesNotMatch(markup,/High Concern|not counted against you|Partial practice score/);
- assert.match(f.elements.get('dashCards').innerHTML,/14\/100 \(incomplete\)/);
+ assert.match(f.elements.get('dashCards').innerHTML,/14\/100<small[^>]*>\(incomplete\)/);
 });
 
 test('owner directory paginates and filters accounts, assignments and activity independently',async()=>{
@@ -352,4 +352,23 @@ test('owner assignment dialog submits checked staff and clears the confirmation 
  f.elements.get('ownerEditFields').querySelectorAll=()=>[{value:'coach'}];f.elements.get('ownerPassword').value='current-password';
  await f.run('submitOwnerEdit()');
  const request=f.store.requests.find(r=>r.url==='/api/owner/student-access');assert.deepEqual(JSON.parse(request.body),{studentId:'s1',staffIds:['coach'],currentPassword:'current-password'});assert.equal(f.elements.get('ownerPassword').value,'');
+});
+
+test('student home shows the next step from saved progress and separates partial history',async()=>{
+ const f=fixture();await f.run('boot()');
+ assert.equal(f.elements.get('dashboard').classList.contains('on'),true);
+ assert.match(f.elements.get('studentHome').innerHTML,/Continue preparing/);
+ f.run(`athletes[0].profileStatus='Incomplete';renderStudentHome()`);
+ assert.match(f.elements.get('studentHome').innerHTML,/Complete my profile/);
+ f.run(`athletes[0].profileStatus='Complete';curriculum.forEach(m=>courseSaved[m.id]={completed:true});renderStudentHome()`);
+ assert.match(f.elements.get('studentHome').innerHTML,/Start mock practice/);
+ f.run(`reports=[{id:'p',athleteId:'s1',mockNumber:2,createdAt:'2026-10-22',overall:14,scoreType:'partial',scoringMethod:'all-seven-v1',coverage:{assessed:2,required:7}},{id:'f',athleteId:'s1',mockNumber:1,createdAt:'2026-10-21',overall:70,scoreType:'complete',coverage:{assessed:7,required:7}}];renderStudentHome()`);
+ assert.match(f.elements.get('studentHistory').innerHTML,/Partial/);assert.match(f.elements.get('studentHistory').innerHTML,/Full/);assert.match(f.elements.get('studentHistory').innerHTML,/All seven areas/);
+ assert.match(f.elements.get('studentHome').innerHTML,/Review my feedback/);
+ f.run(`courseLoadState='error';renderStudentHome()`);assert.match(f.elements.get('studentHome').innerHTML,/Progress unavailable/);
+ assert.equal(f.run('navItems().slice(0,4).map(x=>x[0]).join(",")'),'Home,Learning,Mock Interview,Reports');
+});
+test('report next steps lead with three actions while retaining additional guidance',()=>{
+ const f=fixture();f.ctx.report={formatVersion:3,strengths:['Strength'],clarifications:['Clarification'],nextSteps:['One','Two','Three','Four'],feedback:'Feedback',biggestWeakness:'Focus'};
+ const html=f.run('reportSections(report)');assert.ok(html.indexOf('Your next steps')<html.indexOf('What went well'));assert.match(html,/More next steps/);assert.match(html,/Four/);
 });
