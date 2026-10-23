@@ -419,3 +419,14 @@ test('audio-only mock does not complete the practice checklist and staff never s
  assert.equal(f.elements.get('studentPlanner').classList.contains('hidden'),true);
  assert.equal(f.elements.get('welcomeGuide').classList.contains('hidden'),true);
 });
+
+test('daily voice and report budgets show remaining attempts and reset rules',async()=>{
+ const f=fixture();f.store.usage={learn:{unlimited:false,limit:2,remaining:1},mock:{unlimited:false,limit:1,remaining:0},reports:{unlimited:false,limit:null,remaining:null,attemptsRemaining:2}};
+ await f.run('boot()');await f.run('refreshVoiceUsage()');
+ assert.match(f.elements.get('lessonVoiceUsage').textContent,/1 of 2/);
+ assert.match(f.elements.get('mockVoiceUsage').textContent,/0 of 1/);
+ for(const id of ['lessonVoiceUsage','mockVoiceUsage'])assert.match(f.elements.get(id).textContent,/00:00 UTC; failed starts and early endings count/);
+ assert.match(f.elements.get('reportUsage').textContent,/2 report-generation attempts/);
+ assert.doesNotMatch(f.elements.get('reportUsage').textContent,/null|Unlimited/);
+ assert.match(f.elements.get('reportUsage').textContent,/Saved reports remain available/);
+});

@@ -1,4 +1,6 @@
-# Report generation controls
+# Report generation controls (historical)
+
+See [current daily cost safeguards](VOICE_COST_CONTROLS.md). The current report policy is three generation attempts per UTC day. Reports are cached by the server-issued mock session, not by model or arbitrary transcript. The remaining notes below describe an earlier release.
 
 Each account can start six report attempts per UTC day. A persistent PostgreSQL row enforces the quota and one active request per account across browser tabs, processes and restarts. Failed admitted attempts count. Invalid transcripts, authorization failures, active-request rejections and ordinary completed-report retries do not consume an attempt. A rare concurrent cache hit after reservation may consume one attempt but does not call the provider.
 
@@ -19,3 +21,4 @@ Local route tests cover quota exhaustion, transcript limits, cached retries, bus
 This is not a dollar budget cap. There is no global spending ceiling, email verification to prevent multiple-account abuse, usage-cost dashboard or provider-billing reconciliation yet. Quotas apply to staff as well as students. Input character limits are not token counts. The model and its pricing remain unchanged.
 
 API reference: https://developers.openai.com/api/reference/cli/resources/responses/methods/create
+

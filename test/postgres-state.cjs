@@ -29,25 +29,28 @@ test('PostgreSQL serializes state writes across pools and rolls back failed cred
    const tokens=reservations.filter(Boolean);assert.equal(tokens.length,1);
    await limits[1].release('account','wrong-token');assert.equal(await limits[0].reserve('account'),null);
    await limits[1].release('account',tokens[0]);
-   for(let i=0;i<30;i++){const token=await limits[i%2].reserve('account');assert.ok(token);await limits[0].release('account',token);}
+   for(let i=0;i<2;i++){const token=await limits[i%2].reserve('account');assert.ok(token);await limits[0].release('account',token);}
+   assert.equal(await createEvaluationLimits(pools[0]).reserve('account'),null);
+   assert.equal((await limits[0].status('account')).attemptsRemaining,0);
+   await pools[0].query("UPDATE evaluation_daily_usage SET usage_day=(NOW() AT TIME ZONE 'UTC')::date-1 WHERE user_id='account'");
    const held=await limits[1].reserve('account');assert.ok(held);
-   // Successful reports have no daily cap; completion and report save
+   // Successful reports also consume attempts; completion and report save
    // use the same client transaction in the application.
-   for(let i=0;i<30;i++){
+   for(let i=0;i<3;i++){
      const token=await limits[0].reserve('successful');assert.ok(token);
      await limits[0].complete('successful',token,pools[0]);
    }
-   const extra=await limits[1].reserve('successful');assert.ok(extra);await limits[1].release('successful',extra);
+   assert.equal(await limits[1].reserve('successful'),null);
    assert.equal((await limits[1].status('successful')).remaining,null);
    await assert.rejects(limits[0].complete('successful','stale',pools[0]));
    const {createVoiceLimits}=require('../voice-limits');
    const voice=pools.map(pool=>createVoiceLimits(pool,'test-key'));await voice[0].init();
-   const tutors=await Promise.all(Array.from({length:16},(_,i)=>voice[i%2].reserve('voice',12,'learn')));
-   assert.equal(tutors.filter(Boolean).length,12);
-   const mocks=await Promise.all(Array.from({length:10},(_,i)=>voice[i%2].reserve('voice',8,'mock')));
-   assert.equal(mocks.filter(Boolean).length,8);
+   const tutors=await Promise.all(Array.from({length:16},(_,i)=>voice[i%2].reserve('voice',2,'learn')));
+   assert.equal(tutors.filter(Boolean).length,2);
+   const mocks=await Promise.all(Array.from({length:10},(_,i)=>voice[i%2].reserve('voice',1,'mock')));
+   assert.equal(mocks.filter(Boolean).length,1);
    await pools[0].query("UPDATE voice_mode_usage SET usage_day=(NOW() AT TIME ZONE 'UTC')::date-1 WHERE user_id='voice' AND mode='learn'");
-   assert.equal(await voice[1].reserve('voice',12,'learn'),true);assert.equal(await voice[1].reserve('voice',8,'mock'),false);
+   assert.equal(await voice[1].reserve('voice',2,'learn'),true);assert.equal(await voice[1].reserve('voice',1,'mock'),false);
    // Restarting the service does not bypass the in-flight lease.
    assert.equal(await createEvaluationLimits(pools[0]).reserve('account'),null);
    await pools[0].query("UPDATE evaluation_daily_usage SET usage_day=(NOW() AT TIME ZONE 'UTC')::date-1 WHERE user_id='account'");

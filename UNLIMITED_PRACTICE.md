@@ -1,4 +1,6 @@
-# Unlimited daily practice
+# Unlimited daily practice (historical)
+
+Superseded by [daily voice cost safeguards](VOICE_COST_CONTROLS.md). Current limits: two tutor start attempts, one mock start attempt and three report-generation attempts per UTC day. The description below records the earlier release.
 
 All accounts now have unlimited daily tutoring starts, mock starts, successful reports and report-generation attempts. Existing daily usage counters are retained for observation, but do not block admission. API responses use `unlimited: true` and `null` for limit/remaining values, never a large fake allowance.
 

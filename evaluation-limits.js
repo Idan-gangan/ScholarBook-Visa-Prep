@@ -1,5 +1,5 @@
 const crypto=require('node:crypto');
-const EVALUATION_POLICY=Object.freeze({daily:null,attempts:null,timeoutMs:90000,leaseSeconds:180,outputTokens:4096,maxCharacters:40000,maxTurns:200});
+const EVALUATION_POLICY=Object.freeze({daily:null,attempts:3,timeoutMs:90000,leaseSeconds:180,outputTokens:4096,maxCharacters:40000,maxTurns:200});
 function normalizeTranscript(value){
  if(!Array.isArray(value)||value.length<1||value.length>EVALUATION_POLICY.maxTurns)throw new Error('Provide a short interview transcript before generating a report.');
  let characters=0;
@@ -23,7 +23,7 @@ function createEvaluationLimits(pool){
    const result=await pool.query("SELECT attempts,completed FROM evaluation_daily_usage WHERE user_id=$1 AND usage_day=(NOW() AT TIME ZONE 'UTC')::date",[userId]);
    const row=result.rows[0]||{},used=Number(row.completed||0),attempts=Number(row.attempts||0);
    const reset=new Date();reset.setUTCHours(24,0,0,0);
-   return {limit:null,unlimited:true,used,attempts,remaining:null,attemptsRemaining:null,resetsAt:reset.toISOString()};
+   return {limit:null,unlimited:false,used,attempts,remaining:null,attemptLimit:EVALUATION_POLICY.attempts,attemptsRemaining:Math.max(0,EVALUATION_POLICY.attempts-attempts),resetsAt:reset.toISOString()};
  }
  async function reserve(userId){
    const token=crypto.randomBytes(16).toString('hex');

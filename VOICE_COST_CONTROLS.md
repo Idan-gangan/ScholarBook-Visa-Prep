@@ -1,28 +1,29 @@
-# Voice cost safeguards
+# Daily voice cost safeguards
 
-This release keeps the current model and automatic speech/noise handling.
+Current policy: each signed-in account can attempt two tutor starts and one mock start per UTC day. Each tutor lasts up to 8 minutes and each mock up to 12 minutes. All roles, including owners, staff and demo accounts, share this policy; legacy tester flags do not bypass it. Staff usage is counted across their assigned students.
 
-- Teaching prompt: 2–3 sentences, normally 25–45 words; direct follow-ups 1–2 sentences. This is guidance, not a guaranteed word count.
-- Default Realtime response output limit: 1,024 tokens for teaching, 512 for mock questions. Audio tokens are not words; verify natural speech is not cut off in live testing.
-- Voice duration: 8 minutes for learning, 12 minutes for mocks. Browser warns one minute before stopping and leaves transcripts in the page for review/report generation. Notes still need saving.
-- Six voice-start attempts per signed-in account per UTC day, shared between learning and mocks. Staff have the same limit across students. Failed upstream attempts count; invalid/unauthorized requests do not. No automatic retries create additional calls.
-- Atomic PostgreSQL admission counter survives refresh, restart and multiple app processes. This is per account, not per person: new-account abuse is not solved here.
-- Call IDs/deadlines persist separately. A server sweep every 15 seconds requests provider hangup for expired calls, including after restart; failures remain queued for retry. No transcript/audio is saved in these tables. Already closed calls are removed after provider success/404/410.
+Start attempts count once admitted, including provider failures and sessions ended early. Invalid requests, unauthorized requests, concurrent-session rejections and requests rejected by the daily quota do not consume a start. One active voice session per account and the 10-second start cooldown still apply. There are no automatic voice retries.
 
-## Deployment
+Report generation is limited to three attempts per account per UTC day, including failed generations. Saved reports can still be opened or downloaded; requests for an already saved report return it without a new generation. One report attempt may include both evaluation and evidence review provider calls.
 
-Two additive tables (`voice_daily_usage`, `voice_call_limits`) are created at startup; existing student data and credentials are unchanged. No new dependencies, API keys or environment changes. A database backup is still recommended before deployment.
+Quotas reset at 00:00 UTC. Atomic PostgreSQL counters persist across refreshes, restarts and multiple processes. Existing usage for the current UTC day counts immediately after deployment, so an account already above the new quota must wait for reset. Lessons and saved reports remain accessible.
 
-## Verification
+## Deployment and verification
 
-Run `node --check server.js`, `node --check voice-limits.js`, and `node --test test/*.cjs`.
-Automated tests use simulated DOM, HTTP/provider and database behavior, not live PostgreSQL or paid voice calls.
-After deployment, test a short lesson, a mock, warning/deadline behavior, natural sentence endings, and a seventh start on a dedicated test account. Check that expired-call rows are cleared and no CALL_EXPIRY_RETRY/CALL_EXPIRY_CHECK_FAILED logs persist. Use a test environment to verify expiry after restart without disrupting students.
+No dependency, secret or schema changes are required for this policy update. Existing usage and admission tables are reused. The model and per-response token settings are unchanged.
 
-## Boundaries
+Run:
+- `node --test test/*.test.cjs`
+- `TEST_DATABASE_URL=<disposable database> node --test test/postgres-state.cjs test/postgres-voice.cjs`
 
-This is NOT a hard dollar budget. The browser directly holds a WebRTC data channel and could override session defaults. Token limits here are defaults, not tamper-proof per-response enforcement. Server hangup depends on the application, database and provider being available; an outage, backlog, or a crash between upstream call creation and persistence can delay termination. A provider timeout or missing call ID can leave a call whose ID the app cannot recover. Never claim an exact maximum bill from these controls.
+The unit suite uses simulated database/provider behavior. The integration suite exercises concurrent quotas, persisted usage, UTC rollover and admission recovery against disposable PostgreSQL. Do not run integration tests against production.
 
-Report-generation costs are unchanged. Future work: account verification/abuse controls, authoritative usage metering, overall spending enforcement and Realtime sideband monitoring. Keep provider spending alerts enabled separately. Avoid rolling back while calls are active, since older code will not sweep stored deadlines.
+After deployment, use a dedicated account to verify visible counters, two tutor starts, one mock start, blocked excess attempts, and continued access to saved reports. Short/failed starts count; they cannot be reused for further testing until reset.
 
-API references checked: https://developers.openai.com/api/reference/resources/realtime/subresources/calls/methods/create and https://developers.openai.com/api/reference/python/resources/realtime/subresources/calls/methods/hangup .
+## Cost boundaries
+
+These are usage limits, not a hard dollar budget. Compared with six full 8-minute tutors and five full 12-minute mocks, the nominal daily voice allowance drops from 108 to 28 minutes (about 74%). Actual savings depend on usage, audio/text tokens, conversation history and provider pricing.
+
+The existing server sweep requests hangup every 15 seconds for expired calls. Outages, failed hangups, untracked provider calls and cleanup delays can exceed nominal durations. Browser session defaults are not tamper-proof per-response cost enforcement. There is no global monetary ceiling or authoritative billing reconciliation. Multiple-account abuse and total user growth can still increase spending.
+
+Older unlimited-practice documentation describes historical behavior and is superseded by this policy.

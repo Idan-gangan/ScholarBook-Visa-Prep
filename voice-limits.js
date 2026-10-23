@@ -1,6 +1,6 @@
 // Persistent admission limits and server-side call expiry. No transcripts stored here.
 const POLICY = Object.freeze({learn: {seconds:480,tokens:1024},mock: {seconds:720,tokens:512}});
-function dailyLimit(user,mode='mock'){if(!['learn','mock'].includes(mode))throw new Error('Invalid voice mode');return null;}
+function dailyLimit(user,mode='mock'){if(!['learn','mock'].includes(mode))throw new Error('Invalid voice mode');return mode==='learn'?2:1;}
 function createVoiceLimits(pool, apiKey, request=fetch) {
   async function init() {
     await pool.query(`CREATE TABLE IF NOT EXISTS voice_admission (
@@ -20,7 +20,7 @@ function createVoiceLimits(pool, apiKey, request=fetch) {
     return {limit,unlimited:limit===null,used,remaining:limit===null?null:Math.max(0,limit-used),resetsAt:reset.toISOString()};
   }
   async function reserve(userId,limit=null,mode='mock') {
-    if(!['learn','mock'].includes(mode)||(limit!==null&&![8,12,18].includes(limit)))throw new Error('Invalid daily voice limit');
+    if(!['learn','mock'].includes(mode)||(limit!==null&&![1,2,8,12,18].includes(limit)))throw new Error('Invalid daily voice limit');
     // A row per account and mode: atomic across tabs, processes and redeployments.
     const result=await pool.query(`INSERT INTO voice_mode_usage (user_id,mode,usage_day,starts)
       VALUES ($1,$3,(NOW() AT TIME ZONE 'UTC')::date,1)

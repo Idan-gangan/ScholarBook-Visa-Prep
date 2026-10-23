@@ -38,7 +38,7 @@ test('tester allowance is capped at 18 and changing access does not erase usage'
  await assert.rejects(limiter.reserve('tester',100));
  f.nextDay();assert.equal((await limiter.status('tester',18)).remaining,18);
  const {dailyLimit}=require('../voice-limits');
- assert.equal(dailyLimit({role:'owner'}),null);assert.equal(dailyLimit({voiceTester:true}),null);assert.equal(dailyLimit({voiceTester:'true'}),null);
+ assert.equal(dailyLimit({role:'owner'}),1);assert.equal(dailyLimit({voiceTester:true}),1);assert.equal(dailyLimit({voiceTester:'true'}),1);
 });
 test('server stores mode-specific deadlines and can expire a call after restart',async()=>{
  const f=fixture();assert.equal(await f.make().track('https://api.openai.com/v1/realtime/calls/rtc_one','learn'),480);
@@ -60,10 +60,20 @@ test('persistence failure hangs up the call rather than allowing an untracked se
 });
 
 
-test('all roles have unlimited default voice starts while usage is tracked',async()=>{
- const f=fixture();for(let i=0;i<40;i++)assert.equal(await f.make().reserve('unlimited'),true);
- const usage=await f.make().status('unlimited');assert.equal(usage.used,40);assert.equal(usage.unlimited,true);assert.equal(usage.remaining,null);assert.equal(usage.limit,null);
- for(const role of ['athlete','coach','owner'])for(const mode of ['learn','mock'])assert.equal(require('../voice-limits').dailyLimit({role},mode),null);
+test('daily cost caps persist across instances, isolate modes and reset next UTC day',async()=>{
+ const {dailyLimit}=require('../voice-limits');const f=fixture();
+ for(const role of ['athlete','coach','supervisor','manager','owner']){
+  assert.equal(dailyLimit({role},'learn'),2);assert.equal(dailyLimit({role},'mock'),1);
+ }
+ for(const [mode,limit] of [['learn',2],['mock',1]]){
+  const results=await Promise.all(Array.from({length:8},()=>f.make().reserve('budget',limit,mode)));
+  assert.equal(results.filter(Boolean).length,limit);
+  const usage=await f.make().status('budget',limit,mode);
+  assert.equal(usage.remaining,0);assert.equal(usage.unlimited,false);
+  assert.equal(await f.make().reserve('other',limit,mode),true);
+ }
+ f.nextDay();assert.equal(await f.make().reserve('budget',1,'mock'),true);
+ assert.equal(await f.make().reserve('budget',2,'learn'),true);
 });
 
 

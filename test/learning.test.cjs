@@ -77,7 +77,7 @@ function harness(user={id:'u1',role:'athlete'},env={}){
    const req=Readable.from(body===undefined?[]:[Buffer.from(typeof body==='string'?body:JSON.stringify(body))]);req.method=method;req.url=url;req.headers={'content-type':'application/json',host:'localhost',cookie:authenticated?'sb_session=test-token':''};
    const result={};await handler(req,{writeHead:(status,headers)=>{result.status=status;result.headers=headers;},end:text=>{result.text=text;try{result.body=JSON.parse(text)}catch{}}});return result;
  }
- return {request,progress,calls,db,logs,credentials,admission,advanceVoice:()=>voiceClock+=10000,finishVoice:async()=>{const row=admission.get(user.id);if(row?.token)await request('POST','/api/voice/end',{token:row.token});voiceClock+=10000;},init:()=>vm.runInContext('initDb()',context),run:code=>vm.runInContext(code,context)};
+ return {request,progress,calls,db,logs,credentials,admission,nextUsageDay:()=>starts.clear(),advanceVoice:()=>voiceClock+=10000,finishVoice:async()=>{const row=admission.get(user.id);if(row?.token)await request('POST','/api/voice/end',{token:row.token});voiceClock+=10000;},init:()=>vm.runInContext('initDb()',context),run:code=>vm.runInContext(code,context)};
 }
 test('unverified users cannot spend voice or evaluation allowance; me never exposes verification tokens',async()=>{
  const h=harness({id:'u1',role:'athlete',verificationRequired:true,email:'test@example.test',emailVerification:{hash:'secret-hash'}});
@@ -108,7 +108,7 @@ test('owner routes reject anonymous, student and staff accounts',async()=>{
  }
  assert.equal((await harness().request('GET','/api/owner/accounts',undefined,false)).status,401);
 });
-test('owner can grant extra voice starts without changing permissions; password and boolean are required',async()=>{
+test('legacy tester flag requires owner authorization but cannot bypass daily caps',async()=>{
  const password='Test-owner-passphrase-123';
  const h=harness({id:'u1',role:'owner',passwordHash:await passwords.hashPassword(password)});
  h.db.users.push({id:'u2',role:'athlete'});
@@ -119,9 +119,9 @@ test('owner can grant extra voice starts without changing permissions; password 
  assert.equal(h.db.users[1].voiceTester,true);assert.equal(h.db.users[1].role,'athlete');
  assert.equal(h.db.securityAudit.at(-1).action,'voice-access');
  assert.equal((await h.request('GET','/api/voice-usage',undefined,false)).status,401);
- assert.equal((await h.request('GET','/api/voice-usage')).body.mock.limit,null);
+ assert.equal((await h.request('GET','/api/voice-usage')).body.mock.limit,1);
  h.db.users[0].voiceTester=true;
- assert.equal((await h.request('GET','/api/voice-usage')).body.mock.limit,null);
+ assert.equal((await h.request('GET','/api/voice-usage')).body.mock.limit,1);
 });
 test('owner sees accounts without credentials, all students and reports, and own profile',async()=>{
  const h=harness({id:'u1',role:'owner',email:'owner@example.test',secret:'never-expose'});
@@ -367,13 +367,13 @@ test('voice admission is checked before upstream calls and rejects malformed SDP
  const h=harness();const route='/api/realtime-session?athleteId=s1';
  assert.equal((await h.request('POST',route,'not-sdp')).status,400);
  assert.equal(h.calls.length,0);
- for(let i=0;i<25;i++){
+ for(let i=0;i<1;i++){
    const r=await h.request('POST',route,'v=0\r\noffer');assert.equal(r.status,200);
    assert.equal(r.headers['X-Voice-Limit-Seconds'],'720');await h.finishVoice();
  }
  assert.equal(h.calls[0].session.max_output_tokens,512);
- assert.equal((await h.request('POST',route,'v=0\r\noffer')).status,200);
- assert.equal(h.calls.length,26);
+ const blocked=await h.request('POST',route,'v=0\r\noffer');assert.equal(blocked.status,429);assert.match(blocked.body.error,/00:00 UTC/);
+ assert.equal(h.calls.length,1);
 });
 test('evaluation cannot overwrite report ownership and metadata through model output',async()=>{
  const h=harness();
@@ -423,12 +423,15 @@ test('completed transcript retries reuse the report without a provider call',asy
  assert.equal(first.status,200);assert.equal(second.body.id,first.body.id);assert.equal(h.calls.length,1);assert.equal(h.db.reports.length,1);
  assert.equal(h.calls[0].request.max_output_tokens,4096);assert.equal(h.calls[0].request.store,false);
 });
-test('unlimited distinct reports are admitted and malformed transcripts never call provider',async()=>{
+test('report attempts are capped before provider calls and malformed transcripts do not consume attempts',async()=>{
  const h=harness();
  assert.equal((await h.request('POST','/api/evaluate',{athleteId:'s1',transcript:[]})).status,400);
  assert.equal((await h.request('POST','/api/evaluate',{athleteId:'s1',transcript:[{role:'athlete',text:'x'.repeat(40001)}]})).status,400);
- for(let i=0;i<25;i++)assert.equal((await h.request('POST','/api/evaluate',{athleteId:'s1',transcript:[{role:'athlete',text:'Answer '+i}]})).status,200);
- assert.equal(h.calls.length,25);
+ for(let i=0;i<3;i++)assert.equal((await h.request('POST','/api/evaluate',{athleteId:'s1',transcript:[{role:'athlete',text:'Answer '+i}]})).status,200);
+ assert.equal((await h.request('POST','/api/evaluate',{athleteId:'s1',transcript:[{role:'athlete',text:'Extra answer'}]})).status,429);
+ assert.equal(h.calls.length,3);
+ assert.equal((await h.request('POST','/api/evaluate',{athleteId:'s1',transcript:[{role:'athlete',text:'Answer 0'}]})).status,200);
+ assert.equal(h.calls.length,3);
 });
 test('provider timeout gives a useful error and releases admission',async()=>{
  const h=harness();h.run(`fetch=async()=>{throw Object.assign(new Error('private provider details'),{name:'TimeoutError'})}`);
@@ -475,11 +478,11 @@ test('mock sessions receive the saved academic preparation path',async()=>{
 
 test('tutoring and mock allowances are independent and their remaining counts are exposed',async()=>{
  const h=harness();
- for(let i=0;i<12;i++){assert.equal((await h.request('POST','/api/realtime-session?athleteId=s1&mode=learn&lesson=funding','v=0\r\noffer')).status,200);await h.finishVoice();}
- assert.equal((await h.request('POST','/api/realtime-session?athleteId=s1&mode=learn&lesson=funding','v=0\r\noffer')).status,200);
+ for(let i=0;i<2;i++){assert.equal((await h.request('POST','/api/realtime-session?athleteId=s1&mode=learn&lesson=funding','v=0\r\noffer')).status,200);await h.finishVoice();}
+ assert.equal((await h.request('POST','/api/realtime-session?athleteId=s1&mode=learn&lesson=funding','v=0\r\noffer')).status,429);
  await h.finishVoice();
  const mock=await h.request('POST','/api/realtime-session?athleteId=s1','v=0\r\noffer');assert.equal(mock.status,200);assert.match(mock.headers['X-Mock-Session-Id'],/^mock_/);
- const usage=(await h.request('GET','/api/voice-usage')).body;assert.equal(usage.learn.remaining,null);assert.equal(usage.mock.remaining,null);assert.equal(usage.reports.remaining,null);
+ const usage=(await h.request('GET','/api/voice-usage')).body;assert.equal(usage.learn.remaining,0);assert.equal(usage.mock.remaining,0);assert.equal(usage.reports.remaining,null);
  const prompt=h.calls.at(-1).session.instructions;assert.match(prompt,/no intimidation, praise, scoring/);assert.match(prompt,/feedback comes after/);assert.match(prompt,/never as a real consular officer/);
 });
 test('reports require the issued mock session and freeze its first submitted answers',async()=>{
@@ -508,12 +511,12 @@ test('topic review filters unrelated evidence before saving and failures do not 
   else {assert.equal(response.status,200);assert.equal(response.body.overall,69);assert.equal(response.body.answeredTopicScore,80);assert.equal(response.body.coverage.assessed,6);assert.equal(h.db.reports[0].scores.circumstances,undefined);}
  }
 });
-test('failed reports can retry without consuming the successful report allowance',async()=>{
+test('failed report attempts are bounded while saved reports remain available',async()=>{
  const h=harness();h.run(`fetch=async()=>{throw Object.assign(new Error('timeout'),{name:'TimeoutError'})}`);
  const body={athleteId:'s1',transcript:[{role:'athlete',text:'Answer'}]};
- for(let i=0;i<25;i++)assert.equal((await h.request('POST','/api/evaluate',body)).status,504);
- assert.equal((await h.request('POST','/api/evaluate',body)).status,504);
- const usage=(await h.request('GET','/api/voice-usage')).body.reports;assert.equal(usage.remaining,null);assert.equal(usage.attemptsRemaining,null);
+ for(let i=0;i<3;i++)assert.equal((await h.request('POST','/api/evaluate',body)).status,504);
+ assert.equal((await h.request('POST','/api/evaluate',body)).status,429);
+ const usage=(await h.request('GET','/api/voice-usage')).body.reports;assert.equal(usage.remaining,null);assert.equal(usage.attemptsRemaining,0);
 });
 
 test('mock modes are validated before spending, persisted, and passed to interviewer',async()=>{
@@ -522,7 +525,7 @@ test('mock modes are validated before spending, persisted, and passed to intervi
  for(const difficulty of ['standard','challenging','intensive']){
   const response=await h.request('POST','/api/realtime-session?athleteId=s1&difficulty='+difficulty,'v=0\r\noffer');assert.equal(response.status,200);
   const session=h.db.mockSessions.at(-1);assert.equal(session.difficulty,difficulty);assert.equal(session.evaluationVersion,3);assert.equal(session.profile.phone,undefined);
-  assert.ok(h.calls.at(-1).session.instructions.includes(require('../interview-design').MODES[difficulty]+' mode'));await h.finishVoice();
+  assert.ok(h.calls.at(-1).session.instructions.includes(require('../interview-design').MODES[difficulty]+' mode'));await h.finishVoice();h.nextUsageDay();
  }
 });
 test('ending a mock saves question history without generating a paid report; repeat context is scoped',async()=>{
@@ -536,7 +539,7 @@ test('ending a mock saves question history without generating a paid report; rep
  h.db.athletes[0].university='Changed after session';
  const report=await h.request('POST','/api/evaluate',{...body,mockSessionId:id,transcript,difficulty:'intensive'});assert.equal(report.status,200);assert.equal(report.body.overall,null);assert.equal(report.body.difficulty,'standard');
  assert.match(h.calls.at(-1).request.input,/Example University/);assert.doesNotMatch(h.calls.at(-1).request.input,/Changed after session/);
- await h.finishVoice();await h.request('POST','/api/realtime-session?athleteId=s1','v=0\r\noffer');assert.match(h.calls.at(-1).session.instructions,/Why this particular school/);
+ await h.finishVoice();h.nextUsageDay();await h.request('POST','/api/realtime-session?athleteId=s1','v=0\r\noffer');assert.match(h.calls.at(-1).session.instructions,/Why this particular school/);
  h.db.mockSessions[0].userId='other';assert.equal((await h.request('POST','/api/mock-session/end',{mockSessionId:id,transcript})).status,403);
 });
 
@@ -584,17 +587,17 @@ test('voice sessions block parallel tabs and modes, cannot be ended by another a
  assert.equal((await h.request('POST',route+'&mode=learn&lesson=funding','v=0')).status,429);
  assert.equal((await h.request('POST','/api/voice/end',{token})).status,200);
  assert.equal((await h.request('POST',route,'v=0')).status,429);
- h.advanceVoice();assert.equal((await h.request('POST',route,'v=0')).status,200);
+ h.advanceVoice();assert.equal((await h.request('POST',route+'&mode=learn&lesson=funding','v=0')).status,200);
  await h.request('POST','/api/voice/end',{token}); // stale request cannot stop new call
  assert.equal((await h.request('POST',route,'v=0')).status,429);
 });
-test('provider failure releases pending admission but rapid retries are still throttled',async()=>{
+test('provider failure releases admission but consumes a start and further calls are capped',async()=>{
  const h=harness(),route='/api/realtime-session?athleteId=s1';
  h.run("fetch=async()=>({ok:false,status:503,text:async()=>''})");
  assert.equal((await h.request('POST',route,'v=0')).status,502);
  assert.equal(h.admission.get('u1').token,null);
  assert.equal((await h.request('POST',route,'v=0')).status,429);
- h.advanceVoice();assert.equal((await h.request('POST',route,'v=0')).status,502);
+ h.advanceVoice();assert.equal((await h.request('POST',route,'v=0')).status,429);
 });
 
 test('planning preferences persist only on the authenticated student and validate dates',async()=>{
