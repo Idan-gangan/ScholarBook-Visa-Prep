@@ -448,6 +448,19 @@ const server=http.createServer(async (req,res)=>{
       return json(res,200,athletes);
     }
 
+    const pdfMatch=url.pathname.match(/^\/api\/reports\/([^/]+)\/pdf$/);
+    if(req.method==='GET' && pdfMatch){
+      const u=await requireUser(req,res);if(!u)return;
+      const db=await loadDb();
+      const report=db.reports.find(r=>r.id===decodeURIComponent(pdfMatch[1]));
+      const student=report&&db.athletes.find(a=>a.id===report.athleteId);
+      if(!report||!student||!canAccessStudent(u,student))return json(res,404,{error:'Report not found.'});
+      const bytes=await require('./report-pdf').createReportPdf(report,student);
+      const number=String(report.mockNumber??'report').replace(/[^a-zA-Z0-9_-]/g,'').slice(0,40)||'report';
+      res.writeHead(200,{...RESPONSE_HEADERS,'Content-Type':'application/pdf','Content-Disposition':'attachment; filename="VisaAtlas-Mock-'+number+'.pdf"','Cache-Control':'private, no-store','Content-Length':bytes.length});
+      return res.end(bytes);
+    }
+
     if(req.method==="GET" && url.pathname==="/api/reports"){
       const u=await requireUser(req,res); if(!u) return;
       const db=await loadDb();

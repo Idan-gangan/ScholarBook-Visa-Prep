@@ -63,7 +63,7 @@ function harness(user={id:'u1',role:'athlete'},env={}){
      return pool.query(sql,args);
    },release(){if(unlock)unlock();}};
  };
- const context=vm.createContext({require:id=>id==='./public/planning'?require('../public/planning'):id==='./interview-design'?require('../interview-design'):id==='./public/profile-requirements'?require('../public/profile-requirements'):id==='./interview-posts.json'?require('../interview-posts.json'):id==='./email-verification'?require('../email-verification'):id==='./profile-options'?require('../profile-options'):id==='./owner-access'?require('../owner-access'):id==='./report-practice'?require('../report-practice'):id==='http'?{createServer:fn=>{handler=fn;return {}}}:id==='pg'?{Pool:function(){return pool}}:id==='fs'?{...fs,readFileSync:(file,...args)=>file===path.resolve(__dirname,'../data/db.json')?'{}':fs.readFileSync(file,...args)}:id==='./evaluation-limits'?require('../evaluation-limits'):id==='./voice-limits'?require('../voice-limits'):id==='./learning'?learning:id==='./passwords'?passwords:id==='./password-recovery'?require('../password-recovery'):require(id),__dirname:path.resolve(__dirname,'..'),process:{env:{OPENAI_API_KEY:'test-only',...env}},console:{log:(...args)=>logs.push(args.join(' ')),warn:(...args)=>logs.push(args.join(' ')),error:(...args)=>logs.push(args.join(' '))},Buffer,URL,FormData,AbortSignal,fetch:async(url,options)=>{if(url.endsWith('/hangup'))return {ok:true,status:200};if(url.endsWith('/responses')){calls.push({url,request:JSON.parse(options.body)});return {ok:true,json:async()=>({output_text:JSON.stringify(JSON.parse(options.body).input.includes('VISAATLAS_EVIDENCE_REPORT_V3')?{summary:'Only limited answers were captured.',strengths:[],assessments:require('../interview-design').TOPICS.map(([topic])=>({topic,status:'not_covered'}))}:{scores:{},overall:45,readiness:'High Concern',biggestWeakness:'Test',feedback:'Test feedback',nextStep:'Practice'})})};}calls.push({url,session:JSON.parse(options.body.get('session'))});return {ok:true,status:200,headers:{get:()=>'/v1/realtime/calls/rtc_test'},text:async()=> 'test-sdp-answer'}}});
+ const context=vm.createContext({require:id=>id==='./report-pdf'?require('../report-pdf'):id==='./public/planning'?require('../public/planning'):id==='./interview-design'?require('../interview-design'):id==='./public/profile-requirements'?require('../public/profile-requirements'):id==='./interview-posts.json'?require('../interview-posts.json'):id==='./email-verification'?require('../email-verification'):id==='./profile-options'?require('../profile-options'):id==='./owner-access'?require('../owner-access'):id==='./report-practice'?require('../report-practice'):id==='http'?{createServer:fn=>{handler=fn;return {}}}:id==='pg'?{Pool:function(){return pool}}:id==='fs'?{...fs,readFileSync:(file,...args)=>file===path.resolve(__dirname,'../data/db.json')?'{}':fs.readFileSync(file,...args)}:id==='./evaluation-limits'?require('../evaluation-limits'):id==='./voice-limits'?require('../voice-limits'):id==='./learning'?learning:id==='./passwords'?passwords:id==='./password-recovery'?require('../password-recovery'):require(id),__dirname:path.resolve(__dirname,'..'),process:{env:{OPENAI_API_KEY:'test-only',...env}},console:{log:(...args)=>logs.push(args.join(' ')),warn:(...args)=>logs.push(args.join(' ')),error:(...args)=>logs.push(args.join(' '))},Buffer,URL,FormData,AbortSignal,fetch:async(url,options)=>{if(url.endsWith('/hangup'))return {ok:true,status:200};if(url.endsWith('/responses')){calls.push({url,request:JSON.parse(options.body)});return {ok:true,json:async()=>({output_text:JSON.stringify(JSON.parse(options.body).input.includes('VISAATLAS_EVIDENCE_REPORT_V3')?{summary:'Only limited answers were captured.',strengths:[],assessments:require('../interview-design').TOPICS.map(([topic])=>({topic,status:'not_covered'}))}:{scores:{},overall:45,readiness:'High Concern',biggestWeakness:'Test',feedback:'Test feedback',nextStep:'Practice'})})};}calls.push({url,session:JSON.parse(options.body.get('session'))});return {ok:true,status:200,headers:{get:()=>'/v1/realtime/calls/rtc_test'},text:async()=> 'test-sdp-answer'}}});
  let source=fs.readFileSync(path.join(__dirname,'../server.js'),'utf8');source=source.slice(0,source.indexOf('initDb().then('));vm.runInContext(source,context);vm.runInContext(`sessions.set('test-token',{userId:${JSON.stringify(user.id)},version:0,expires:Date.now()+60000})`,context);
  async function request(method,url,body,authenticated=true){
    // Existing evaluation fixtures represent distinct server-issued mock sessions.
@@ -608,4 +608,22 @@ test('planning preferences persist only on the authenticated student and validat
  assert.equal((await h.request('GET','/api/my-profile')).body.interviewDate,'');
  assert.equal((await h.request('PUT','/api/my-profile',{welcomeCompleted:true},false)).status,401);
  assert.equal((await harness({id:'coach',role:'coach'}).request('PUT','/api/my-profile',{welcomeCompleted:true})).status,403);
+});
+
+test('PDF exports require access to the report student and use private download headers',async()=>{
+ const report={id:'pdf1',athleteId:'s1',mockNumber:3,createdAt:'2026-10-23',overall:null,coverage:{assessed:0,required:7},assessments:[]};
+ for(const user of [{id:'u1',role:'athlete'},{id:'owner',role:'owner'},{id:'assigned',role:'coach'}]){
+  const h=harness(user);h.db.reports.push(report);h.db.athletes[0].staffIds=['assigned'];
+  const r=await h.request('GET','/api/reports/pdf1/pdf');
+  assert.equal(r.status,200);assert.equal(r.headers['Content-Type'],'application/pdf');
+  assert.match(r.headers['Cache-Control'],/no-store/);assert.match(r.headers['Content-Disposition'],/attachment/);
+  assert.equal(r.text.subarray(0,4).toString(),'%PDF');
+ }
+ for(const user of [{id:'u2',role:'athlete'},{id:'unassigned',role:'coach'}]){
+  const h=harness(user);h.db.reports.push(report);
+  assert.equal((await h.request('GET','/api/reports/pdf1/pdf')).status,404);
+ }
+ const h=harness();h.db.reports.push(report);
+ assert.equal((await h.request('GET','/api/reports/pdf1/pdf',undefined,false)).status,401);
+ assert.equal((await h.request('GET','/api/reports/missing/pdf')).status,404);
 });
