@@ -7,3 +7,23 @@
 #dashCards .score-qualifier{display:block;font-size:13px;font-weight:500;letter-spacing:0;line-height:1.5;margin-top:10px;overflow-wrap:normal}.interview-controls{position:static!important}
 @media(max-width:900px){#nav.side{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));overflow:visible;white-space:normal;padding:10px;gap:6px}#nav .nav{min-width:0;width:100%;white-space:normal;margin:0!important}#nav .nav-secondary-start{border-top:1px solid #ffffff26!important}.nav-secondary-start+.nav{border-top:1px solid #ffffff26!important}}
 #welcomeGuide{border:1px solid #bad0e5;background:#f0f6fc;margin-bottom:24px;padding:28px}#welcomeGuide h2{font-size:26px;margin:8px 0 12px}#guideText{max-width:700px;line-height:1.8;color:#405b74}.planner-actions{display:flex;align-items:end;gap:12px;flex-wrap:wrap}.planner-actions .field{flex:1;min-width:200px}.planner-actions small{display:block;line-height:1.6;color:#5c7185;margin-top:8px}.countdown{font-size:22px;font-weight:600;color:#173e61;margin:20px 0}.preparation-checklist{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:20px}.checklist-item{display:flex;text-align:left;gap:12px;align-items:center;padding:18px;background:#f8fafc;border:1px solid #dce5ee;border-radius:14px;color:#183b59;cursor:pointer;font:inherit}.checklist-item:hover{background:#edf4fb}.checklist-item:focus-visible{outline:3px solid #2e6fa7;outline-offset:3px}.checklist-item strong,.checklist-item small{display:block}.checklist-item small{margin-top:6px;color:#607488;font-size:12px;line-height:1.5}.checklist-mark{display:grid;place-items:center;width:30px;height:30px;flex-shrink:0;border-radius:50%;background:#e6edf5}.checklist-mark.done{background:#dcefe7;color:#246149}#studentPlanner{margin-bottom:24px}#studentPlanner h2{margin:8px 0}#guideMessage:empty,#plannerMessage:empty{display:none}@media(max-width:600px){.preparation-checklist{grid-template-columns:1fr}#welcomeGuide,#studentPlanner{padding:20px}.planner-actions .field{flex-basis:100%}.countdown{font-size:20px}.planner-actions .btn{min-height:44px}}
+.planner-disclosure{border-top:1px solid #dce5ee;margin-top:14px;padding-top:4px}.planner-disclosure>summary{cursor:pointer;min-height:44px;padding:12px 0;font-weight:600;color:#214e76}.planner-disclosure>summary:focus-visible{outline:3px solid #2e6fa7;outline-offset:3px}.planner-disclosure[open]>.planner-actions{margin-top:8px}
+@media(max-width:600px){
+ #studentHome .preparation-path{display:none}
+ .student-hero{padding:20px;gap:16px;margin-bottom:16px}
+ .student-hero h2{font-size:25px;margin-bottom:10px}
+ .student-hero .home-greeting{margin:10px 0 8px}
+ .student-hero p:not(.home-greeting){line-height:1.6;margin-bottom:8px}
+ .home-course{display:grid;grid-template-columns:1fr auto;padding-top:14px;gap:6px 12px}
+ .home-course .eyebrow{grid-column:1}.home-course strong{grid-column:2;grid-row:1 / 3;font-size:26px;align-self:center}
+ .home-course>span:not(.eyebrow){font-size:12px}.home-course progress{grid-column:1 / -1}
+ #studentPlanner{padding:18px;margin-bottom:16px}
+ #studentPlanner .history-heading{gap:8px}
+ #studentPlanner .history-heading .btn{padding:8px 12px;min-height:44px;font-size:12px}
+ #studentPlanner h2{font-size:22px;margin:4px 0}
+ #studentPlanner .countdown{margin:14px 0;font-size:20px}
+ .checklist-item{padding:14px}.preparation-checklist{gap:8px;margin-top:8px}
+ #dashboard>.page-heading{margin-top:18px}
+ #dashboard>.page-heading h1{font-size:27px}
+ .practice-history .history-heading h2{font-size:22px}
+}
