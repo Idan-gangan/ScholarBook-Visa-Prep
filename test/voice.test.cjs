@@ -77,8 +77,9 @@ test('session deadline stops media while preserving the captured transcript',asy
  s.ctx.RTCPeerConnection=class{addTrack(){}createDataChannel(){return {addEventListener(){},close(){}}}async createOffer(){return {sdp:'v=0'}}async setLocalDescription(){}async setRemoteDescription(){}close(){}};
  s.ctx.fetch=async()=>({ok:true,text:async()=> 'answer',headers:{get:()=> '720'}});
  await s.run('startVoice()');s.run('transcript.push({text:"keep this answer"})');
- assert.equal(s.timers.size,2);
- const deadline=[...s.timers.values()][0];deadline();
+ assert.equal(s.timers.size,3);
+ assert.equal(s.els.get('voiceClock').textContent,'12:00');
+ const deadline=s.timers.get(s.run('voice.limitTimer'));deadline();
  assert.equal(s.run('voice'),null);assert.equal(s.track.stopped,true);
  assert.equal(s.run('transcript[0].text'),'keep this answer');assert.equal(s.timers.size,0);
  assert.match(s.els.get('voiceStatus').textContent,/time limit reached/);
