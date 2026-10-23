@@ -174,7 +174,18 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
       </div>
     </section>
     <section id="dashboard" class="screen">
-      <div id="studentHome" class="hidden"></div><div class="page-heading"><span class="eyebrow">PREPARATION AT A GLANCE</span><h1 id="dashboardTitle">Your progress</h1><p class="muted">See how your practice is going and what to work on next.</p></div>
+      <section id="welcomeGuide" class="card hidden" aria-labelledby="guideTitle">
+ <span class="eyebrow">GETTING STARTED</span><p id="guideStep" class="small muted"></p>
+ <h2 id="guideTitle" tabindex="-1"></h2><p id="guideText"></p>
+ <div class="planner-actions"><button class="btn secondary" id="guideBack" onclick="moveGuide(-1)">Back</button><button class="btn primary" id="guideNext" onclick="moveGuide(1)">Next</button><button class="btn secondary" onclick="finishGuide()">Skip walkthrough</button></div>
+ <p id="guideMessage" class="small" role="status"></p></section>
+ <div id="studentHome" class="hidden"></div>
+ <section id="studentPlanner" class="card hidden" aria-labelledby="plannerTitle">
+ <div class="history-heading"><div><span class="eyebrow">YOUR PREPARATION PLAN</span><h2 id="plannerTitle">Prepare at your pace</h2></div><button class="btn secondary" onclick="openGuide()">Show me around</button></div>
+ <p id="interviewCountdown" class="countdown" aria-live="polite"></p>
+ <form onsubmit="event.preventDefault();saveInterviewDate()" class="planner-actions"><div class="field"><label for="plannedInterviewDate">Interview date — optional</label><input id="plannedInterviewDate" type="date" min="2000-01-01" max="2099-12-31"><small>Use the date on your appointment confirmation. Leave blank if not booked.</small></div><button id="saveInterviewDateButton" class="btn secondary" type="submit">Save date</button></form>
+ <p id="plannerMessage" class="small" role="status"></p><div id="preparationChecklist" class="preparation-checklist"></div>
+ <p class="small muted">This checklist tracks practice activity, not visa approval or interview readiness.</p></section><div class="page-heading"><span class="eyebrow">PREPARATION AT A GLANCE</span><h1 id="dashboardTitle">Your progress</h1><p class="muted">See how your practice is going and what to work on next.</p></div>
       <div id="dashCards" class="grid g4"></div>
       <div id="athleteTable" style="margin-top:20px"></div><div id="studentHistory"></div>
       <p class="muted small">Practice scores describe your preparation, not your chances of visa approval.</p>
@@ -256,6 +267,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
 <script src="/profile-requirements.js"></script>
 <script src="/country-picker.js"></script>
 <script src="/voice-consent.js"></script>
+<script src="/planning.js"></script>
 <script>
 let me=null, athletes=[], reports=[], pc=null, dc=null, stream=null, transcript=[];
 const $=id=>document.getElementById(id);
@@ -271,6 +283,7 @@ function returnToSignIn(message=sessionMessage){
  $('verificationStatus').textContent='';renderVerification();
  clearOwnerView();
  lessonFields.forEach(field=>$('learn_'+field).value='');$('learn_reflected').checked=false;
+ guideOpen=false;$('welcomeGuide').classList.add('hidden');$('studentPlanner').classList.add('hidden');$('plannedInterviewDate').value='';$('plannerMessage').textContent='';
  for(const id of ['studentHome','studentHistory','profileForm','reportsList','athleteTable','managerTable','dashCards','nav','transcript','learn_transcript','athleteSelect','learn_athleteSelect'])$(id).replaceChildren();
  $('who').textContent='';$('role').textContent='';
  $('app').classList.add('hidden');backToLogin();$('loginErr').textContent=message;
@@ -350,6 +363,7 @@ async function boot(){
  $("nav").innerHTML=navItems().map((x,i)=>`<button type="button" data-screen="${x[1]}" class="nav ${i===0?"on":""} ${me.role==='athlete'&&x[1]==='profile'?'nav-secondary-start':''}" onclick="show('${x[1]}',this)">${navIcon(x[1])}<span>${x[0]}</span></button>`).join("");
  $("athleteSelect").replaceChildren(...athletes.map(a=>new Option(a.name+" — "+(a.university||""),a.id)));
  $("learn_athleteSelect").replaceChildren(...athletes.map(a=>new Option(a.name+" — "+(a.university||""),a.id)));
+ guideIndex=0;guideOpen=me.role==='athlete'&&!athletes.find(a=>a.userId===me.id)?.welcomeCompleted;
  renderAll(); if(me.role==="athlete" || (me.role==='owner' && athletes.some(a=>a.userId===me.id))) await renderProfile();
  if(me.role==='owner')await loadOwner();else clearOwnerView();
  renderVerification();show(me.role==='owner'?'owner':"dashboard");
@@ -497,6 +511,7 @@ async function renderProfile(){
  '<section class="wide"><h2>Contact and interview details</h2><p>Required before your mock interview. Choose “Not booked yet” if you have no appointment location.</p><div class="formgrid">'+
  `<div class="field"><label for="p_phoneCountry">Phone calling country</label><select id="p_phoneCountry">${phoneOptions}</select></div>`+
  field('phone','Phone number — required','tel','autocomplete="tel" placeholder="Your number or full + international number"')+
+ field('interviewDate','Interview date — optional','date','min="2000-01-01" max="2099-12-31"')+
  field('interviewCountry','Interview country','text','list="countryChoices" placeholder="Search countries"')+
  field('interviewCity','Embassy / consulate city','text','list="interviewCities" placeholder="e.g. Lagos — use your appointment location"')+
  '<datalist id="interviewCities"><option value="Not booked yet"></option><option value="Other / enter city"></option></datalist>'+
@@ -524,7 +539,7 @@ function updateInterviewCities(){
  $('interviewCities').innerHTML='<option value="Not booked yet"></option>'+posts.map(p=>`<option value="${escapeHtml(p.city)}">${p.studentWaitReported?'Confirm services with this post':'Student visa wait data unavailable — check official services'}</option>`).join('');
 }
 async function saveProfile(){
- const keys=["phone","phoneCountry","country","interviewCountry","interviewCity","sport","sportOther","university","major","academicLevel","scholarship","scholarshipCoverage","previousRefusal","previousAttempts","previousTravel","remainingSponsor","postGradPlan","studyStatus","priorEducationStatus","priorEducationYear"];
+ const keys=["interviewDate","phone","phoneCountry","country","interviewCountry","interviewCity","sport","sportOther","university","major","academicLevel","scholarship","scholarshipCoverage","previousRefusal","previousAttempts","previousTravel","remainingSponsor","postGradPlan","studyStatus","priorEducationStatus","priorEducationYear"];
  const body={};keys.forEach(k=>body[k]=$("p_"+k).value);
  body.coverageItems=Array.from(document.querySelectorAll('input[name="coverageItem"]:checked')).map(el=>el.value).join('; ');
  body.fundingSources=Array.from(document.querySelectorAll('input[name="fundingSource"]:checked')).map(el=>el.value).join('; ');
@@ -549,10 +564,68 @@ function ownStudentReports(){
  const own=athletes.find(a=>a.userId===me?.id);
  return own?reports.filter(r=>r.athleteId===own.id).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt)):[];
 }
+let guideIndex=0,guideOpen=false,planningSaving=false;
+const guideSteps=[
+ ['Make it personal','Start with My Profile. Your study level, school, funding and plans help personalise your practice. You can update them whenever your circumstances change.'],
+ ['Learn in your own words','Open Learning and choose a module. Read the lesson, practise with the voice tutor, and save your notes. Mark a module complete when you have worked through it.'],
+ ['Try a mock interview','Open Mock Interview, choose a mode and allow microphone access. Answer naturally, then pause so the interviewer can respond. You can practise again with different questions.'],
+ ['Turn feedback into action','Open Reports after practice. Review the topics covered and your next steps, then revisit a lesson or try another mock. Your Home checklist keeps these steps together.']
+];
+function renderGuide(){
+ $('welcomeGuide').classList.toggle('hidden',!guideOpen||me?.role!=='athlete');
+ $('guideStep').textContent='Step '+(guideIndex+1)+' of '+guideSteps.length;
+ $('guideTitle').textContent=guideSteps[guideIndex][0];
+ $('guideText').textContent=guideSteps[guideIndex][1];
+ $('guideBack').disabled=guideIndex===0;
+ $('guideNext').textContent=guideIndex===guideSteps.length-1?'Finish walkthrough':'Next';
+}
+function openGuide(){guideIndex=0;guideOpen=true;renderGuide();$('guideTitle').focus?.();$('welcomeGuide').scrollIntoView?.({behavior:'smooth',block:'start'});}
+function moveGuide(direction){
+ if(direction===1&&guideIndex===guideSteps.length-1){finishGuide();return;}
+ guideIndex=Math.max(0,Math.min(guideSteps.length-1,guideIndex+direction));renderGuide();$('guideTitle').focus?.();
+}
+async function savePlanning(body){
+ const userId=me?.id;
+ const saved=await api('/api/my-profile',{method:'PUT',body:JSON.stringify(body)});
+ if(me?.id!==userId)return false;
+ athletes=athletes.map(a=>a.userId===userId?{...a,...saved}:a);
+ return true;
+}
+async function finishGuide(){
+ if(planningSaving)return;planningSaving=true;$('guideMessage').textContent='Saving…';
+ try{if(await savePlanning({welcomeCompleted:true})){guideOpen=false;renderGuide();$('guideMessage').textContent='';}}
+ catch(e){$('guideMessage').textContent='Could not save your preference. '+e.message;}
+ finally{planningSaving=false;}
+}
+async function saveInterviewDate(){
+ if(planningSaving)return;
+ const value=$('plannedInterviewDate').value;
+ if(value&&!window.VisaAtlasPlanning.validDate(value)){$('plannerMessage').textContent='Enter a valid interview date.';return;}
+ planningSaving=true;$('saveInterviewDateButton').disabled=true;$('plannerMessage').textContent='Saving…';
+ try{if(await savePlanning({interviewDate:value})){renderStudentHome();$('p_interviewDate').value=value;$('plannerMessage').textContent=value?'Interview date saved.':'Interview date removed. You can add it when booked.';}}
+ catch(e){$('plannerMessage').textContent='Could not save your date. '+e.message;}
+ finally{planningSaving=false;$('saveInterviewDateButton').disabled=false;}
+}
+function renderPlanner(own,complete,loaded,done,history){
+ $('studentPlanner').classList.remove('hidden');renderGuide();
+ const date=own?.interviewDate||'',days=window.VisaAtlasPlanning.daysUntil(date);
+ // Do not replace a date while a student is editing it.
+ if(document.activeElement!==$('plannedInterviewDate'))$('plannedInterviewDate').value=date;
+ $('interviewCountdown').textContent=days===null?'No date booked yet? Start preparing whenever you’re ready.':days===0?'Your interview is today.':days<0?'Your saved interview date has passed. Update it if your appointment changed.':days===1?'1 day until your interview':days+' days until your interview';
+ const substantive=history.some(r=>r.coverage?.assessed>0);
+ const items=[
+  ['profile','Complete your profile',complete?'Complete':'Add your study and funding details',complete],
+  ['learning','Work through the learning modules',loaded?done+' of '+curriculum.length+' complete':'Open Learning to load your saved progress',loaded&&done===curriculum.length],
+  ['interview','Practise answering interview questions',substantive?'Answers captured in a saved mock':'Complete a mock with substantive answers',substantive],
+  ['reports','Review feedback and practise weak areas',history.length?'Feedback available — revisit after each mock':'Available after your first mock',false]
+ ];
+ $('preparationChecklist').innerHTML=items.map(([screen,title,note,checked])=>'<button class="checklist-item" onclick="studentNext(\''+screen+'\')"><span class="checklist-mark '+(checked?'done':'')+'" aria-label="'+(checked?'Completed':'Next action')+'">'+(checked?'✓':'→')+'</span><span><strong>'+title+'</strong><small>'+escapeHtml(note)+'</small></span></button>').join('');
+}
+
 function renderStudentHome(){
  const student=me?.role==='athlete';$('studentHome').classList.toggle('hidden',!student);
  $('mockStudentPicker').classList.toggle('hidden',student&&athletes.length===1);
- if(!student){$('studentHome').replaceChildren();$('studentHistory').replaceChildren();return;}
+ if(!student){$('studentPlanner').classList.add('hidden');$('welcomeGuide').classList.add('hidden');$('studentHome').replaceChildren();$('studentHistory').replaceChildren();return;}
  const own=athletes.find(a=>a.userId===me.id),history=ownStudentReports(),latest=history[0];
  const missing=window.VisaAtlasProfile&&own?window.VisaAtlasProfile.missing(own):[];
  const complete=!!own&&own.profileStatus!=='Incomplete'&&!missing.length;
@@ -563,7 +636,7 @@ function renderStudentHome(){
  const cta={profile:'Complete my profile',learning:loaded?'Continue preparing':'Open my learning',interview:'Start mock practice',reports:'Review my feedback'};
  $('studentHome').innerHTML=`<div class="student-hero"><div><span class="eyebrow">YOUR F-1 PREPARATION</span><p class="home-greeting">Welcome back, ${escapeHtml(String(me.name||'Student').trim().split(/\s+/)[0])}</p><h2>${titles[next]}</h2><p>${descriptions[next]}</p><button class="btn primary" data-home-next="${next}">${cta[next]} →</button></div><div class="home-course"><span class="eyebrow">LEARNING PROGRESS</span><strong>${loaded?done+' / '+curriculum.length:'—'}</strong><span>${loaded?'modules completed':courseLoadState==='error'?'Progress unavailable · open Learning to retry':'Loading saved progress…'}</span><progress max="${curriculum.length}" value="${loaded?done:0}" aria-label="Learning modules completed"></progress><small>Learn at your own pace. Revisit any lesson.</small></div></div><nav class="preparation-path" aria-label="Your preparation journey">${[['profile','Complete profile',complete?'Details saved':'Your first step'],['learning','Learn',loaded?done+' of '+curriculum.length+' modules':'Your learning modules'],['interview','Practise',history.length?'Keep building confidence':'Try a mock interview'],['reports','Review feedback',history.length?history.length+' saved reports':'Your next steps']].map(([id,title,note],i)=>`<button class="path-step ${id===next?'current':''}" data-home-next="${id}"${id===next?' aria-current="step"':''}><span>${i+1}</span><div><strong>${title}</strong><small>${escapeHtml(note)}</small></div></button>`).join('')}</nav>`;
  $('studentHome').querySelectorAll('[data-home-next]').forEach(button=>button.addEventListener('click',()=>studentNext(button.dataset.homeNext)));
- renderStudentHistory(history);
+ renderStudentHistory(history);renderPlanner(own,complete,loaded,done,history);
 }
 function studentNext(next){
  if(!['profile','learning','interview','reports'].includes(next))return;

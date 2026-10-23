@@ -9,7 +9,7 @@ function fixture(){
  const document={getElementById:id=>{if(!elements.has(id)){if(id.startsWith('p_')||['educationHistory','educationHistoryTitle','interviewCities'].includes(id))elements.set(id,element());else throw new Error('Missing DOM element '+id);}return elements.get(id)},querySelector:selector=>{if(!elements.has(selector))elements.set(selector,element());return elements.get(selector)},querySelectorAll:selector=>selector==='.screen'?['learning','dashboard','interview','profile','reports','manager'].map(id=>elements.get(id)):[],createElement:()=>element(),createTextNode:text=>({textContent:text})};
  const student={id:'s1',userId:'u1',name:'Test Student',university:'Example University',major:'Biology',currentScore:0};
  const store={progress:{},moduleProgress:{},requests:[],tracks:[],failLoad:false,failPassword:false};
- const ctx=vm.createContext({document,console,AbortController,URL,Date,JSON,Set,setTimeout,clearTimeout,Option:function(text,value){return {text,value}},window:{VisaAtlasCurriculum:require("../public/curriculum"),addEventListener(){}},location:{reload(){}},confirm:()=>true,navigator:{mediaDevices:{getUserMedia:async()=>{const track={enabled:true,stop(){this.stopped=true}};store.tracks.push(track);return {getTracks:()=>[track],getAudioTracks:()=>[track]}}}},RTCPeerConnection:class{addTrack(){}createDataChannel(){return {readyState:'open',addEventListener(){},send(){},close(){}}}async createOffer(){return {sdp:'offer'}}async setLocalDescription(){}async setRemoteDescription(){}close(){}},fetch:async(url,opt={})=>{
+ const ctx=vm.createContext({document,console,AbortController,URL,Date,JSON,Set,setTimeout,clearTimeout,Option:function(text,value){return {text,value}},window:{VisaAtlasPlanning:require("../public/planning"),VisaAtlasCurriculum:require("../public/curriculum"),addEventListener(){}},location:{reload(){}},confirm:()=>true,navigator:{mediaDevices:{getUserMedia:async()=>{const track={enabled:true,stop(){this.stopped=true}};store.tracks.push(track);return {getTracks:()=>[track],getAudioTracks:()=>[track]}}}},RTCPeerConnection:class{addTrack(){}createDataChannel(){return {readyState:'open',addEventListener(){},send(){},close(){}}}async createOffer(){return {sdp:'offer'}}async setLocalDescription(){}async setRemoteDescription(){}close(){}},fetch:async(url,opt={})=>{
    store.requests.push({url,...opt});let data;const route=new URL(url,'http://local').pathname;
    if(route==='/api/change-password'){if(store.failPassword)return {ok:false,json:async()=>({error:'Current password is incorrect.'})};data={ok:true};}
    else if(route==='/api/me')data=store.user||{id:'u1',name:'Test Student',role:'athlete'};
@@ -19,7 +19,7 @@ function fixture(){
    else if(route==='/api/owner/voice-access')data={ok:true};
    else if(route==='/api/voice-usage')data=store.usage||{learn:{limit:12,used:2,remaining:10,resetsAt:'2026-10-17T00:00:00.000Z'},mock:{limit:6,used:1,remaining:5,resetsAt:'2026-10-17T00:00:00.000Z'},reports:{limit:6,used:1,remaining:5,attemptsRemaining:11,resetsAt:'2026-10-17T00:00:00.000Z'}};
    else if(route==='/api/profile-options')data=JSON.parse(JSON.stringify(require('../profile-options')));
-   else if(route==='/api/athletes')data=[student];else if(route==='/api/reports')data=[];else if(route==='/api/my-profile')data=student;
+   else if(route==='/api/athletes')data=[student];else if(route==='/api/reports')data=[];else if(route==='/api/my-profile'){if(opt.method==='PUT'){if(store.failPlanning)return {ok:false,json:async()=>({error:'Save failed'})};Object.assign(student,JSON.parse(opt.body));}data=student;}
    else if(route.startsWith('/api/learning/')){
      if(store.failLoad&&!opt.method)return {ok:false,json:async()=>({error:'Unavailable'})};
      if(store.failSave&&opt.method==='PUT')return {ok:false,json:async()=>({error:'Save failed'})};
@@ -391,4 +391,31 @@ test('opening a lesson hides the module overview and closing restores it',async(
  assert.equal(f.elements.get('learningOverview').classList.contains('hidden'),true);
  f.run('closeLearningModule()');
  assert.equal(f.elements.get('learningOverview').classList.contains('hidden'),false);
+});
+
+test('welcome can be skipped, persists and can be reopened',async()=>{
+ const f=fixture();await f.run('boot()');
+ assert.equal(f.elements.get('welcomeGuide').classList.contains('hidden'),false);
+ f.run('moveGuide(1)');assert.match(f.elements.get('guideStep').textContent,/Step 2/);
+ await f.run('finishGuide()');
+ assert.equal(f.elements.get('welcomeGuide').classList.contains('hidden'),true);
+ await f.run('boot()');assert.equal(f.elements.get('welcomeGuide').classList.contains('hidden'),true);
+ f.run('openGuide()');assert.equal(f.elements.get('welcomeGuide').classList.contains('hidden'),false);
+});
+test('interview date saves, clears, and does not claim success after a failed save',async()=>{
+ const f=fixture();await f.run('boot()');
+ f.elements.get('plannedInterviewDate').value='2028-02-29';await f.run('saveInterviewDate()');
+ assert.equal(f.run('athletes[0].interviewDate'),'2028-02-29');
+ f.store.failPlanning=true;f.elements.get('plannedInterviewDate').value='2028-03-01';await f.run('saveInterviewDate()');
+ assert.match(f.elements.get('plannerMessage').textContent,/Could not save/);assert.equal(f.run('athletes[0].interviewDate'),'2028-02-29');
+ f.store.failPlanning=false;f.elements.get('plannedInterviewDate').value='';await f.run('saveInterviewDate()');
+ assert.equal(f.run('athletes[0].interviewDate'),'');assert.match(f.elements.get('interviewCountdown').textContent,/No date booked/);
+});
+test('audio-only mock does not complete the practice checklist and staff never see onboarding',async()=>{
+ const f=fixture();await f.run('boot()');
+ f.run("reports=[{athleteId:'s1',coverage:{assessed:0}}];renderStudentHome()");
+ assert.match(f.elements.get('preparationChecklist').innerHTML,/Complete a mock with substantive answers/);
+ f.run("me.role='coach';renderStudentHome()");
+ assert.equal(f.elements.get('studentPlanner').classList.contains('hidden'),true);
+ assert.equal(f.elements.get('welcomeGuide').classList.contains('hidden'),true);
 });
