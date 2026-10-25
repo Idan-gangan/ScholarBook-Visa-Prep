@@ -295,6 +295,22 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
         <button id="changePasswordBtn" class="btn primary" type="submit">Save new password</button>
         <p id="passwordMessage" role="status" aria-live="polite"></p>
       </form>
+      <div id="deleteAccountSection" class="card hidden" style="max-width:560px;margin-top:24px">
+        <h2>Delete account</h2>
+        <p>This permanently removes your VisaAtlas account, study profile, saved notes, learning progress, mock interviews, transcripts and reports from our active database. You cannot undo it.</p>
+        <p class="small muted">Finish any voice session or report first. Provider logs, backups and emails already sent to support may remain under separate retention practices. See our <a href="/privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.</p>
+        <button type="button" class="btn danger" onclick="openDeleteAccount()">Delete my account…</button>
+      </div>
+      <dialog id="deleteAccountDialog" class="owner-dialog" aria-labelledby="deleteAccountTitle" onclose="clearDeleteAccountForm()" oncancel="if(deletingAccount)event.preventDefault()">
+        <form onsubmit="event.preventDefault();deleteMyAccount()">
+          <h2 id="deleteAccountTitle">Permanently delete your account?</h2>
+          <p>Your saved preparation records will be removed and you will be signed out. This cannot be undone.</p>
+          <div class="field"><label for="deleteAccountPassword">Current password</label><input id="deleteAccountPassword" type="password" autocomplete="current-password" required maxlength="128"></div>
+          <div class="field"><label for="deleteAccountConfirmation">Type DELETE to confirm</label><input id="deleteAccountConfirmation" autocomplete="off" spellcheck="false" required pattern="DELETE"></div>
+          <p id="deleteAccountMessage" role="status" aria-live="polite"></p>
+          <div class="owner-dialog-actions"><button id="deleteAccountCancel" type="button" class="btn secondary" onclick="$('deleteAccountDialog').close()">Cancel</button><button id="deleteAccountSubmit" type="submit" class="btn danger">Permanently delete account</button></div>
+        </form>
+      </dialog>
     </section>
   </main></div>
 </div>
@@ -315,6 +331,7 @@ function returnToSignIn(message=sessionMessage){
  me=null;athletes=[];reports=[];transcript=[];learningTranscript=[];mockStudentId=null;mockSessionId=null;
  lessonOpen=false;$('lessonDetails').classList.add('hidden');lessonPractice=null;renderPracticeFocus();courseSaved={};activeLessonId="study-purpose";$("moduleCards").replaceChildren();$("courseProgress").textContent="";lessonVersion++;lessonStudentId=null;lessonDirty=false;lessonCompleted=false;
  clearPasswordForm();
+ $('deleteAccountDialog').close();clearDeleteAccountForm();
  for(const id of ['verificationPassword','verificationNewEmail'])$(id).value='';
  $('verificationStatus').textContent='';renderVerification();
  clearOwnerView();
@@ -374,6 +391,27 @@ async function changePassword(){
  }catch(error){$('passwordMessage').textContent=error.message;}
  finally{button.disabled=false;}
 }
+let deletingAccount=false;
+function clearDeleteAccountForm(){
+ $('deleteAccountPassword').value='';$('deleteAccountConfirmation').value='';$('deleteAccountMessage').textContent='';
+}
+function openDeleteAccount(){
+ if(me?.role!=='athlete')return;
+ clearDeleteAccountForm();$('deleteAccountDialog').showModal();$('deleteAccountCancel').focus();
+}
+async function deleteMyAccount(){
+ if(deletingAccount)return;
+ const body={currentPassword:$('deleteAccountPassword').value,confirmation:$('deleteAccountConfirmation').value};
+ if(body.confirmation!=='DELETE'){$('deleteAccountMessage').textContent='Type DELETE to confirm.';return;}
+ deletingAccount=true;$('deleteAccountSubmit').disabled=true;$('deleteAccountCancel').disabled=true;
+ $('deleteAccountMessage').textContent='Deleting your account…';
+ try{
+  await api('/api/delete-account',{method:'POST',body:JSON.stringify(body)});
+  $('deleteAccountDialog').close();
+  returnToSignIn('Your account and saved preparation records have been deleted.');
+ }catch(error){$('deleteAccountMessage').textContent=error.message;}
+ finally{deletingAccount=false;$('deleteAccountPassword').value='';$('deleteAccountSubmit').disabled=false;$('deleteAccountCancel').disabled=false;}
+}
 function navItems(){
  if(me.role==='athlete')return [["Home","dashboard"],["Learning","learning"],["Mock Interview","interview"],["Reports","reports"],["My Profile","profile"],["Account security","account"]];
  const base=[["My Learning","learning"],["Dashboard","dashboard"],["Live Mock Interview","interview"],["Readiness Reports","reports"]];
@@ -398,6 +436,7 @@ async function boot(){
  me=await api("/api/me"); athletes=await api("/api/athletes"); reports=await api("/api/reports");
  ["welcome","login","registration"].forEach(id=>$(id).classList.add("hidden"));$("password").value="";$("app").classList.remove("hidden");$("who").textContent=me.name;$("role").textContent=me.role==="athlete"?"Student":me.role==='owner'?'Owner':me.role;
  $("accountAvatar").textContent=String(me.name||'S').trim().split(/\s+/).slice(0,2).map(part=>part[0]||'').join('').toUpperCase();
+ $('deleteAccountSection').classList.toggle('hidden',me.role!=='athlete');
  $("nav").innerHTML=navItems().map((x,i)=>`<button type="button" data-screen="${x[1]}" class="nav ${i===0?"on":""} ${me.role==='athlete'&&x[1]==='profile'?'nav-secondary-start':''}" onclick="show('${x[1]}',this)">${navIcon(x[1])}<span>${x[0]}</span></button>`).join("");
  $("athleteSelect").replaceChildren(...athletes.map(a=>new Option(a.name+" — "+(a.university||""),a.id)));
  $("learn_athleteSelect").replaceChildren(...athletes.map(a=>new Option(a.name+" — "+(a.university||""),a.id)));

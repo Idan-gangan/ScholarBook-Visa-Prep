@@ -12,6 +12,11 @@ function harness(user={id:'u1',role:'athlete'},env={}){
  const db={users:[user],athletes:[{academicLevel:'Undergraduate',...structuredClone(student)},{id:'s2',userId:'u2'}],reports:[],transcripts:[]};
  const pool={query:async(sql,args)=>{
    if(sql.trim().startsWith('ALTER TABLE') || sql.trim().startsWith('CREATE TABLE') || sql.trim().startsWith('INSERT INTO app_state'))return {rows:[]};
+   if(sql==='SELECT pg_advisory_xact_lock(172343992,1)')return {rows:[]};
+   if(sql.startsWith('DELETE FROM password_reset_queue')||sql.startsWith('DELETE FROM password_reset_cooldowns'))return {rows:[]};
+   if(sql.startsWith('SELECT 1 FROM voice_admission'))return {rows:admission.get(args[0])?.token?[{active:1}]:[]};
+   if(sql.startsWith('DELETE FROM user_credentials')){credentials.delete(args[0]);return {rows:[]};}
+   if(/^DELETE FROM (password_reset_tokens|voice_mode_usage|voice_admission|voice_call_limits|evaluation_daily_usage|learning_progress)/.test(sql))return {rows:[]};
    if(sql.startsWith('INSERT INTO user_credentials')){if(!credentials.has(args[0]))credentials.set(args[0],{password_hash:args[1],version:0});return {rows:[]};}
    if(sql.startsWith('SELECT password_hash'))return {rows:credentials.has(args[0])?[structuredClone(credentials.get(args[0]))]:[]};
    if(sql==='UPDATE user_credentials SET version=version+1 WHERE user_id=$1'){const c=credentials.get(args[0]);if(c)c.version++;return {rows:[]};}
@@ -63,7 +68,7 @@ function harness(user={id:'u1',role:'athlete'},env={}){
      return pool.query(sql,args);
    },release(){if(unlock)unlock();}};
  };
- const context=vm.createContext({require:id=>id==='./report-pdf'?require('../report-pdf'):id==='./public/planning'?require('../public/planning'):id==='./interview-design'?require('../interview-design'):id==='./public/profile-requirements'?require('../public/profile-requirements'):id==='./interview-posts.json'?require('../interview-posts.json'):id==='./email-verification'?require('../email-verification'):id==='./profile-options'?require('../profile-options'):id==='./owner-access'?require('../owner-access'):id==='./report-practice'?require('../report-practice'):id==='http'?{createServer:fn=>{handler=fn;return {}}}:id==='pg'?{Pool:function(){return pool}}:id==='fs'?{...fs,readFileSync:(file,...args)=>file===path.resolve(__dirname,'../data/db.json')?'{}':fs.readFileSync(file,...args)}:id==='./evaluation-limits'?require('../evaluation-limits'):id==='./voice-limits'?require('../voice-limits'):id==='./learning'?learning:id==='./passwords'?passwords:id==='./password-recovery'?require('../password-recovery'):require(id),__dirname:path.resolve(__dirname,'..'),process:{env:{OPENAI_API_KEY:'test-only',...env}},console:{log:(...args)=>logs.push(args.join(' ')),warn:(...args)=>logs.push(args.join(' ')),error:(...args)=>logs.push(args.join(' '))},Buffer,URL,FormData,AbortSignal,fetch:async(url,options)=>{if(url.endsWith('/hangup'))return {ok:true,status:200};if(url.endsWith('/responses')){calls.push({url,request:JSON.parse(options.body)});return {ok:true,json:async()=>({output_text:JSON.stringify(JSON.parse(options.body).input.includes('VISAATLAS_EVIDENCE_REPORT_V3')?{summary:'Only limited answers were captured.',strengths:[],assessments:require('../interview-design').TOPICS.map(([topic])=>({topic,status:'not_covered'}))}:{scores:{},overall:45,readiness:'High Concern',biggestWeakness:'Test',feedback:'Test feedback',nextStep:'Practice'})})};}calls.push({url,session:JSON.parse(options.body.get('session'))});return {ok:true,status:200,headers:{get:()=>'/v1/realtime/calls/rtc_test'},text:async()=> 'test-sdp-answer'}}});
+ const context=vm.createContext({require:id=>id==='./account-deletion'?require('../account-deletion'):id==='./report-pdf'?require('../report-pdf'):id==='./public/planning'?require('../public/planning'):id==='./interview-design'?require('../interview-design'):id==='./public/profile-requirements'?require('../public/profile-requirements'):id==='./interview-posts.json'?require('../interview-posts.json'):id==='./email-verification'?require('../email-verification'):id==='./profile-options'?require('../profile-options'):id==='./owner-access'?require('../owner-access'):id==='./report-practice'?require('../report-practice'):id==='http'?{createServer:fn=>{handler=fn;return {}}}:id==='pg'?{Pool:function(){return pool}}:id==='fs'?{...fs,readFileSync:(file,...args)=>file===path.resolve(__dirname,'../data/db.json')?'{}':fs.readFileSync(file,...args)}:id==='./evaluation-limits'?require('../evaluation-limits'):id==='./voice-limits'?require('../voice-limits'):id==='./learning'?learning:id==='./passwords'?passwords:id==='./password-recovery'?require('../password-recovery'):require(id),__dirname:path.resolve(__dirname,'..'),process:{env:{OPENAI_API_KEY:'test-only',...env}},console:{log:(...args)=>logs.push(args.join(' ')),warn:(...args)=>logs.push(args.join(' ')),error:(...args)=>logs.push(args.join(' '))},Buffer,URL,FormData,AbortSignal,fetch:async(url,options)=>{if(url.endsWith('/hangup'))return {ok:true,status:200};if(url.endsWith('/responses')){calls.push({url,request:JSON.parse(options.body)});return {ok:true,json:async()=>({output_text:JSON.stringify(JSON.parse(options.body).input.includes('VISAATLAS_EVIDENCE_REPORT_V3')?{summary:'Only limited answers were captured.',strengths:[],assessments:require('../interview-design').TOPICS.map(([topic])=>({topic,status:'not_covered'}))}:{scores:{},overall:45,readiness:'High Concern',biggestWeakness:'Test',feedback:'Test feedback',nextStep:'Practice'})})};}calls.push({url,session:JSON.parse(options.body.get('session'))});return {ok:true,status:200,headers:{get:()=>'/v1/realtime/calls/rtc_test'},text:async()=> 'test-sdp-answer'}}});
  let source=fs.readFileSync(path.join(__dirname,'../server.js'),'utf8');source=source.slice(0,source.indexOf('initDb().then('));vm.runInContext(source,context);vm.runInContext(`sessions.set('test-token',{userId:${JSON.stringify(user.id)},version:0,expires:Date.now()+60000})`,context);
  async function request(method,url,body,authenticated=true){
    // Existing evaluation fixtures represent distinct server-issued mock sessions.
@@ -628,3 +633,28 @@ test('PDF exports require access to the report student and use private download 
  assert.equal((await h.request('GET','/api/reports/pdf1/pdf',undefined,false)).status,401);
  assert.equal((await h.request('GET','/api/reports/missing/pdf')).status,404);
 });
+
+ test('account deletion requires login, student role, typed confirmation and password; deletes only self',async()=>{
+ const password='Long test account deletion password';
+ const h=harness({id:'u1',role:'athlete',email:'test@example.test',passwordHash:await passwords.hashPassword(password)});
+ assert.equal((await h.request('POST','/api/delete-account',{},false)).status,401);
+ assert.equal((await harness({id:'owner',role:'owner'}).request('POST','/api/delete-account',{})).status,403);
+ assert.equal((await h.request('POST','/api/delete-account',{currentPassword:password,confirmation:'delete'})).status,400);
+ assert.equal((await h.request('POST','/api/delete-account',{currentPassword:'wrong',confirmation:'DELETE'})).status,400);
+ assert.equal(h.db.users.length,1);
+ h.db.reports.push({athleteId:'s1'},{athleteId:'s2'});h.db.transcripts.push({athleteId:'s1'},{athleteId:'s2'});
+ h.db.mockSessions=[{athleteId:'s1',userId:'u1'},{athleteId:'s2',userId:'other'}];
+ const result=await h.request('POST','/api/delete-account',{currentPassword:password,confirmation:'DELETE',userId:'other',athleteId:'s2'});
+ assert.equal(result.status,200);assert.match(result.headers['Set-Cookie'],/Max-Age=0/);
+ assert.equal(h.db.users.length,0);assert.equal(h.credentials.size,0);
+ for(const key of ['athletes','reports','transcripts','mockSessions'])assert.equal(h.db[key].length,1,key);
+ assert.equal(h.db.athletes[0].id,'s2');
+ assert.equal((await h.request('GET','/api/me')).status,401);
+ });
+ test('account deletion refuses active voice sessions without removing records',async()=>{
+ const password='Long test account deletion password';
+ const h=harness({id:'u1',role:'athlete',passwordHash:await passwords.hashPassword(password)});
+ h.admission.set('u1',{token:'active'});
+ assert.equal((await h.request('POST','/api/delete-account',{currentPassword:password,confirmation:'DELETE'})).status,409);
+ assert.equal(h.db.users.length,1);assert.equal(h.credentials.size,1);
+ });

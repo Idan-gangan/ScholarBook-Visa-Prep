@@ -347,6 +347,22 @@ const server=http.createServer(async (req,res)=>{
       return res.end(JSON.stringify({ok:true}));
     }
 
+    if(req.method==='POST' && url.pathname==='/api/delete-account'){
+      const u=await requireUser(req,res);if(!u)return;
+      if(u.role!=='athlete')return json(res,403,{error:'For staff or owner account removal, contact support.'});
+      if(!allowAuth('delete:'+u.id))return json(res,429,{error:'Too many attempts. Please try again in one minute.'});
+      if(!(req.headers['content-type']||'').toLowerCase().startsWith('application/json'))return json(res,415,{error:'JSON required.'});
+      let body;
+      try{body=JSON.parse((await readBody(req,4096)).toString());}catch(error){return json(res,error.status===413?413:400,{error:'Invalid request.'});}
+      if(!body||body.confirmation!=='DELETE')return json(res,400,{error:'Type DELETE to confirm permanent account deletion.'});
+      const saved=await credential(u.id);
+      if(!saved||!await verifyPassword(body.currentPassword,saved.password_hash))return json(res,400,{error:'Current password is incorrect.'});
+      await mutateDb((db,client)=>require('./account-deletion').deleteStudentAccount(db,client,u.id,saved));
+      for(const [token,session] of sessions)if(session.userId===u.id)sessions.delete(token);
+      res.writeHead(200,{...RESPONSE_HEADERS,'Content-Type':'application/json','Cache-Control':'no-store','Set-Cookie':sessionCookie('',true)});
+      return res.end(JSON.stringify({ok:true}));
+    }
+
     if(req.method==="POST" && url.pathname==="/api/logout"){
       const token=parseCookies(req).sb_session; if(token) sessions.delete(token);
       res.writeHead(200,{"Content-Type":"application/json","Set-Cookie":sessionCookie('',true)});
@@ -529,7 +545,10 @@ const server=http.createServer(async (req,res)=>{
       const evaluationKey=sha(JSON.stringify([u.id,athlete.id,mockSession.id]));
       const previous=db.reports.find(report=>report.evaluationKey===evaluationKey);
       if(previous)return json(res,200,previous);
-      const lease=await evaluationLimits.reserve(u.id);
+      const lease=await mutateDb(async current=>{
+        if(!current.users.some(user=>user.id===u.id)||!canAccessStudent(u,current.athletes.find(a=>a.id===athlete.id)))throw stateError(403,'This account or student is no longer available.');
+        return evaluationLimits.reserve(u.id);
+      });
       if(!lease)return json(res,429,{error:"A report is already processing. Please wait for it to finish before trying again."});
       try{
       // Recheck after admission in case another request finished between the first lookup and reservation.
@@ -683,8 +702,11 @@ Use only information in the supplied profile and transcript. Do not reward inven
       try{progress=normalizeProgress(JSON.parse((await readBody(req)).toString()||"{}"))}
       catch(error){return json(res,400,{error:error.message})}
       progress.updatedAt=new Date().toISOString();
-      await pool.query(`INSERT INTO learning_progress (student_id,lesson_id,data) VALUES ($1,$2,$3::jsonb)
+      await mutateDb(async(current,client)=>{
+      if(!current.users.some(user=>user.id===u.id)||!canAccessStudent(u,current.athletes.find(a=>a.id===student.id)))throw stateError(403,'This account or student is no longer available.');
+      await client.query(`INSERT INTO learning_progress (student_id,lesson_id,data) VALUES ($1,$2,$3::jsonb)
         ON CONFLICT (student_id,lesson_id) DO UPDATE SET data=EXCLUDED.data,updated_at=NOW()`,[student.id,lessonId,JSON.stringify(progress)]);
+      });
       return json(res,200,{progress});
     }
 
@@ -737,7 +759,10 @@ Use only information in the supplied profile and transcript. Do not reward inven
       }
       const sdp=(await readBody(req)).toString();
       if(!sdp.startsWith('v=0') || sdp.length>64000)return json(res,400,{error:'Invalid voice connection offer.'});
-      const voiceToken=await voiceLimits.acquire(u.id);
+      const voiceToken=await mutateDb(async current=>{
+        if(!current.users.some(user=>user.id===u.id)||!canAccessStudent(u,current.athletes.find(a=>a.id===athlete.id)))throw stateError(403,'This account or student is no longer available.');
+        return voiceLimits.acquire(u.id);
+      });
       if(!voiceToken)return json(res,429,{error:'End your current voice session before starting another. After a recent start, wait 10 seconds and try again.'});
       let voiceDelivered=false;
       try{
@@ -809,6 +834,7 @@ Start with the opening guidance in INTERVIEW DESIGN below.`;
       if(mode==='mock'){
         mockSessionId='mock_'+crypto.randomBytes(16).toString('hex');
         await mutateDb(async(current)=>{
+          if(!current.users.some(user=>user.id===u.id)||!canAccessStudent(u,current.athletes.find(a=>a.id===athlete.id)))throw stateError(403,'This account or student is no longer available.');
           current.mockSessions??=[];
           // Retain unreported sessions for 30 days. Existing reports remain available.
           current.mockSessions=current.mockSessions.filter(x=>Date.parse(x.createdAt)>Date.now()-30*86400000);
