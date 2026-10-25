@@ -2,7 +2,13 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>VisaAtlas — Learn. Practise. Prepare.</title>
+<title>VisaAtlas — U.S. F-1 Visa Interview Preparation</title>
+<meta name="description" content="Prepare for your U.S. F-1 visa interview with VisaAtlas. Explore guided lessons, AI tutoring, voice mock interviews, and personalised practice feedback.">
+<meta property="og:title" content="VisaAtlas — Prepare with purpose. Speak with confidence.">
+<meta property="og:description" content="Guided learning, AI tutoring, and realistic voice mock interviews for students preparing to study in the U.S.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://visaatlasprep.com/">
+<link rel="canonical" href="https://visaatlasprep.com/">
 <style>
 :root{--navy:#0b1f4d;--blue:#2457ff;--purple:#6d45e6;--bg:#f5f7fb;--line:#dde4ef;--muted:#6d7891;--green:#15915a;--amber:#c77d00;--red:#c73737}
 *{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:#14213d}
@@ -53,27 +59,51 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
 <link rel="stylesheet" href="/profile.css">
 <link rel="stylesheet" href="/owner.css">
 <link rel="stylesheet" href="/student.css">
+<link rel="stylesheet" href="/home.css">
 </head>
 <body>
 <div id="welcome" class="welcome">
-  <header class="welcome-nav"><div class="brand"><div class="logo" aria-hidden="true">VA</div>VisaAtlas</div><div class="welcome-nav-actions"><a href="#how-it-works">How it works</a><button class="btn primary" onclick="backToLogin()">Sign in</button></div></header>
-  <main>
+  <a class="home-skip" href="#home-main">Skip to content</a>
+  <header class="welcome-nav"><a class="brand home-brand" href="#welcome" aria-label="VisaAtlas home"><span class="logo" aria-hidden="true"></span>VisaAtlas</a><div class="welcome-nav-actions"><nav class="home-links" aria-label="Main navigation"><a href="#how-it-works">How it works</a><a href="#curriculum">What you’ll learn</a><a href="#our-story">Our story</a><a href="#home-faq">FAQs</a></nav><button class="btn primary" onclick="backToLogin()">Sign in</button></div></header>
+  <main id="home-main">
     <section class="welcome-hero">
-      <span class="welcome-tag">FOR STUDENTS PREPARING TO STUDY IN THE U.S.</span>
-      <h1>A world of possibility.<br><em>Prepare for yours.</em></h1>
-      <p>Turn your study plans into a story you can explain with clarity. Learn with your AI tutor, practise your interview, and discover your next step.</p>
-      <div class="welcome-actions"><button class="btn primary" onclick="showRegistration()">Start learning <span class="button-arrow" aria-hidden="true">→</span></button><button class="btn secondary" onclick="document.getElementById('how-it-works').scrollIntoView({behavior:'smooth'})">Explore the platform</button></div>
-      <p class="small">For high-school, undergraduate, master’s, and PhD students. Athletics is optional.</p>
-      <div class="hero-path" aria-label="Your preparation journey"><span>01 <b>Learn</b></span><span>02 <b>Practise</b></span><span>03 <b>Grow</b></span></div>
+      <span class="welcome-tag">U.S. F-1 VISA INTERVIEW PREPARATION</span>
+      <h1>Your ambitions.<br>Your story.<br><em>Prepare to share it.</em></h1>
+      <p>Learn how to explain your study plans, practise with an AI tutor, and build confidence through realistic voice mock interviews—with feedback to guide your next step.</p>
+      <div class="welcome-actions"><button class="btn primary" onclick="showRegistration()">Start your preparation <span class="button-arrow" aria-hidden="true">→</span></button><a class="btn secondary home-link-button" href="#platform-preview">See how it works</a></div>
+      <p class="small">For high school, undergraduate, master’s, and PhD students—including student-athletes.</p>
+      <div class="hero-path" aria-label="Your preparation journey"><span>01 <b>Learn</b></span><span>02 <b>Practise</b></span><span>03 <b>Improve</b></span></div>
     </section>
-    <div class="section-heading" id="how-it-works"><h2>A clearer path to preparation.</h2><p>Learn at your pace. Practise with purpose.</p></div>
+    <section class="home-section home-intro" id="how-it-works"><div><span class="home-eyebrow">FROM UNCERTAINTY TO PREPARATION</span><h2>Know your plans.<br>Find your words.</h2></div><p>You may know why you want to study in the U.S. Explaining it clearly under pressure can feel different. VisaAtlas gives you a structured place to learn, speak, reflect, and try again using your own experiences.</p></section>
     <section class="welcome-steps" aria-label="How VisaAtlas works">
-      <article class="card"><span class="welcome-number">01 · LEARN</span><h2>Understand your story</h2><p>Get short explanations based on your student profile, from your school choice to your funding and future plans.</p></article>
-      <article class="card"><span class="welcome-number">02 · PRACTISE</span><h2>Connect learning to your plans</h2><p>Talk through your ideas with the tutor. Ask questions and practise explaining your real experiences clearly.</p></article>
-      <article class="card"><span class="welcome-number">03 · MOCK INTERVIEW</span><h2>Put it into practice</h2><p>Speak naturally in an AI mock interview and get feedback on what to work on next.</p></article>
+      <article class="card"><span class="welcome-number">01 · BUILD YOUR FOUNDATION</span><h2>Learn with context</h2><p>Create your account and study profile. Work through short lessons covering your academic journey, school choice, funding, and future plans.</p></article>
+      <article class="card"><span class="welcome-number">02 · PRACTISE OUT LOUD</span><h2>Work with your AI tutor</h2><p>Hear explanations and examples, ask questions, and practise connecting what you’ve learned to your own situation.</p></article>
+      <article class="card"><span class="welcome-number">03 · REFLECT AND IMPROVE</span><h2>Experience a mock interview</h2><p>Answer questions in a voice conversation, respond to follow-ups, then review feedback and identify what to work on next.</p></article>
     </section>
+    <section class="home-band" id="platform-preview"><div class="home-section home-preview"><div><span class="home-eyebrow">A CLOSER LOOK</span><h2>Practice with a purpose.</h2><p>Move from understanding a question to explaining your answer. Your tutor helps you prepare; mock interviews give you space to practise the conversation.</p><ul class="home-checks"><li>Guided lessons across six preparation modules</li><li>Voice practice shaped by your student profile</li><li>Mock interviews with follow-up questions</li><li>Feedback to help you plan your next practice</li></ul><a href="#curriculum">Explore the learning path →</a></div><div class="home-example" aria-label="Illustrative practice example"><div class="home-example-top"><span class="home-status"></span> Inside a practice conversation <span>EXAMPLE</span></div><p class="home-bubble"><b>AI tutor</b>Why did you choose this university?</p><p class="home-bubble home-answer"><b>Your preparation</b>Think about the specific program, the opportunities that matter to you, and how they connect to your goals.</p><div class="home-feedback"><span class="home-eyebrow">YOUR NEXT STEP</span><h3>Make it personal. Make it specific.</h3><p>Practise explaining one real detail about your chosen program and why it matters to your plans.</p></div><p class="home-caption">Illustrative example of the approach, not a student transcript or a live session.</p></div></div></section>
+    <section class="home-section" id="curriculum"><span class="home-eyebrow">THE LEARNING PATH</span><h2>Six modules. One connected story.</h2><p class="home-lead">Build a clear explanation of your plans, one topic at a time.</p><div class="home-modules">
+      <article><span>01</span><h3>Your study plan</h3><p>Explain your choice of country, school, and program—and how they fit your goals.</p></article>
+      <article><span>02</span><h3>Your academic journey</h3><p>Connect your previous education and experience to the next step in your studies.</p></article>
+      <article><span>03</span><h3>Your funding</h3><p>Understand your costs, scholarships, sponsors, and how your studies will be funded.</p></article>
+      <article><span>04</span><h3>Your future plans</h3><p>Describe your genuine goals and how your education supports them.</p></article>
+      <article><span>05</span><h3>Your circumstances</h3><p>Prepare to discuss relevant changes, previous applications, or past denials honestly.</p></article>
+      <article><span>06</span><h3>Interview practice</h3><p>Bring your preparation together and practise responding clearly in conversation.</p></article>
+    </div></section>
+    <section class="home-section home-audience" id="who-its-for"><span class="home-eyebrow">YOUR PATH BELONGS HERE</span><h2>Different journeys.<br>Thoughtful preparation for each.</h2><div class="home-audience-tags"><span>High school</span><span>Undergraduate</span><span>Master’s</span><span>PhD</span><span>Student-athletes</span></div><p>Whether you’re explaining a scholarship, a new field of study, or your next application after a denial, your preparation should reflect your circumstances. Student-athletes can include their sporting journey while keeping their education at the centre.</p></section>
+    <section class="home-story" id="our-story"><div class="home-section home-story-grid"><div><span class="home-eyebrow">WHY VISAATLAS EXISTS</span><h2>Built from experience.<br>Created with purpose.</h2><p class="home-founder">Efe-Sam Agalivie<br><span>Founder, VisaAtlas</span></p></div><div><p class="home-story-opening">Seven denials. An approval on the eighth attempt. A reason to help others prepare.</p><p>Founder Efe-Sam Agalivie knows the uncertainty and frustration of the visa journey firsthand. That experience inspired VisaAtlas: a place where students can understand their plans, practise explaining them, and approach their interviews with greater confidence.</p><p>Our mission is to make thoughtful, personal interview preparation more accessible. We focus on helping students communicate their own experiences truthfully and clearly.</p><p class="home-story-note">Every application is different. The founder’s experience is the inspiration behind VisaAtlas, not a promise of anyone else’s outcome.</p></div></div></section>
+    <section class="home-section home-faq" id="home-faq"><span class="home-eyebrow">BEFORE YOU BEGIN</span><h2>A few things you may be wondering.</h2>
+      <details><summary>What does VisaAtlas help me do?</summary><p>VisaAtlas helps you prepare for U.S. F-1 student visa interviews through structured learning, AI tutoring, voice mock interviews, and feedback. You practise explaining your actual study plans and circumstances.</p></details>
+      <details><summary>Is this only for student-athletes?</summary><p>No. VisaAtlas supports high school, undergraduate, master’s, and PhD students. Student-athletes can also include their sporting background in their preparation.</p></details>
+      <details><summary>Can I use it after a previous visa denial?</summary><p>Yes. You can prepare to explain your previous application and any genuine changes in your circumstances. VisaAtlas does not determine eligibility or replace advice from a qualified professional.</p></details>
+      <details><summary>Will it give me answers to memorise?</summary><p>The tutor uses explanations and examples to help you understand questions. Your answers should come from your own plans, experiences, and documents. Practise speaking naturally and truthfully.</p></details>
+      <details><summary>What do I need for voice practice?</summary><p>Use a phone or computer with a microphone, a stable internet connection, and a browser that allows microphone access. A quiet setting and headphones can help. Review the voice notice before starting a session.</p></details>
+      <details><summary>What does the readiness feedback mean?</summary><p>It highlights strengths and areas to work on in your practice interview. It is preparation feedback, not a prediction of a consular decision or a guarantee of visa approval.</p></details>
+      <details><summary>Does VisaAtlas book appointments or issue visas?</summary><p>No. VisaAtlas is an independent learning and preparation platform. Visa applications, appointments, and decisions are handled through the relevant official services.</p></details>
+      <details><summary>How do I get started?</summary><p>Create an account, verify your email, and complete your study profile. Then follow the learning path, practise with the tutor, and take a mock interview when you’re ready.</p></details>
+    </section>
+    <section class="home-section home-final"><span class="home-eyebrow">YOUR NEXT CHAPTER STARTS WITH PREPARATION</span><h2>Give your ambitions a clear voice.</h2><p>Learn at your pace. Practise your answers. Know what to improve.</p><button class="btn primary" onclick="showRegistration()">Start your preparation →</button></section>
   </main>
-  <footer class="welcome-footer small">VisaAtlas is a learning and preparation tool, not a government service or legal adviser. Readiness feedback is not a prediction or guarantee of visa approval.</footer>
+  <footer class="welcome-footer"><div class="home-footer-top"><div><a class="brand home-brand" href="#welcome"><span class="logo" aria-hidden="true"></span>VisaAtlas</a><p>Prepare with purpose. Speak with confidence.</p></div><nav aria-label="Footer navigation"><a href="#how-it-works">How it works</a><a href="#curriculum">Learning path</a><a href="#our-story">About us</a><a href="#home-faq">FAQs</a><button class="linkbtn" onclick="backToLogin()">Sign in</button></nav></div><p class="small">VisaAtlas is a learning and preparation tool, not a government service or legal adviser. Readiness feedback is not a prediction or guarantee of visa approval.</p></footer>
 </div>
 <div id="login" class="login hidden">
  <div class="login-shell">
