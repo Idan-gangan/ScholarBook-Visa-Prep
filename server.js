@@ -12,6 +12,8 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
+// Update this version and the registration checkbox together when Terms change.
+const TERMS_VERSION = "2026-10-25";
 const PORT = process.env.PORT || 3000;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 const {POLICY,createVoiceLimits,dailyLimit}=require('./voice-limits');
@@ -266,6 +268,8 @@ const server=http.createServer(async (req,res)=>{
 
     if(req.method==="POST" && url.pathname==="/api/register-athlete"){
       const body=JSON.parse((await readBody(req)).toString()||"{}");
+      if(!body || body.termsAccepted!==true)return json(res,400,{error:"Please agree to the Terms of Use to create an account."});
+      if(body.termsVersion!==TERMS_VERSION)return json(res,400,{error:"The Terms of Use have changed. Refresh this page and review them before creating an account."});
       const required=["name","email","password"];
       const missing=required.filter(k=>!clean(body[k]));
       if(missing.length) return json(res,400,{error:"Please complete: "+missing.map(k=>({university:"school / university",major:"subjects / program / research area"}[k]||k)).join(", ")});
@@ -278,7 +282,7 @@ const server=http.createServer(async (req,res)=>{
       await mutateDb(async(db,client)=>{
       if(db.users.some(u=>normalizeEmail(u.email)===email))throw stateError(409,"An account with this email already exists.");
       await client.query('INSERT INTO user_credentials (user_id,password_hash) VALUES ($1,$2) ON CONFLICT (user_id) DO NOTHING',[userId,hash]);
-      db.users.push({id:userId,name:clean(body.name,120),email,role:"athlete",verificationRequired:true});
+      db.users.push({id:userId,name:clean(body.name,120),email,role:"athlete",verificationRequired:true,termsAcceptance:{version:TERMS_VERSION,acceptedAt:new Date().toISOString(),source:"self-registration"}});
       db.athletes.push({
         id:athleteId,userId,name:clean(body.name,120),email,
         phone:clean(body.phone,40),country:clean(body.country,80),

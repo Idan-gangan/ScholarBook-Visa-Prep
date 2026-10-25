@@ -135,7 +135,11 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
    <div class="field"><label for="r_email">Email</label><input id="r_email" type="email" autocomplete="email" maxlength="160" required></div>
    <div class="field"><label for="r_password">Password</label><input id="r_password" type="password" autocomplete="new-password" minlength="15" maxlength="128" placeholder="At least 15 characters" required></div>
    <p class="small muted">Use an email you can access. You’ll need to verify it before voice practice and reports.</p>
-   <p class="small muted">Before creating an account, read our <a href="/terms.html" target="_blank" rel="noopener">Terms of Use</a> and <a href="/privacy.html" target="_blank" rel="noopener">Privacy Policy</a>. These links open in a new tab.</p>
+   <div class="registration-terms small">
+    <input id="r_terms" type="checkbox" required data-terms-version="2026-10-25" aria-describedby="r_privacy_notice">
+    <label for="r_terms">I agree to the <a href="/terms.html" target="_blank" rel="noopener">Terms of Use</a>.</label>
+   </div>
+   <p id="r_privacy_notice" class="small muted">Read our <a href="/privacy.html" target="_blank" rel="noopener">Privacy Policy</a> to learn how we handle your information. Policy links open in a new tab.</p>
    <button id="registerBtn" class="btn primary" type="submit">Create account</button>
   </form>
   <button class="linkbtn" onclick="backToLogin()">Already have an account? Sign in</button>
@@ -336,10 +340,12 @@ function showWelcome(){publicPage("welcome")}
 function showRegistration(){publicPage("registration")}
 function backToLogin(){publicPage("login")}
 async function registerAthlete(){
- if($('registerBtn').disabled)return;$('registerBtn').disabled=true;
+ if($('registerBtn').disabled)return;
+ if(!$('r_terms').checked){$('registerErr').textContent='Please agree to the Terms of Use to create an account.';$('r_terms').focus();return;}
+ $('registerBtn').disabled=true;
  const ids=["name","email","password"];
- const body={}; ids.forEach(k=>body[k]=$("r_"+k).value);
- try{ $("registerErr").textContent="Creating account…"; const result=await api("/api/register-athlete",{method:"POST",body:JSON.stringify(body)});$('r_password').value=''; $("registration").classList.add("hidden"); await boot();$('verificationStatus').textContent=result.verificationMessage||''; }
+ const body={termsAccepted:$("r_terms").checked,termsVersion:$("r_terms").dataset.termsVersion}; ids.forEach(k=>body[k]=$("r_"+k).value);
+ try{ $("registerErr").textContent="Creating account…"; const result=await api("/api/register-athlete",{method:"POST",body:JSON.stringify(body)});$('r_password').value='';$('r_terms').checked=false; $("registration").classList.add("hidden"); await boot();$('verificationStatus').textContent=result.verificationMessage||''; }
  catch(e){ $("registerErr").textContent=e.message; }
  finally{$('registerBtn').disabled=false;}
 }
