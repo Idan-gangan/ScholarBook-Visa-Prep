@@ -4,14 +4,15 @@ const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const html=fs.readFileSync(path.join(__dirname,'../public/index.html'),'utf8');
 function fixture(){
  const elements=new Map();
- function element(){const classes=new Set();return {value:'',textContent:'',innerHTML:'',disabled:false,checked:false,children:[],dataset:{},classList:{add:x=>classes.add(x),remove:x=>classes.delete(x),contains:x=>classes.has(x),toggle:(x,on)=>on?classes.add(x):classes.delete(x)},querySelectorAll(){return []},setAttribute(){},addEventListener(){},append(...items){this.children.push(...items)},appendChild(item){this.children.push(item)},replaceChildren(...items){this.children=items;if(items[0]?.value)this.value=items[0].value},pause(){},showModal(){this.open=true},close(){this.open=false}}}
+ function element(){const classes=new Set();return {value:'',textContent:'',innerHTML:'',disabled:false,checked:false,children:[],dataset:{},classList:{add:x=>classes.add(x),remove:x=>classes.delete(x),contains:x=>classes.has(x),toggle:(x,on)=>on?classes.add(x):classes.delete(x)},querySelectorAll(){return []},setAttribute(){},addEventListener(){},append(...items){this.children.push(...items)},appendChild(item){this.children.push(item)},replaceChildren(...items){this.children=items;if(items[0]?.value)this.value=items[0].value},pause(){},focus(){},showModal(){this.open=true},close(){this.open=false}}}
  for(const match of html.matchAll(/id="([^"]+)"/g))elements.set(match[1],element());
  const document={getElementById:id=>{if(!elements.has(id)){if(id.startsWith('p_')||['educationHistory','educationHistoryTitle','interviewCities'].includes(id))elements.set(id,element());else throw new Error('Missing DOM element '+id);}return elements.get(id)},querySelector:selector=>{if(!elements.has(selector))elements.set(selector,element());return elements.get(selector)},querySelectorAll:selector=>selector==='.screen'?['learning','dashboard','interview','profile','reports','manager'].map(id=>elements.get(id)):[],createElement:()=>element(),createTextNode:text=>({textContent:text})};
  const student={id:'s1',userId:'u1',name:'Test Student',university:'Example University',major:'Biology',currentScore:0};
  const store={progress:{},moduleProgress:{},requests:[],tracks:[],failLoad:false,failPassword:false};
  const ctx=vm.createContext({document,console,AbortController,URL,Date,JSON,Set,setTimeout,clearTimeout,Option:function(text,value){return {text,value}},window:{VisaAtlasPlanning:require("../public/planning"),VisaAtlasCurriculum:require("../public/curriculum"),addEventListener(){}},location:{reload(){}},confirm:()=>true,navigator:{mediaDevices:{getUserMedia:async()=>{const track={enabled:true,stop(){this.stopped=true}};store.tracks.push(track);return {getTracks:()=>[track],getAudioTracks:()=>[track]}}}},RTCPeerConnection:class{addTrack(){}createDataChannel(){return {readyState:'open',addEventListener(){},send(){},close(){}}}async createOffer(){return {sdp:'offer'}}async setLocalDescription(){}async setRemoteDescription(){}close(){}},fetch:async(url,opt={})=>{
    store.requests.push({url,...opt});let data;const route=new URL(url,'http://local').pathname;
-   if(route==='/api/change-password'){if(store.failPassword)return {ok:false,json:async()=>({error:'Current password is incorrect.'})};data={ok:true};}
+   if(route==='/api/delete-account'){if(store.failDelete)return {ok:false,json:async()=>({error:'Current password is incorrect.'})};data={ok:true};}
+   else if(route==='/api/change-password'){if(store.failPassword)return {ok:false,json:async()=>({error:'Current password is incorrect.'})};data={ok:true};}
    else if(route==='/api/me')data=store.user||{id:'u1',name:'Test Student',role:'athlete'};
    else if(route==='/api/owner/accounts')data=store.ownerData;
    else if(route==='/api/voice/end')data={ok:true};
@@ -418,4 +419,18 @@ test('audio-only mock does not complete the practice checklist and staff never s
  f.run("me.role='coach';renderStudentHome()");
  assert.equal(f.elements.get('studentPlanner').classList.contains('hidden'),true);
  assert.equal(f.elements.get('welcomeGuide').classList.contains('hidden'),true);
+});
+
+test('deletion dialog requires typed confirmation and clears sensitive fields after success or failure',async()=>{
+ const f=fixture();await f.run('boot()');
+ f.run('openDeleteAccount()');assert.equal(f.elements.get('deleteAccountDialog').open,true);
+ f.elements.get('deleteAccountPassword').value='password';
+ await f.run('deleteMyAccount()');assert.equal(f.store.requests.some(r=>r.url==='/api/delete-account'),false);
+ f.elements.get('deleteAccountConfirmation').value='DELETE';f.store.failDelete=true;
+ await f.run('deleteMyAccount()');assert.equal(f.elements.get('deleteAccountMessage').textContent,'Current password is incorrect.');
+ assert.equal(f.elements.get('deleteAccountPassword').value,'');assert.equal(f.elements.get('deleteAccountSubmit').disabled,false);
+ f.store.failDelete=false;f.elements.get('deleteAccountPassword').value='password';
+ await f.run('deleteMyAccount()');assert.equal(f.elements.get('deleteAccountDialog').open,false);
+ assert.equal(f.run('me'),null);assert.equal(f.elements.get('deleteAccountConfirmation').value,'');
+ assert.match(f.elements.get('loginErr').textContent,/have been deleted/);
 });
