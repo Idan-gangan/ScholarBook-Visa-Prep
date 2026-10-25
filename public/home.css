@@ -23,3 +23,5 @@
  .home-faq details{padding:17px 0}.home-final{padding-top:12px;padding-bottom:44px}
 }
 @media(max-width:360px){#welcome .welcome-nav{padding:14px 12px;gap:8px}#welcome .welcome-nav .brand{font-size:18px}#welcome .welcome-nav-actions{gap:8px}.home-menu summary{font-size:12px}}
+
+.home-contact{text-align:center;border-top:1px solid #d9dfe7}.home-contact p{max-width:600px;margin:0 auto 20px}.home-contact>a{display:inline-block;max-width:100%;overflow-wrap:anywhere;font-weight:600;padding:12px 0}.home-footer-top a[href^="mailto:"]{overflow-wrap:anywhere}
