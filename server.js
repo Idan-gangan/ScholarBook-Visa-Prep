@@ -7,7 +7,7 @@ const {hashPassword,verifyPassword,validPassword,legacyHash}=require('./password
 const { Pool } = require("pg");
 const { studyLevelInstructions, LESSONS, LESSON_ID, canAccessStudent, normalizeProgress, tutorInstructions } = require("./learning");
 const { practiceTargets, resolvePractice, practiceInstructions } = require('./report-practice');
-const {isStaff, isOwner, changeRole, assignStudent} = require('./owner-access');
+const {isStaff, isOwner, changeRole, assignStudent, withdrawGuardianPermission} = require('./owner-access');
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
@@ -186,10 +186,10 @@ async function getUser(req){
   if(!token || !sessions.has(token)) return null;
   const db= await loadDb();
   const session=sessions.get(token);
-  if(session.expires<=Date.now()){sessions.delete(token);return null;}
+  if(!session || session.expires<=Date.now()){sessions.delete(token);return null;}
   const saved=await credential(session.userId);
   if(!saved || saved.version!==session.version){sessions.delete(token);return null;}
-  return db.users.find(u=>u.id===session.userId) || null;
+  return db.users.find(u=>u.id===session.userId && !u.accessSuspended) || null;
 }
 async function requireUser(req,res){
   const u=await getUser(req); if(!u){json(res,401,{error:"Unauthorized"}); return null;} return u;
@@ -354,6 +354,7 @@ const server=http.createServer(async (req,res)=>{
         }
         return json(res,401,{error:"Invalid email or password",reference});
       }
+      if(user.accessSuspended)return json(res,403,{error:'Account access is paused following a guardian request. Contact support@visaatlasprep.com for help or a data request.'});
       if(legacyHash(saved.password_hash)){
         const next=await replaceCredential(user.id,saved,await hashPassword(body.password));
         if(!next)return json(res,409,{error:'Account changed during sign-in. Please sign in again.'});
@@ -421,13 +422,13 @@ const server=http.createServer(async (req,res)=>{
         const db=await loadDb();
         return json(res,200,{
           students:db.athletes.map(({id,name,staffIds})=>({id,name,staffIds:staffIds||[]})),
-          users:db.users.map(({id,name,email,role,voiceTester})=>({id,name,email,role,voiceTester:voiceTester===true})),
+          users:db.users.map(({id,name,email,role,voiceTester,ageEligibility,accessSuspended})=>({id,name,email,role,voiceTester:voiceTester===true,guardianPermission:ageEligibility?.ageBand==='13-17'&&!!ageEligibility.guardian,accessSuspended:accessSuspended===true})),
           audit:(db.securityAudit||[]).slice(-100).reverse(),
           counts:{accounts:db.users.length,students:db.athletes.length,reports:db.reports.length},
           limits:{unlimited:true,tutorStartsPerDay:null,mockStartsPerDay:null,reportsPerDay:null}
         });
       }
-      if(req.method==='POST' && ['/api/owner/role','/api/owner/voice-access','/api/owner/student-access'].includes(url.pathname)){
+      if(req.method==='POST' && ['/api/owner/role','/api/owner/voice-access','/api/owner/student-access','/api/owner/guardian-withdrawal'].includes(url.pathname)){
         if(!allowAuth('owner-role:'+u.id))return json(res,429,{error:'Too many attempts. Try again in one minute.'});
         if(!(req.headers['content-type']||'').toLowerCase().startsWith('application/json'))return json(res,415,{error:'JSON required.'});
         let body;
@@ -439,6 +440,7 @@ const server=http.createServer(async (req,res)=>{
           // Recheck identity/role and credential version under the state lock.
           const current=(await client.query('SELECT password_hash, version FROM user_credentials WHERE user_id=$1 FOR UPDATE',[u.id])).rows[0];
           if(!current || current.version!==saved.version || current.password_hash!==saved.password_hash)throw stateError(401,'Sign in again.');
+          if(url.pathname==='/api/owner/guardian-withdrawal')return withdrawGuardianPermission(db,client,u.id,body);
           if(url.pathname==='/api/owner/student-access')return assignStudent(db,u.id,body.studentId,body.staffIds);
           if(url.pathname==='/api/owner/voice-access'){
             if(!isOwner(db.users.find(user=>user.id===u.id)))throw stateError(403,'Owner access required.');
@@ -454,7 +456,7 @@ const server=http.createServer(async (req,res)=>{
           await client.query('UPDATE user_credentials SET version=version+1 WHERE user_id=$1',[target.id]);
           return target;
         });
-        if(url.pathname==='/api/owner/role')for(const [token,session] of sessions)if(session.userId===updated.id)sessions.delete(token);
+        if(['/api/owner/role','/api/owner/guardian-withdrawal'].includes(url.pathname))for(const [token,session] of sessions)if(session.userId===updated.id)sessions.delete(token);
         return json(res,200,{ok:true,user:updated});
       }
       return json(res,404,{error:'Unknown owner action.'});
@@ -582,7 +584,7 @@ const server=http.createServer(async (req,res)=>{
       const previous=db.reports.find(report=>report.evaluationKey===evaluationKey);
       if(previous)return json(res,200,previous);
       const lease=await mutateDb(async current=>{
-        if(!current.users.some(user=>user.id===u.id)||!canAccessStudent(u,current.athletes.find(a=>a.id===athlete.id)))throw stateError(403,'This account or student is no longer available.');
+        if(!current.users.some(user=>user.id===u.id&&!user.accessSuspended)||!canAccessStudent(u,current.athletes.find(a=>a.id===athlete.id)))throw stateError(403,'This account or student is no longer available.');
         return evaluationLimits.reserve(u.id);
       });
       if(!lease)return json(res,429,{error:"A report is already processing. Please wait for it to finish before trying again."});
@@ -739,7 +741,7 @@ Use only information in the supplied profile and transcript. Do not reward inven
       catch(error){return json(res,400,{error:error.message})}
       progress.updatedAt=new Date().toISOString();
       await mutateDb(async(current,client)=>{
-      if(!current.users.some(user=>user.id===u.id)||!canAccessStudent(u,current.athletes.find(a=>a.id===student.id)))throw stateError(403,'This account or student is no longer available.');
+      if(!current.users.some(user=>user.id===u.id&&!user.accessSuspended)||!canAccessStudent(u,current.athletes.find(a=>a.id===student.id)))throw stateError(403,'This account or student is no longer available.');
       await client.query(`INSERT INTO learning_progress (student_id,lesson_id,data) VALUES ($1,$2,$3::jsonb)
         ON CONFLICT (student_id,lesson_id) DO UPDATE SET data=EXCLUDED.data,updated_at=NOW()`,[student.id,lessonId,JSON.stringify(progress)]);
       });
@@ -796,7 +798,7 @@ Use only information in the supplied profile and transcript. Do not reward inven
       const sdp=(await readBody(req)).toString();
       if(!sdp.startsWith('v=0') || sdp.length>64000)return json(res,400,{error:'Invalid voice connection offer.'});
       const voiceToken=await mutateDb(async current=>{
-        if(!current.users.some(user=>user.id===u.id)||!canAccessStudent(u,current.athletes.find(a=>a.id===athlete.id)))throw stateError(403,'This account or student is no longer available.');
+        if(!current.users.some(user=>user.id===u.id&&!user.accessSuspended)||!canAccessStudent(u,current.athletes.find(a=>a.id===athlete.id)))throw stateError(403,'This account or student is no longer available.');
         return voiceLimits.acquire(u.id);
       });
       if(!voiceToken)return json(res,429,{error:'End your current voice session before starting another. After a recent start, wait 10 seconds and try again.'});
@@ -870,7 +872,7 @@ Start with the opening guidance in INTERVIEW DESIGN below.`;
       if(mode==='mock'){
         mockSessionId='mock_'+crypto.randomBytes(16).toString('hex');
         await mutateDb(async(current)=>{
-          if(!current.users.some(user=>user.id===u.id)||!canAccessStudent(u,current.athletes.find(a=>a.id===athlete.id)))throw stateError(403,'This account or student is no longer available.');
+          if(!current.users.some(user=>user.id===u.id&&!user.accessSuspended)||!canAccessStudent(u,current.athletes.find(a=>a.id===athlete.id)))throw stateError(403,'This account or student is no longer available.');
           current.mockSessions??=[];
           // Retain unreported sessions for 30 days. Existing reports remain available.
           current.mockSessions=current.mockSessions.filter(x=>Date.parse(x.createdAt)>Date.now()-30*86400000);

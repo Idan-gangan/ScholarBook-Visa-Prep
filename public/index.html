@@ -101,6 +101,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
       <details><summary>Does VisaAtlas book appointments or issue visas?</summary><p>No. VisaAtlas is an independent learning and preparation platform. Visa applications, appointments, and decisions are handled through the relevant official services.</p></details>
       <details><summary>How do I get started?</summary><p>Create an account, verify your email, and complete your study profile. Then follow the learning path, practise with the tutor, and take a mock interview when you’re ready.</p></details>
     </section>
+    <section class="home-section home-contact" id="reviews" aria-labelledby="reviews-heading"><span class="home-eyebrow">YOUR EXPERIENCE</span><h2 id="reviews-heading">Help us improve VisaAtlas.</h2><p>Have you tried the lessons, tutor or mock interviews? Tell us what helped and what could be better. Honest feedback is welcome.</p><a href="/share-review.html">Share your experience →</a><p class="small">Reviews are checked before publication. We ask permission before sharing your words or name.</p></section>
     <section class="home-section home-contact" id="contact" aria-labelledby="contact-heading"><span class="home-eyebrow">GET IN TOUCH</span><h2 id="contact-heading">Questions? We’re here to help.</h2><p>For help with your account, using VisaAtlas, or general enquiries, email our support team.</p><a href="mailto:support@visaatlasprep.com">support@visaatlasprep.com</a></section>
     <section class="home-section home-final"><span class="home-eyebrow">YOUR NEXT CHAPTER STARTS WITH PREPARATION</span><h2>Give your ambitions a clear voice.</h2><p>Learn at your pace. Practise your answers. Know what to improve.</p><button class="btn primary" onclick="showRegistration()">Start your preparation →</button></section>
   </main>
@@ -560,7 +561,7 @@ function renderOwnerDirectory(){
  let headings,body,target;
  if(ownerTab==='accounts'){
   target='ownerAccounts';headings=['Account','Role','Access'];
-  body=visible.map(u=>`<tr><td data-label="Account">${person(u)}</td><td data-label="Role"><span class="owner-badge ${u.role==='athlete'?'student':''}">${escapeHtml(ownerRoleLabel(u.role))}</span></td><td data-label="Access">${u.role==='owner'?'<span class="small muted">Owner (protected)</span>':`<button class="btn secondary" data-edit-role="${escapeHtml(u.id)}">Manage role</button>`}</td></tr>`).join('');
+  body=visible.map(u=>`<tr><td data-label="Account">${person(u)}</td><td data-label="Role"><span class="owner-badge ${u.role==='athlete'?'student':''}">${escapeHtml(ownerRoleLabel(u.role))}</span>${u.accessSuspended?'<span class="owner-badge">Access paused</span>':''}</td><td data-label="Access">${u.role==='owner'?'<span class="small muted">Owner (protected)</span>':`<button class="btn secondary" data-edit-role="${escapeHtml(u.id)}">Manage role</button>${u.guardianPermission&&!u.accessSuspended?`<button class="btn secondary" data-withdraw-guardian="${escapeHtml(u.id)}">Guardian withdrawal</button>`:''}`}</td></tr>`).join('');
  }else if(ownerTab==='assignments'){
   target='ownerAssignments';headings=['Student','Assigned staff','Access'];
   body=visible.map(s=>`<tr><td data-label="Student">${person(s)}</td><td data-label="Assigned staff">${escapeHtml(ownerStaffNames(s.staffIds))}</td><td data-label="Access"><button class="btn secondary" data-edit-assignment="${escapeHtml(s.id)}">Manage staff</button></td></tr>`).join('');
@@ -574,17 +575,22 @@ function renderOwnerDirectory(){
   }).join('');
  }
  $(target).innerHTML=visible.length?`<table><thead><tr>${headings.map(h=>`<th scope="col">${h}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table>`:'<div class="owner-empty"><h3>No results here</h3><p>Try another search or filter. New records will appear here as your workspace grows.</p></div>';
+ $(target).querySelectorAll('[data-withdraw-guardian]').forEach(button=>button.addEventListener('click',()=>openOwnerEdit('withdrawal',button.dataset.withdrawGuardian)));
  $(target).querySelectorAll('[data-edit-role]').forEach(button=>button.addEventListener('click',()=>openOwnerEdit('role',button.dataset.editRole)));
  $(target).querySelectorAll('[data-edit-assignment]').forEach(button=>button.addEventListener('click',()=>openOwnerEdit('assignment',button.dataset.editAssignment)));
 }
 function openOwnerEdit(kind,id){
  if(me?.role!=='owner'||!ownerData)return;
- const row=(kind==='role'?ownerData.users:ownerData.students||[]).find(u=>u.id===id);
+ const row=(['role','withdrawal'].includes(kind)?ownerData.users:ownerData.students||[]).find(u=>u.id===id);
  if(!row||(kind==='role'&&row.role==='owner'))return;
  ownerEditTarget={kind,id};$('ownerPassword').value='';$('ownerEditStatus').textContent='';
  $('ownerEditTitle').textContent=kind==='role'?'Manage account role':'Assign staff';
  $('ownerEditPerson').textContent=row.name+(row.email?' · '+row.email:'');
- if(kind==='role'){
+ if(kind==='withdrawal'){
+  $('ownerEditTitle').textContent='Withdraw guardian permission';
+  $('ownerEditFields').innerHTML='<label><input id="guardianVerified" type="checkbox" required> I verified this request with the recorded guardian through support.</label><div class="field"><label for="guardianWithdrawalConfirmation">Type WITHDRAW</label><input id="guardianWithdrawalConfirmation" required pattern="WITHDRAW" autocomplete="off"></div>';
+  $('ownerEditHelp').textContent='Pauses sign-in and new student activity. Active voice sessions or reports must finish first. Records are preserved for a separate verified export/deletion request; this does not erase them. No automatic reactivation.';
+ }else if(kind==='role'){
   $('ownerEditFields').innerHTML=`<div class="field"><label for="ownerNewRole">Account role</label><select id="ownerNewRole">${ownerRoles.map(([value,label])=>`<option value="${value}"${row.role===value?' selected':''}>${label}</option>`).join('')}</select></div>`;
   $('ownerEditHelp').textContent='Staff see assigned students only. Coaches and supervisors can add human reviews. Changing a role signs this account out and removes its existing staff assignments.';
  }else{
@@ -598,12 +604,12 @@ async function submitOwnerEdit(){
  if(ownerSaving||!ownerEditTarget||me?.role!=='owner')return;
  const currentPassword=$('ownerPassword').value;if(!currentPassword)return;
  const {kind,id}=ownerEditTarget;
- const body=kind==='role'?{userId:id,role:$('ownerNewRole').value,currentPassword}:{studentId:id,staffIds:Array.from($('ownerEditFields').querySelectorAll('input:checked'),el=>el.value),currentPassword};
+ const body=kind==='withdrawal'?{userId:id,verifiedGuardian:$('guardianVerified').checked,confirmation:$('guardianWithdrawalConfirmation').value,currentPassword}:kind==='role'?{userId:id,role:$('ownerNewRole').value,currentPassword}:{studentId:id,staffIds:Array.from($('ownerEditFields').querySelectorAll('input:checked'),el=>el.value),currentPassword};
  ownerSaving=true;$('ownerEditSave').disabled=true;$('ownerEditCancel').disabled=true;$('ownerEditStatus').textContent='Saving changes…';
  try{
-  await api(kind==='role'?'/api/owner/role':'/api/owner/student-access',{method:'POST',body:JSON.stringify(body)});
+  await api(kind==='withdrawal'?'/api/owner/guardian-withdrawal':kind==='role'?'/api/owner/role':'/api/owner/student-access',{method:'POST',body:JSON.stringify(body)});
   $('ownerEdit').close();await loadOwner();
-  if(!$('ownerStatus').textContent)$('ownerStatus').textContent=kind==='role'?'Role saved. The account must sign in again.':'Staff assignments saved.';
+  if(!$('ownerStatus').textContent)$('ownerStatus').textContent=kind==='withdrawal'?'Guardian permission withdrawn. Access paused; handle data requests through support.':kind==='role'?'Role saved. The account must sign in again.':'Staff assignments saved.';
  }catch(error){$('ownerEditStatus').textContent=error.message;}
  finally{$('ownerPassword').value='';ownerSaving=false;$('ownerEditSave').disabled=false;$('ownerEditCancel').disabled=false;}
 }
