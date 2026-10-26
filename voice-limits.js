@@ -31,9 +31,9 @@ function createVoiceLimits(pool, apiKey, request=fetch) {
       RETURNING starts`,[userId,limit,mode]);
     return result.rows.length>0;
   }
-  async function acquire(userId) {
+  async function acquire(userId,client=pool) {
     const token=require('node:crypto').randomBytes(24).toString('hex');
-    const result=await pool.query(`INSERT INTO voice_admission (user_id,token,pending_until,last_started)
+    const result=await client.query(`INSERT INTO voice_admission (user_id,token,pending_until,last_started)
       VALUES ($1,$2,NOW()+INTERVAL '90 seconds',NOW())
       ON CONFLICT (user_id) DO UPDATE SET token=EXCLUDED.token,call_id=NULL,
         pending_until=EXCLUDED.pending_until,last_started=NOW()

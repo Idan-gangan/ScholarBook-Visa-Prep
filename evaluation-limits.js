@@ -25,9 +25,9 @@ function createEvaluationLimits(pool){
    const reset=new Date();reset.setUTCHours(24,0,0,0);
    return {limit:null,unlimited:true,used,attempts,remaining:null,attemptsRemaining:null,resetsAt:reset.toISOString()};
  }
- async function reserve(userId){
+ async function reserve(userId,client=pool){
    const token=crypto.randomBytes(16).toString('hex');
-   const result=await pool.query(`INSERT INTO evaluation_daily_usage (user_id,usage_day,attempts,lease_token,lease_until)
+   const result=await client.query(`INSERT INTO evaluation_daily_usage (user_id,usage_day,attempts,lease_token,lease_until)
      VALUES ($1,(NOW() AT TIME ZONE 'UTC')::date,1,$2,NOW()+($3 * INTERVAL '1 second'))
      ON CONFLICT (user_id) DO UPDATE SET usage_day=EXCLUDED.usage_day,
        attempts=CASE WHEN evaluation_daily_usage.usage_day=EXCLUDED.usage_day THEN evaluation_daily_usage.attempts+1 ELSE 1 END,

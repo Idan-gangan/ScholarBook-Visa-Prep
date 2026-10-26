@@ -16,7 +16,7 @@ test('record mode HTTP: registration, login, profile, learning, reviews, export,
   await pool.query('INSERT INTO user_credentials VALUES($1,$2,0)',['owner',await hashPassword(password)]);
   const client=await pool.connect();try{await store.migrate(client);}finally{client.release();}
   const net=require('node:net'),probe=net.createServer();await new Promise(r=>probe.listen(0,'127.0.0.1',r));const port=probe.address().port;await new Promise(r=>probe.close(r));
-  child=spawn(process.execPath,['--require','./test/fixtures/provider-stub.cjs','server.js'],{cwd:require('node:path').join(__dirname,'..'),env:{...process.env,DATABASE_URL:connection.href,RECORD_STORAGE:'enabled',PORT:String(port),COACH_EMAIL:'',COACH_PASSWORD:'',RESEND_API_KEY:'',OPENAI_API_KEY:'synthetic',AI_ENABLED:'true',VISAATLAS_SYNTHETIC_TEST:'1'},stdio:['ignore','pipe','pipe']});
+  child=spawn(process.execPath,['--require','./test/fixtures/provider-stub.cjs','server.js'],{cwd:require('node:path').join(__dirname,'..'),env:{...process.env,DATABASE_URL:connection.href,RECORD_STORAGE:'enabled',MAX_CONCURRENT_VOICE:'20',PORT:String(port),COACH_EMAIL:'',COACH_PASSWORD:'',RESEND_API_KEY:'',OPENAI_API_KEY:'synthetic',AI_ENABLED:'true',VISAATLAS_SYNTHETIC_TEST:'1'},stdio:['ignore','pipe','pipe']});
   let log='';child.stdout.on('data',b=>log+=b);child.stderr.on('data',b=>log+=b);
   const base='http://127.0.0.1:'+port;
   for(let i=0;i<200;i++){if(child.exitCode!==null)throw Error('Test server exited: '+log);try{if((await fetch(base+'/healthz')).ok)break;}catch{}await new Promise(r=>setTimeout(r,50));if(i===199)throw Error('Startup timeout: '+log);}
@@ -80,6 +80,36 @@ test('record mode HTTP: registration, login, profile, learning, reviews, export,
   await call('/api/my-profile',{cookie:next,status:401});
   assert.equal(await adapter.user(uid),null);assert.ok(await adapter.user('other'));
   assert.equal((await call('/api/reviews')).data.count,0);
+  // More simultaneous admissions than the default ten-connection pool. Nested
+  // pool queries inside a locked mutation previously exhausted all connections.
+  const batchHash=await hashPassword(password);
+  await adapter.mutate(async(db,c)=>{
+    for(let i=0;i<21;i++){
+      db.users.push({id:'batch-u'+i,name:'Synthetic',email:'batch'+i+'@example.test',role:'athlete',emailVerifiedAt:new Date().toISOString()});
+      db.athletes.push({id:'batch-a'+i,userId:'batch-u'+i,name:'Synthetic',major:'Computer Science',country:'Nigeria',university:'Synthetic university',academicLevel:'Undergraduate',studyStatus:'In school',phoneCountry:'US',phone:'+12025550123',interviewCountry:'Nigeria',interviewCity:'Not booked yet',postGradPlan:'Return home',previousRefusal:'No',previousTravel:'No',previousAttempts:0,fundingSources:'Family'});
+      await c.query('INSERT INTO user_credentials VALUES($1,$2,0)',['batch-u'+i,batchHash]);
+    }
+  });
+  const batch=[];
+  for(let i=0;i<21;i++)batch.push({i,cookie:(await call('/api/login',{method:'POST',body:{email:'batch'+i+'@example.test',password}})).cookie});
+  const overflow=batch.pop();
+  await Promise.all(batch.map(async student=>{
+    const r=await fetch(base+'/api/realtime-session?athleteId=batch-a'+student.i+'&mode=mock',{method:'POST',headers:{Cookie:student.cookie,'Content-Type':'application/sdp'},body:'v=0\r\n',signal:AbortSignal.timeout(10000)});
+    assert.equal(r.status,201,await r.text());student.sessionId=r.headers.get('x-mock-session-id');student.token=r.headers.get('x-voice-token');
+  }));
+  const startOverflow=()=>fetch(base+'/api/realtime-session?athleteId=batch-a'+overflow.i+'&mode=mock',{method:'POST',headers:{Cookie:overflow.cookie,'Content-Type':'application/sdp'},body:'v=0\r\n'});
+  const full=await startOverflow();assert.equal(full.status,429);assert.match((await full.json()).error,/slots are currently in use/);
+  await call('/api/voice/end',{method:'POST',cookie:batch[0].cookie,body:{token:batch[0].token}});
+  const freed=await startOverflow();assert.equal(freed.status,201,await freed.text());
+  await call('/api/voice/end',{method:'POST',cookie:overflow.cookie,body:{token:freed.headers.get('x-voice-token')}});
+  await Promise.all(batch.map(student=>call('/api/voice/end',{method:'POST',cookie:student.cookie,body:{token:student.token}})));
+  await Promise.all(batch.map(async student=>{
+    const body={athleteId:'batch-a'+student.i,mockSessionId:student.sessionId,transcript};
+    const r=(await call('/api/evaluate',{method:'POST',cookie:student.cookie,body})).data;
+    const saved=(await call('/api/reports',{cookie:student.cookie})).data;
+    assert.equal(saved.length,1);assert.equal(saved[0].id,r.id);
+    assert.equal((await call('/api/evaluate',{method:'POST',cookie:student.cookie,body})).data.id,r.id);
+  }));
  }finally{
   if(child&&child.exitCode===null){child.kill();await once(child,'exit');}
   if(pool)await pool.end();await admin.query('DROP SCHEMA IF EXISTS '+schema+' CASCADE');await admin.end();
