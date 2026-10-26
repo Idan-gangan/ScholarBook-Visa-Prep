@@ -19,6 +19,7 @@ async function deleteStudentAccount(db,client,userId,verifiedCredential){
  db.athletes=db.athletes.filter(a=>a.userId!==userId);
  for(const student of db.athletes)if(Array.isArray(student.staffIds))student.staffIds=student.staffIds.filter(id=>id!==userId);
  if(Array.isArray(db.securityAudit))db.securityAudit=db.securityAudit.filter(r=>r.actorId!==userId&&r.targetId!==userId&&!studentIds.includes(r.targetId)&&!studentIds.includes(r.studentId));
+ db.reviews=(db.reviews||[]).filter(r=>r.userId!==userId);
  db.users=db.users.filter(u=>u.id!==userId);
  const email=typeof user.email==='string'?user.email.trim().toLowerCase():'';
  if(email){
