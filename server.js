@@ -12,6 +12,8 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
+const recordStore=process.env.RECORD_STORAGE==='enabled'?require('./record-store').create(pool):null;
+
 // Update this version and the registration checkbox together when Terms change.
 const TERMS_VERSION = "2026-10-25";
 const operations=require('./operations').createOperations(pool);
@@ -127,7 +129,8 @@ function readBody(req,maxBytes=1024*1024){
   for(const user of existing.users || []){
     if(user.passwordHash) await insertCredential(user.id,user.passwordHash);
   }
-  await pool.query(`UPDATE app_state SET data=jsonb_set(data,'{users}',
+  if(recordStore)await mutateDb(async db=>{for(const user of db.users||[])delete user.passwordHash;});
+  else await pool.query(`UPDATE app_state SET data=jsonb_set(data,'{users}',
     COALESCE((SELECT jsonb_agg(u - 'passwordHash') FROM jsonb_array_elements(data->'users') u),'[]'::jsonb)) WHERE id=1`);
   const coachEmail = normalizeEmail(process.env.COACH_EMAIL);
 const coachPassword = process.env.COACH_PASSWORD || "";
@@ -153,12 +156,14 @@ if (coachEmail && coachPassword) {
 }
 }
 async function loadDb(){
+ if(typeof recordStore!=='undefined' && recordStore)return recordStore.load();
  const result=await pool.query("SELECT data FROM app_state WHERE id = 1");
  return result.rows[0]?.data || {users:[],athletes:[],reports:[],transcripts:[]};
 }
 // All state writers use one short database transaction, shared across app instances.
 // Hashing and provider calls must finish before entering this critical section.
 async function mutateDb(change){
+ if(typeof recordStore!=='undefined' && recordStore)return recordStore.mutate(change);
  const client=await pool.connect();
  try{
    await client.query('BEGIN');
@@ -184,12 +189,12 @@ function parseCookies(req){
 async function getUser(req){
   const token=parseCookies(req).sb_session;
   if(!token || !sessions.has(token)) return null;
-  const db= await loadDb();
   const session=sessions.get(token);
   if(!session || session.expires<=Date.now()){sessions.delete(token);return null;}
   const saved=await credential(session.userId);
   if(!saved || saved.version!==session.version){sessions.delete(token);return null;}
-  return db.users.find(u=>u.id===session.userId && !u.accessSuspended) || null;
+  const user=typeof recordStore!=='undefined' && recordStore?await recordStore.user(session.userId):(await loadDb()).users.find(u=>u.id===session.userId);
+  return user&&!user.accessSuspended?user:null;
 }
 async function requireUser(req,res){
   const u=await getUser(req); if(!u){json(res,401,{error:"Unauthorized"}); return null;} return u;
