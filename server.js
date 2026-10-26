@@ -608,9 +608,9 @@ const server=http.createServer(async (req,res)=>{
       const evaluationKey=sha(JSON.stringify([u.id,athlete.id,mockSession.id]));
       const previous=db.reports.find(report=>report.evaluationKey===evaluationKey);
       if(previous)return json(res,200,previous);
-      const lease=await mutateDb(async current=>{
+      const lease=await mutateDb(async (current,client)=>{
         if(!current.users.some(user=>user.id===u.id&&!user.accessSuspended)||!canAccessStudent(u,current.athletes.find(a=>a.id===athlete.id)))throw stateError(403,'This account or student is no longer available.');
-        return evaluationLimits.reserve(u.id);
+        return evaluationLimits.reserve(u.id,client);
       },{userId:u.id,athleteId:athlete.id});
       if(!lease)return json(res,429,{error:"A report is already processing. Please wait for it to finish before trying again."});
       try{
@@ -822,9 +822,9 @@ Use only information in the supplied profile and transcript. Do not reward inven
       }
       const sdp=(await readBody(req)).toString();
       if(!sdp.startsWith('v=0') || sdp.length>64000)return json(res,400,{error:'Invalid voice connection offer.'});
-      const voiceToken=await mutateDb(async current=>{
+      const voiceToken=await mutateDb(async (current,client)=>{
         if(!current.users.some(user=>user.id===u.id&&!user.accessSuspended)||!canAccessStudent(u,current.athletes.find(a=>a.id===athlete.id)))throw stateError(403,'This account or student is no longer available.');
-        return voiceLimits.acquire(u.id);
+        return voiceLimits.acquire(u.id,client);
       },{userId:u.id,athleteId:athlete.id});
       if(!voiceToken)return json(res,429,{error:'End your current voice session before starting another. After a recent start, wait 10 seconds and try again.'});
       let voiceDelivered=false;

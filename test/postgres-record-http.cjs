@@ -80,6 +80,30 @@ test('record mode HTTP: registration, login, profile, learning, reviews, export,
   await call('/api/my-profile',{cookie:next,status:401});
   assert.equal(await adapter.user(uid),null);assert.ok(await adapter.user('other'));
   assert.equal((await call('/api/reviews')).data.count,0);
+  // More simultaneous admissions than the default ten-connection pool. Nested
+  // pool queries inside a locked mutation previously exhausted all connections.
+  const batchHash=await hashPassword(password);
+  await adapter.mutate(async(db,c)=>{
+    for(let i=0;i<20;i++){
+      db.users.push({id:'batch-u'+i,name:'Synthetic',email:'batch'+i+'@example.test',role:'athlete',emailVerifiedAt:new Date().toISOString()});
+      db.athletes.push({id:'batch-a'+i,userId:'batch-u'+i,name:'Synthetic',major:'Computer Science',country:'Nigeria',university:'Synthetic university',academicLevel:'Undergraduate',studyStatus:'In school',phoneCountry:'US',phone:'+12025550123',interviewCountry:'Nigeria',interviewCity:'Not booked yet',postGradPlan:'Return home',previousRefusal:'No',previousTravel:'No',previousAttempts:0,fundingSources:'Family'});
+      await c.query('INSERT INTO user_credentials VALUES($1,$2,0)',['batch-u'+i,batchHash]);
+    }
+  });
+  const batch=[];
+  for(let i=0;i<20;i++)batch.push({i,cookie:(await call('/api/login',{method:'POST',body:{email:'batch'+i+'@example.test',password}})).cookie});
+  await Promise.all(batch.map(async student=>{
+    const r=await fetch(base+'/api/realtime-session?athleteId=batch-a'+student.i+'&mode=mock',{method:'POST',headers:{Cookie:student.cookie,'Content-Type':'application/sdp'},body:'v=0\r\n',signal:AbortSignal.timeout(10000)});
+    assert.equal(r.status,201,await r.text());student.sessionId=r.headers.get('x-mock-session-id');student.token=r.headers.get('x-voice-token');
+  }));
+  await Promise.all(batch.map(student=>call('/api/voice/end',{method:'POST',cookie:student.cookie,body:{token:student.token}})));
+  await Promise.all(batch.map(async student=>{
+    const body={athleteId:'batch-a'+student.i,mockSessionId:student.sessionId,transcript};
+    const r=(await call('/api/evaluate',{method:'POST',cookie:student.cookie,body})).data;
+    const saved=(await call('/api/reports',{cookie:student.cookie})).data;
+    assert.equal(saved.length,1);assert.equal(saved[0].id,r.id);
+    assert.equal((await call('/api/evaluate',{method:'POST',cookie:student.cookie,body})).data.id,r.id);
+  }));
  }finally{
   if(child&&child.exitCode===null){child.kill();await once(child,'exit');}
   if(pool)await pool.end();await admin.query('DROP SCHEMA IF EXISTS '+schema+' CASCADE');await admin.end();
