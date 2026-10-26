@@ -6,10 +6,10 @@ const version=source.match(/const TERMS_VERSION = "([^"]+)"/)[1];
 const route=source.slice(source.indexOf('    if(req.method==="POST" && url.pathname==="/api/register-athlete")'),source.indexOf('    if(req.method==="POST" && url.pathname==="/api/login")'));
 async function register(extra){
  const db={users:[],athletes:[]};let writes=0,hashes=0,response;
- const body={name:'Test Student',email:'test@example.test',password:'A sufficiently long password',...extra};
+ const body={ageBand:'18+',name:'Test Student',email:'test@example.test',password:'A sufficiently long password',...extra};
  const res={writeHead(status){response={status};},end(value){response.body=JSON.parse(value);}};
  await vm.runInNewContext('(async()=>{'+route+'})()',{
- req:{method:'POST'},url:{pathname:'/api/register-athlete'},res,TERMS_VERSION:version,
+ checkAge:require('../age-eligibility').checkAge,consumePermission:require('../age-eligibility').consumePermission,req:{method:'POST'},url:{pathname:'/api/register-athlete'},res,TERMS_VERSION:version,
  readBody:async()=>Buffer.from(JSON.stringify(body)),json:(_res,status,body)=>response={status,body},
  clean:(value,max=1000)=>String(value||'').trim().slice(0,max),validPassword:()=>true,
  allowAuth:()=>true,sha:value=>value,hashPassword:async()=>{hashes++;return 'hash';},

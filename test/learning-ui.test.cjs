@@ -11,7 +11,8 @@ function fixture(){
  const store={progress:{},moduleProgress:{},requests:[],tracks:[],failLoad:false,failPassword:false};
  const ctx=vm.createContext({document,console,AbortController,URL,Date,JSON,Set,setTimeout,clearTimeout,Option:function(text,value){return {text,value}},window:{VisaAtlasPlanning:require("../public/planning"),VisaAtlasCurriculum:require("../public/curriculum"),addEventListener(){}},location:{reload(){}},confirm:()=>true,navigator:{mediaDevices:{getUserMedia:async()=>{const track={enabled:true,stop(){this.stopped=true}};store.tracks.push(track);return {getTracks:()=>[track],getAudioTracks:()=>[track]}}}},RTCPeerConnection:class{addTrack(){}createDataChannel(){return {readyState:'open',addEventListener(){},send(){},close(){}}}async createOffer(){return {sdp:'offer'}}async setLocalDescription(){}async setRemoteDescription(){}close(){}},fetch:async(url,opt={})=>{
    store.requests.push({url,...opt});let data;const route=new URL(url,'http://local').pathname;
-   if(route==='/api/delete-account'){if(store.failDelete)return {ok:false,json:async()=>({error:'Current password is incorrect.'})};data={ok:true};}
+   if(route==='/api/guardian-request')data={ok:true,requestId:'a'.repeat(64),message:'Sent'};
+   else if(route==='/api/delete-account'){if(store.failDelete)return {ok:false,json:async()=>({error:'Current password is incorrect.'})};data={ok:true};}
    else if(route==='/api/change-password'){if(store.failPassword)return {ok:false,json:async()=>({error:'Current password is incorrect.'})};data={ok:true};}
    else if(route==='/api/me')data=store.user||{id:'u1',name:'Test Student',role:'athlete'};
    else if(route==='/api/owner/accounts')data=store.ownerData;
@@ -433,4 +434,18 @@ test('deletion dialog requires typed confirmation and clears sensitive fields af
  await f.run('deleteMyAccount()');assert.equal(f.elements.get('deleteAccountDialog').open,false);
  assert.equal(f.run('me'),null);assert.equal(f.elements.get('deleteAccountConfirmation').value,'');
  assert.match(f.elements.get('loginErr').textContent,/have been deleted/);
+});
+
+test('age selection blocks under-13 details and guardian requests send only emails and age band',async()=>{
+ const f=fixture();
+ f.elements.get('r_age').value='under13';f.elements.get('r_name').value='Do not send';
+ f.run('registrationAgeChanged()');assert.equal(f.elements.get('registrationFields').disabled,true);assert.equal(f.elements.get('r_name').value,'');
+ await f.run('registerAthlete()');assert.equal(f.store.requests.some(r=>r.url==='/api/register-athlete'),false);
+ f.elements.get('r_age').value='13-17';f.run('registrationAgeChanged()');assert.equal(f.elements.get('registrationFields').disabled,false);assert.equal(f.elements.get('r_guardian_email').required,true);
+ f.elements.get('r_email').value='student@example.test';f.elements.get('r_guardian_email').value='parent@example.test';f.elements.get('r_password').value='must-not-be-sent';
+ await f.run('requestGuardianPermission()');
+ const request=f.store.requests.find(r=>r.url==='/api/guardian-request');assert.deepEqual(JSON.parse(request.body),{ageBand:'13-17',email:'student@example.test',guardianEmail:'parent@example.test'});
+ assert.equal(f.run('guardianRequestId'),'a'.repeat(64));
+ f.run('resetGuardianRequest()');assert.equal(f.run('guardianRequestId'),'');
+ f.elements.get('r_age').value='18+';f.run('registrationAgeChanged()');assert.equal(f.elements.get('r_guardian_email').required,false);assert.equal(f.elements.get('guardianFields').classList.contains('hidden'),true);
 });

@@ -130,9 +130,18 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
 <div id="registration" class="hidden" style="min-height:100vh;background:var(--bg);padding:20px">
  <div class="modalish" style="max-width:560px">
   <h1>Create your account</h1><p>Start with your name, email and password. We’ll email you a verification link, then you can set up your study profile.</p>
+  <div class="field"><label for="r_age">Your age group</label><select id="r_age" onchange="registrationAgeChanged()" required><option value="">Select your age group</option><option value="under13">Under 13</option><option value="13-17">13–17</option><option value="18+">18 or older</option></select></div>
+  <p id="r_age_message" role="status" class="small muted">Select your age group to continue. We do not ask for your date of birth.</p>
   <form onsubmit="event.preventDefault();registerAthlete()">
+   <fieldset id="registrationFields" disabled style="border:0;padding:0;margin:0;min-width:0">
    <div class="field"><label for="r_name">Full name</label><input id="r_name" autocomplete="name" maxlength="120" required></div>
-   <div class="field"><label for="r_email">Email</label><input id="r_email" type="email" autocomplete="email" maxlength="160" required></div>
+   <div class="field"><label for="r_email">Email</label><input id="r_email" oninput="resetGuardianRequest()" type="email" autocomplete="email" maxlength="160" required></div>
+   <div id="guardianFields" class="hidden">
+    <div class="field"><label for="r_guardian_email">Parent or legal guardian’s email</label><input id="r_guardian_email" type="email" maxlength="160" autocomplete="off" oninput="resetGuardianRequest()"></div>
+    <p class="small muted">Ask your parent or guardian before entering their email. They must review and confirm permission before you can create an account. We send only the two email addresses at this step.</p>
+    <button id="guardianRequestBtn" type="button" class="btn secondary" onclick="requestGuardianPermission()">Send permission request</button>
+    <p id="guardianRequestStatus" role="status" aria-live="polite"></p>
+   </div>
    <div class="field"><label for="r_password">Password</label><input id="r_password" type="password" autocomplete="new-password" minlength="15" maxlength="128" placeholder="At least 15 characters" required></div>
    <p class="small muted">Use an email you can access. You’ll need to verify it before voice practice and reports.</p>
    <div class="registration-terms small">
@@ -141,6 +150,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
    </div>
    <p id="r_privacy_notice" class="small muted">Read our <a href="/privacy.html" target="_blank" rel="noopener">Privacy Policy</a> to learn how we handle your information. Policy links open in a new tab.</p>
    <button id="registerBtn" class="btn primary" type="submit">Create account</button>
+   </fieldset>
   </form>
   <button class="linkbtn" onclick="backToLogin()">Already have an account? Sign in</button>
   <button class="linkbtn" onclick="showWelcome()">Back to home</button>
@@ -356,13 +366,35 @@ function publicPage(id){["welcome","login","registration"].forEach(page=>$(page)
 function showWelcome(){publicPage("welcome")}
 function showRegistration(){publicPage("registration")}
 function backToLogin(){publicPage("login")}
+let guardianRequestId='';
+function resetGuardianRequest(){guardianRequestId='';$('guardianRequestStatus').textContent='';}
+function registrationAgeChanged(){
+ const band=$('r_age').value;resetGuardianRequest();
+ $('registrationFields').disabled=!['13-17','18+'].includes(band);
+ $('guardianFields').classList.toggle('hidden',band!=='13-17');$('r_guardian_email').required=band==='13-17';
+ $('r_age_message').textContent=band==='under13'?'VisaAtlas is not available to children under 13.':band==='13-17'?'Your parent or legal guardian must confirm permission by email before you create an account.':band==='18+'?'By continuing, you confirm you are 18 or older.':'Select your age group to continue.';
+ if(!['13-17','18+'].includes(band))for(const id of ['r_name','r_email','r_password','r_guardian_email'])$(id).value='';
+}
+async function requestGuardianPermission(){
+ const button=$('guardianRequestBtn');if(button.disabled)return;
+ const body={ageBand:$('r_age').value,email:$('r_email').value,guardianEmail:$('r_guardian_email').value};
+ button.disabled=true;$('guardianRequestStatus').textContent='Sending…';guardianRequestId='';
+ try{
+ const result=await api('/api/guardian-request',{method:'POST',body:JSON.stringify(body)});
+ if(body.email!==$('r_email').value||body.guardianEmail!==$('r_guardian_email').value||$('r_age').value!=='13-17')return;
+ guardianRequestId=result.requestId;$('guardianRequestStatus').textContent=result.message;
+ }catch(error){$('guardianRequestStatus').textContent=error.message;}
+ finally{button.disabled=false;}
+}
 async function registerAthlete(){
+ if(!['13-17','18+'].includes($('r_age').value)){$('registerErr').textContent='Select an eligible age group to continue.';return;}
+ if($('r_age').value==='13-17'&&!guardianRequestId){$('registerErr').textContent='Send a guardian permission request first.';return;}
  if($('registerBtn').disabled)return;
  if(!$('r_terms').checked){$('registerErr').textContent='Please agree to the Terms of Use to create an account.';$('r_terms').focus();return;}
  $('registerBtn').disabled=true;
  const ids=["name","email","password"];
- const body={termsAccepted:$("r_terms").checked,termsVersion:$("r_terms").dataset.termsVersion}; ids.forEach(k=>body[k]=$("r_"+k).value);
- try{ $("registerErr").textContent="Creating account…"; const result=await api("/api/register-athlete",{method:"POST",body:JSON.stringify(body)});$('r_password').value='';$('r_terms').checked=false; $("registration").classList.add("hidden"); await boot();$('verificationStatus').textContent=result.verificationMessage||''; }
+ const body={ageBand:$("r_age").value,guardianRequest:guardianRequestId,termsAccepted:$("r_terms").checked,termsVersion:$("r_terms").dataset.termsVersion}; ids.forEach(k=>body[k]=$("r_"+k).value);
+ try{ $("registerErr").textContent="Creating account…"; const result=await api("/api/register-athlete",{method:"POST",body:JSON.stringify(body)});$('r_password').value='';$('r_terms').checked=false;resetGuardianRequest();$('r_age').value='';registrationAgeChanged(); $("registration").classList.add("hidden"); await boot();$('verificationStatus').textContent=result.verificationMessage||''; }
  catch(e){ $("registerErr").textContent=e.message; }
  finally{$('registerBtn').disabled=false;}
 }

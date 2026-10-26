@@ -24,6 +24,8 @@ const {createPasswordRecovery}=require('./password-recovery');
 const passwordRecovery=createPasswordRecovery(pool,{env:process.env,diagnostic:authDiagnostic});
 const {createEmailVerification,needsVerification}=require('./email-verification');
 const emailVerification=createEmailVerification({mutateDb,env:process.env});
+const {checkAge,consumePermission,createGuardianPermissions}=require('./age-eligibility');
+const guardianPermissions=createGuardianPermissions({mutateDb,env:process.env});
 const profileOptions=require('./profile-options');
 const planning=require('./public/planning');
 const profileRequirements=require('./public/profile-requirements');
@@ -202,7 +204,7 @@ function serveStatic(req,res){
   if(!file.startsWith(PUBLIC) || !fs.existsSync(file) || fs.statSync(file).isDirectory()){
     res.writeHead(404); return res.end("Not found");
   }
-  const recovery=/^(password-recovery|verify-email)\./.test(path.basename(file));
+  const recovery=/^(password-recovery|verify-email|guardian-permission)\./.test(path.basename(file));
   res.writeHead(200,{...RESPONSE_HEADERS,"Content-Type":contentType(file),"Cache-Control":recovery?'no-store':'no-cache',...(recovery?{'Referrer-Policy':'no-referrer'}:{})}); fs.createReadStream(file).pipe(res);
 }
 function makeId(prefix){ return prefix+"_"+crypto.randomBytes(6).toString("hex"); }
@@ -222,6 +224,12 @@ function outputText(resp){
 const server=http.createServer(async (req,res)=>{
   try{
     const url=new URL(req.url, `http://${req.headers.host}`);
+    if(req.method==='POST' && ['/api/guardian-request','/api/guardian-permission'].includes(url.pathname)){
+      if(!(req.headers['content-type']||'').toLowerCase().startsWith('application/json'))return json(res,415,{error:'JSON required.'});
+      let body;try{body=JSON.parse((await readBody(req,4096)).toString());}catch{return json(res,400,{error:'Invalid request.'});}
+      if(!body||typeof body!=='object'||Array.isArray(body))return json(res,400,{error:'Invalid request.'});
+      return json(res,200,await (url.pathname==='/api/guardian-request'?guardianPermissions.request(body):guardianPermissions.respond(body)));
+    }
     if(req.method==='GET' && url.pathname==='/api/profile-options')return json(res,200,{countries:profileOptions.countries,sports:profileOptions.sports,fundingSources:profileOptions.fundingSources,interviewPosts:require('./interview-posts.json')});
     if(req.method==='GET' && /^\/flags\/[a-z]{2}\.svg$/.test(url.pathname)){
       const file=path.join(__dirname,'node_modules/flag-icons/flags/4x3',path.basename(url.pathname));
@@ -270,6 +278,7 @@ const server=http.createServer(async (req,res)=>{
       const body=JSON.parse((await readBody(req)).toString()||"{}");
       if(!body || body.termsAccepted!==true)return json(res,400,{error:"Please agree to the Terms of Use to create an account."});
       if(body.termsVersion!==TERMS_VERSION)return json(res,400,{error:"The Terms of Use have changed. Refresh this page and review them before creating an account."});
+      checkAge(body);
       const required=["name","email","password"];
       const missing=required.filter(k=>!clean(body[k]));
       if(missing.length) return json(res,400,{error:"Please complete: "+missing.map(k=>({university:"school / university",major:"subjects / program / research area"}[k]||k)).join(", ")});
@@ -281,8 +290,9 @@ const server=http.createServer(async (req,res)=>{
       const userId=makeId("u"); const athleteId=makeId("a");
       await mutateDb(async(db,client)=>{
       if(db.users.some(u=>normalizeEmail(u.email)===email))throw stateError(409,"An account with this email already exists.");
+      const ageEligibility=consumePermission(db,body,email);
       await client.query('INSERT INTO user_credentials (user_id,password_hash) VALUES ($1,$2) ON CONFLICT (user_id) DO NOTHING',[userId,hash]);
-      db.users.push({id:userId,name:clean(body.name,120),email,role:"athlete",verificationRequired:true,termsAcceptance:{version:TERMS_VERSION,acceptedAt:new Date().toISOString(),source:"self-registration"}});
+      db.users.push({id:userId,name:clean(body.name,120),email,role:"athlete",verificationRequired:true,ageEligibility,termsAcceptance:{version:TERMS_VERSION,acceptedAt:new Date().toISOString(),source:"self-registration"}});
       db.athletes.push({
         id:athleteId,userId,name:clean(body.name,120),email,
         phone:clean(body.phone,40),country:clean(body.country,80),
