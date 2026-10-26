@@ -22,6 +22,10 @@ async function deleteStudentAccount(db,client,userId,verifiedCredential){
  db.users=db.users.filter(u=>u.id!==userId);
  const email=typeof user.email==='string'?user.email.trim().toLowerCase():'';
  if(email){
+  db.guardianPermissions=(db.guardianPermissions||[]).filter(p=>p.studentEmail!==email);
+  const studentKey=require('node:crypto').createHash('sha256').update(email).digest('hex');
+  db.guardianMailLog=(db.guardianMailLog||[]).filter(p=>p.studentKey!==studentKey);
+  db.verificationMailLog=(db.verificationMailLog||[]).filter(p=>p.userId!==userId);
   const key=require('node:crypto').createHash('sha256').update(email).digest('hex');
   await client.query('DELETE FROM password_reset_queue WHERE user_id=$1 OR email_key=$2',[userId,key]);
   await client.query('DELETE FROM password_reset_cooldowns WHERE email_key=$1',[key]);
