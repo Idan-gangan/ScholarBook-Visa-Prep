@@ -23,6 +23,9 @@ test('record mode HTTP: registration, login, profile, learning, reviews, export,
   async function call(path,{method='GET',body,cookie,status=200}={}){const res=await fetch(base+path,{method,headers:{'Content-Type':'application/json',...(cookie?{Cookie:cookie}:{})},...(body?{body:JSON.stringify(body)}:{})});const data=await res.json();assert.equal(res.status,status,JSON.stringify({path,data}));return {data,cookie:res.headers.get('set-cookie')?.split(';')[0]};}
   const registered=await call('/api/register-athlete',{method:'POST',status:201,body:{name:'Synthetic student',email:'new@example.test',password,ageBand:'18+',termsAccepted:true,termsVersion:'2026-10-25'}});
   const cookie=registered.cookie,uid=registered.data.user.id,adapter=store.create(pool);
+  assert.equal((await call('/api/me',{cookie})).data.needsEmailVerification,true);
+  for(const path of ['/api/my-profile','/api/athletes','/api/reports','/api/learning/study-purpose'])await call(path,{cookie,status:403});
+  await adapter.mutate(async db=>{db.users.find(u=>u.id===uid).emailVerifiedAt=new Date().toISOString();});
   const profile=(await call('/api/my-profile',{cookie})).data;
   await call('/api/my-profile',{method:'PUT',cookie,body:{major:'Computer Science'}});
   assert.equal((await call('/api/my-profile',{cookie})).data.major,'Computer Science');

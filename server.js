@@ -199,7 +199,12 @@ async function getUser(req){
   return user&&!user.accessSuspended?user:null;
 }
 async function requireUser(req,res){
-  const u=await getUser(req); if(!u){json(res,401,{error:"Unauthorized"}); return null;} return u;
+  const u=await getUser(req); if(!u){json(res,401,{error:"Unauthorized"}); return null;}
+  const verificationRoutes=new Set(['/api/me','/api/resend-verification','/api/change-unverified-email','/api/logout','/api/delete-account','/api/export-account','/api/change-password','/api/voice/end']);
+  if(needsVerification(u)&&!verificationRoutes.has(req.url.split('?')[0])){
+    json(res,403,{error:"Verify your email before entering VisaAtlas.",code:"EMAIL_VERIFICATION_REQUIRED"});return null;
+  }
+  return u;
 }
 function contentType(file){
   const ext=path.extname(file);

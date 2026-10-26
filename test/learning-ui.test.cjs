@@ -449,3 +449,15 @@ test('age selection blocks under-13 details and guardian requests send only emai
  f.run('resetGuardianRequest()');assert.equal(f.run('guardianRequestId'),'');
  f.elements.get('r_age').value='18+';f.run('registrationAgeChanged()');assert.equal(f.elements.get('r_guardian_email').required,false);assert.equal(f.elements.get('guardianFields').classList.contains('hidden'),true);
 });
+
+test('unverified sign-in shows only verification screen and loads no preparation records',async()=>{
+ const f=fixture();f.store.user={id:'u1',name:'Test',role:'athlete',email:'test@example.test',needsEmailVerification:true};
+ await f.run('boot()');
+ assert.equal(f.elements.get('app').classList.contains('hidden'),true);
+ assert.equal(f.elements.get('verificationNotice').classList.contains('hidden'),false);
+ assert.equal(f.store.requests.some(r=>['/api/athletes','/api/reports'].includes(r.url)),false);
+ f.store.user.needsEmailVerification=false;
+ await f.run('refreshVerification()');
+ assert.equal(f.elements.get('verificationNotice').classList.contains('hidden'),true);
+ assert.equal(f.elements.get('app').classList.contains('hidden'),false);
+});
