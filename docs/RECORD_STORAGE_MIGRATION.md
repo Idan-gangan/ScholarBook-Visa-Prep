@@ -2,7 +2,7 @@
 
 Status: feature-gated compatibility integration, NOT approved for production activation.
 
-The legacy mode remains the default. RECORD_STORAGE=enabled selects separate ordered collection records. All mutateDb callbacks retain a single transaction with credential, lesson and voice SQL operations. Reads use a repeatable-read snapshot. Each changed record is written separately; unchanged records are skipped. Session user lookup uses a primary-key query.
+The legacy mode remains the default. RECORD_STORAGE=enabled selects separate ordered collection records. All mutateDb callbacks retain a single transaction with credential, lesson and voice SQL operations. Reads use a repeatable-read snapshot. Each changed record is written separately; unchanged records are skipped. Session user lookup uses a primary-key query. Student and report list endpoints use SQL permission filters against the current account and staff assignments; suspended accounts return no records.
 
 Current limitation: compatibility load/mutate still reconstruct the whole state and serialize writes. This is not the per-student prototype's full performance result. Remaining endpoint-specific readers and writers, full enabled-mode HTTP tests and a repeat capacity run are release gates. Existing tests passing in default mode do not certify enabled mode.
 

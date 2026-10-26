@@ -6,6 +6,23 @@ test('record migration preserves every collection; updates and rollback retain l
  const original={users:[{id:'u1',role:'athlete'},{id:'u2',role:'athlete'}],athletes:[{id:'a1',userId:'u1'},{id:'a2',userId:'u2'}],reports:[{id:'r',athleteId:'a1'}],transcripts:[{athleteId:'a1',text:'sample'}],guardianPermissions:[{tokenHash:'synthetic'}],reviews:[{userId:'u1',text:'synthetic'}],empty:[],configuration:{version:1}};
  await pool.query('INSERT INTO app_state VALUES(1,$1)',[original]);const c=await pool.connect();try{await store.migrate(c);}finally{c.release();}
  const adapter=store.create(pool);assert.deepEqual(await adapter.load(),original);assert.deepEqual(await adapter.user('u1'),original.users[0]);
+ // Actual SQL permission checks cover students, every staff role, owners and revocation.
+ assert.equal((await adapter.reportsFor('u1')).length,1);
+ assert.deepEqual(await adapter.reportsFor('u2'),[]);
+ assert.deepEqual(await adapter.studentsFor('missing'),[]);
+ await adapter.mutate(async db=>{db.users.push({id:'staff',role:'coach'},{id:'owner',role:'owner'});db.athletes[0].staffIds=['staff'];});
+ for(const role of ['coach','supervisor','manager']){
+   await adapter.mutate(async db=>{db.users.find(u=>u.id==='staff').role=role;});
+   assert.deepEqual((await adapter.studentsFor('staff')).map(a=>a.id),['a1']);
+   assert.equal((await adapter.reportsFor('staff')).length,1);
+ }
+ assert.equal((await adapter.studentsFor('owner')).length,2);
+ await adapter.mutate(async db=>{db.athletes[0].staffIds=[];});
+ assert.deepEqual(await adapter.reportsFor('staff'),[]);
+ await adapter.mutate(async db=>{db.users[0].accessSuspended=true;});
+ assert.deepEqual(await adapter.studentsFor('u1'),[]);
+ assert.deepEqual(await adapter.reportsFor('u1'),[]);
+ await adapter.mutate(async db=>{delete db.users[0].accessSuspended;db.users=db.users.filter(u=>!['owner','staff'].includes(u.id));});
  await Promise.all(Array.from({length:10},()=>adapter.mutate(async db=>{db.configuration.version++;})));assert.equal((await adapter.load()).configuration.version,11);
  await assert.rejects(adapter.mutate(async(db,c)=>{db.users=[];await c.query("INSERT INTO user_credentials VALUES('failed',1)");throw Error('simulated');}),/simulated/);assert.equal((await adapter.load()).users.length,2);assert.equal((await pool.query('SELECT * FROM user_credentials')).rowCount,0);
  await adapter.mutate(async db=>{db.users=db.users.filter(u=>u.id!=='u1');db.athletes=db.athletes.filter(a=>a.userId!=='u1');db.reports=[];db.transcripts=[];db.reviews=[];});assert.equal(await adapter.user('u1'),null);assert.ok(await adapter.user('u2'));

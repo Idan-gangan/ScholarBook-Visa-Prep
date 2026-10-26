@@ -522,10 +522,10 @@ const server=http.createServer(async (req,res)=>{
 
     if(req.method==="GET" && url.pathname==="/api/athletes"){
       const u=await requireUser(req,res); if(!u) return;
-      const db=await loadDb();
-      let athletes=db.athletes;
       if(u.role!=="athlete" && !isStaff(u))return json(res,403,{error:'Access denied.'});
-      athletes=athletes.filter(a=>canAccessStudent(u,a));
+      const athletes=typeof recordStore!=='undefined' && recordStore
+        ?await recordStore.studentsFor(u.id)
+        :(await loadDb()).athletes.filter(a=>canAccessStudent(u,a));
       return json(res,200,athletes);
     }
 
@@ -544,11 +544,14 @@ const server=http.createServer(async (req,res)=>{
 
     if(req.method==="GET" && url.pathname==="/api/reports"){
       const u=await requireUser(req,res); if(!u) return;
-      const db=await loadDb();
-      let reports=db.reports;
       if(u.role!=="athlete" && !isStaff(u))return json(res,403,{error:'Access denied.'});
-      const allowed=new Set(db.athletes.filter(a=>canAccessStudent(u,a)).map(a=>a.id));
-      reports=reports.filter(r=>allowed.has(r.athleteId));
+      let reports;
+      if(typeof recordStore!=='undefined' && recordStore)reports=await recordStore.reportsFor(u.id);
+      else{
+        const db=await loadDb();
+        const allowed=new Set(db.athletes.filter(a=>canAccessStudent(u,a)).map(a=>a.id));
+        reports=db.reports.filter(r=>allowed.has(r.athleteId));
+      }
       return json(res,200,reports.map(report=>({...report,practiceTargets:practiceTargets(report)})));
     }
 
