@@ -4,7 +4,7 @@ const {createRecoveryQueue,MESSAGE}=require('./password-recovery-queue');
 const INVALID='This reset link is invalid or has expired. Request a new link.';
 const digest=value=>crypto.createHash('sha256').update(value).digest('hex');
 const fail=(status,message)=>Object.assign(new Error(message),{status,publicMessage:message});
-function createPasswordRecovery(pool,{env=process.env,send=globalThis.fetch,diagnostic=()=>{}}={}){
+function createPasswordRecovery(pool,{env=process.env,send=globalThis.fetch,diagnostic=()=>{},recordStorage=false}={}){
   function config(){
     const unavailable=()=>fail(503,'Password recovery is temporarily unavailable. Please try again later.');
     if(!env.RESEND_API_KEY || !env.RESEND_FROM)throw unavailable();
@@ -13,7 +13,7 @@ function createPasswordRecovery(pool,{env=process.env,send=globalThis.fetch,diag
     if(env.PASSWORD_RESET_SECRET && env.PASSWORD_RESET_SECRET.length<32)throw unavailable();
     return {origin:origin.origin,key:env.RESEND_API_KEY,from:env.RESEND_FROM,secret:env.PASSWORD_RESET_SECRET || env.RESEND_API_KEY};
   }
-  const queue=createRecoveryQueue(pool,{config,send,diagnostic});
+  const queue=createRecoveryQueue(pool,{config,send,diagnostic,recordStorage});
   async function init(){
     await pool.query(`CREATE TABLE IF NOT EXISTS password_reset_tokens (
       token_hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES user_credentials(user_id) ON DELETE CASCADE,

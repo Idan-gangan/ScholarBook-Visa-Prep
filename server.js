@@ -24,7 +24,7 @@ const voiceLimits=createVoiceLimits(pool,OPENAI_API_KEY,(url,options)=>fetch(url
 const {EVALUATION_POLICY,normalizeTranscript,createEvaluationLimits}=require("./evaluation-limits");
 const evaluationLimits=createEvaluationLimits(pool);
 const {createPasswordRecovery}=require('./password-recovery');
-const passwordRecovery=createPasswordRecovery(pool,{env:process.env,diagnostic:authDiagnostic});
+const passwordRecovery=createPasswordRecovery(pool,{env:process.env,diagnostic:authDiagnostic,recordStorage:!!recordStore});
 const {createEmailVerification,needsVerification}=require('./email-verification');
 const emailVerification=createEmailVerification({mutateDb,env:process.env});
 const {checkAge,consumePermission,createGuardianPermissions}=require('./age-eligibility');
@@ -156,14 +156,14 @@ if (coachEmail && coachPassword) {
 }
 }
 async function loadDb(){
- if(typeof recordStore!=='undefined' && recordStore)return recordStore.load();
+ if(typeof recordStore!=='undefined' && recordStore)return recordStore.load(scope);
  const result=await pool.query("SELECT data FROM app_state WHERE id = 1");
  return result.rows[0]?.data || {users:[],athletes:[],reports:[],transcripts:[]};
 }
 // All state writers use one short database transaction, shared across app instances.
 // Hashing and provider calls must finish before entering this critical section.
 async function mutateDb(change){
- if(typeof recordStore!=='undefined' && recordStore)return recordStore.mutate(change);
+ if(typeof recordStore!=='undefined' && recordStore)return recordStore.mutate(change,scope);
  const client=await pool.connect();
  try{
    await client.query('BEGIN');
@@ -362,10 +362,9 @@ const server=http.createServer(async (req,res)=>{
 
     if(req.method==="POST" && url.pathname==="/api/login"){
       const body=JSON.parse((await readBody(req)).toString()||"{}");
-      const db=await loadDb();
       const email=normalizeEmail(body.email);
       if(!allowAuth('login:'+sha(email)))return json(res,429,{error:'Too many attempts. Please try again in one minute.'});
-      const user=email ? db.users.find(u=>normalizeEmail(u.email)===email) : null;
+      const user=email ? (typeof recordStore!=='undefined' && recordStore?await recordStore.userByEmail(email):(await loadDb()).users.find(u=>normalizeEmail(u.email)===email)) : null;
       let saved=user?await credential(user.id):null;
       if(!user || !saved || !await verifyPassword(body.password,saved.password_hash)){
         const reference="auth2-"+crypto.randomBytes(6).toString("hex");
@@ -489,7 +488,7 @@ const server=http.createServer(async (req,res)=>{
     if(req.method==="GET" && url.pathname==="/api/my-profile"){
       const u=await requireUser(req,res); if(!u) return;
       if(u.role!=="athlete" && !isOwner(u)) return json(res,403,{error:"Student access required"});
-      const db=await loadDb(); const athlete=db.athletes.find(a=>a.userId===u.id);
+      const db=await loadDb({userId:u.id}); const athlete=db.athletes.find(a=>a.userId===u.id);
       if(!athlete) return json(res,404,{error:"Student profile not found"});
       return json(res,200,athlete);
     }
@@ -516,7 +515,7 @@ const server=http.createServer(async (req,res)=>{
       if('welcomeCompleted' in body)athlete.welcomeCompleted=body.welcomeCompleted;
       athlete.profileStatus=profileRequirements.missing(athlete).length?'Incomplete':'Complete';
       athlete.updatedAt=new Date().toISOString(); return athlete;
-      });
+      },{userId:u.id});
       return json(res,200,updated);
     }
 
@@ -590,7 +589,7 @@ const server=http.createServer(async (req,res)=>{
       const u=await requireUser(req,res); if(!u) return;
       if(needsVerification(u))return json(res,403,{error:'Verify your email before generating a report.'});
       const body=JSON.parse((await readBody(req)).toString()||"{}");
-      const db=await loadDb();
+      const db=await loadDb({userId:u.id,athleteId:body.athleteId});
       const athlete=db.athletes.find(a=>a.id===body.athleteId);
       if(!canAccessStudent(u,athlete)) return json(res,403,{error:"You cannot generate a report for this student."});
       if(!OPENAI_API_KEY) return json(res,503,{error:"OPENAI_API_KEY is not configured on the server."});
@@ -604,7 +603,7 @@ const server=http.createServer(async (req,res)=>{
         if(!session)throw stateError(400,'Finish a voice mock interview before requesting its report.');
         if(!session.transcript){session.transcript=interview;session.endedAt=new Date().toISOString();}
         return session;
-      });
+      },{userId:u.id,athleteId:athlete.id});
       interview=mockSession.transcript;
       const evaluationKey=sha(JSON.stringify([u.id,athlete.id,mockSession.id]));
       const previous=db.reports.find(report=>report.evaluationKey===evaluationKey);
@@ -612,11 +611,11 @@ const server=http.createServer(async (req,res)=>{
       const lease=await mutateDb(async current=>{
         if(!current.users.some(user=>user.id===u.id&&!user.accessSuspended)||!canAccessStudent(u,current.athletes.find(a=>a.id===athlete.id)))throw stateError(403,'This account or student is no longer available.');
         return evaluationLimits.reserve(u.id);
-      });
+      },{userId:u.id,athleteId:athlete.id});
       if(!lease)return json(res,429,{error:"A report is already processing. Please wait for it to finish before trying again."});
       try{
       // Recheck after admission in case another request finished between the first lookup and reservation.
-      const cached=(await loadDb()).reports.find(report=>report.evaluationKey===evaluationKey);
+      const cached=(await loadDb({userId:u.id,athleteId:athlete.id})).reports.find(report=>report.evaluationKey===evaluationKey);
       if(cached)return json(res,200,cached);
       const rubric = {
         purpose_of_study:15, university_knowledge:15, major_knowledge:15, scholarship_finances:15,
@@ -741,7 +740,7 @@ Use only information in the supplied profile and transcript. Do not reward inven
       currentAthlete.currentScore=result.overall;
       currentAthlete.mocks=(currentAthlete.mocks||0)+1;
       return report;
-      });
+      },{userId:u.id,athleteId:athlete.id});
       return json(res,200,savedReport);
       }catch(error){
         if(error.name==='TimeoutError'||error.name==='AbortError')return json(res,504,{error:"Report generation timed out. Please try again later."});
@@ -755,7 +754,7 @@ Use only information in the supplied profile and transcript. Do not reward inven
       const lessonId=url.pathname.slice("/api/learning/".length);
       if(!LESSONS.some(lesson=>lesson.id===lessonId))return json(res,404,{error:"Unknown lesson"});
       const u=await requireUser(req,res); if(!u) return;
-      const db=await loadDb();
+      const db=await loadDb({userId:u.id,athleteId:url.searchParams.get("athleteId")});
       const student=db.athletes.find(a=>a.id===url.searchParams.get("athleteId"));
       if(!canAccessStudent(u,student)) return json(res,403,{error:"You cannot access this student's learning."});
       if(req.method === "GET"){
@@ -770,7 +769,7 @@ Use only information in the supplied profile and transcript. Do not reward inven
       if(!current.users.some(user=>user.id===u.id&&!user.accessSuspended)||!canAccessStudent(u,current.athletes.find(a=>a.id===student.id)))throw stateError(403,'This account or student is no longer available.');
       await client.query(`INSERT INTO learning_progress (student_id,lesson_id,data) VALUES ($1,$2,$3::jsonb)
         ON CONFLICT (student_id,lesson_id) DO UPDATE SET data=EXCLUDED.data,updated_at=NOW()`,[student.id,lessonId,JSON.stringify(progress)]);
-      });
+      },{userId:u.id,athleteId:student.id});
       return json(res,200,{progress});
     }
 
@@ -802,7 +801,7 @@ Use only information in the supplied profile and transcript. Do not reward inven
       if(needsVerification(u))return json(res,403,{error:'Verify your email before starting voice practice.'});
       if(!OPENAI_API_KEY) return json(res,503,{error:"OPENAI_API_KEY is not configured on the server."});
       const athleteId=url.searchParams.get("athleteId");
-      const db=await loadDb();
+      const db=await loadDb({userId:u.id,athleteId});
       const athlete=db.athletes.find(a=>a.id===athleteId);
       if(!athlete) return json(res,404,{error:"Student not found"});
       if(!canAccessStudent(u,athlete)) return json(res,403,{error:"You cannot start a session for this student."});
@@ -826,7 +825,7 @@ Use only information in the supplied profile and transcript. Do not reward inven
       const voiceToken=await mutateDb(async current=>{
         if(!current.users.some(user=>user.id===u.id&&!user.accessSuspended)||!canAccessStudent(u,current.athletes.find(a=>a.id===athlete.id)))throw stateError(403,'This account or student is no longer available.');
         return voiceLimits.acquire(u.id);
-      });
+      },{userId:u.id,athleteId:athlete.id});
       if(!voiceToken)return json(res,429,{error:'End your current voice session before starting another. After a recent start, wait 10 seconds and try again.'});
       let voiceDelivered=false;
       try{
@@ -903,7 +902,7 @@ Start with the opening guidance in INTERVIEW DESIGN below.`;
           // Retain unreported sessions for 30 days. Existing reports remain available.
           current.mockSessions=current.mockSessions.filter(x=>Date.parse(x.createdAt)>Date.now()-30*86400000);
           current.mockSessions.push({id:mockSessionId,userId:u.id,athleteId:athlete.id,createdAt:new Date().toISOString(),difficulty,plan:interviewPlan,evaluationVersion:3,profile:interviewDesign.profileSnapshot(athlete)});
-        });
+        },{userId:u.id,athleteId:athlete.id});
       }
       if(res.destroyed)return;
       res.writeHead(rr.status,{"X-Voice-Token":voiceToken,"Content-Type":"application/sdp","Cache-Control":"no-store","X-Voice-Limit-Seconds":String(seconds),...(mockSessionId?{'X-Mock-Session-Id':mockSessionId}:{})});
