@@ -12,6 +12,8 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
+const recordStore=process.env.RECORD_STORAGE==='enabled'?require('./record-store').create(pool):null;
+
 // Update this version and the registration checkbox together when Terms change.
 const TERMS_VERSION = "2026-10-25";
 const operations=require('./operations').createOperations(pool);
@@ -22,11 +24,11 @@ const voiceLimits=createVoiceLimits(pool,OPENAI_API_KEY,(url,options)=>fetch(url
 const {EVALUATION_POLICY,normalizeTranscript,createEvaluationLimits}=require("./evaluation-limits");
 const evaluationLimits=createEvaluationLimits(pool);
 const {createPasswordRecovery}=require('./password-recovery');
-const passwordRecovery=createPasswordRecovery(pool,{env:process.env,diagnostic:authDiagnostic});
+const passwordRecovery=createPasswordRecovery(pool,{env:process.env,diagnostic:authDiagnostic,recordStorage:!!recordStore});
 const {createEmailVerification,needsVerification}=require('./email-verification');
-const emailVerification=createEmailVerification({mutateDb,env:process.env});
+const emailVerification=createEmailVerification({mutateDb:(change)=>mutateDb(change,{collections:['users','athletes','verificationMailLog']}),env:process.env});
 const {checkAge,consumePermission,createGuardianPermissions}=require('./age-eligibility');
-const guardianPermissions=createGuardianPermissions({mutateDb,env:process.env});
+const guardianPermissions=createGuardianPermissions({mutateDb:(change)=>mutateDb(change,{collections:['guardianPermissions','guardianMailLog']}),env:process.env});
 const profileOptions=require('./profile-options');
 const planning=require('./public/planning');
 const profileRequirements=require('./public/profile-requirements');
@@ -127,7 +129,8 @@ function readBody(req,maxBytes=1024*1024){
   for(const user of existing.users || []){
     if(user.passwordHash) await insertCredential(user.id,user.passwordHash);
   }
-  await pool.query(`UPDATE app_state SET data=jsonb_set(data,'{users}',
+  if(recordStore)await mutateDb(async db=>{for(const user of db.users||[])delete user.passwordHash;});
+  else await pool.query(`UPDATE app_state SET data=jsonb_set(data,'{users}',
     COALESCE((SELECT jsonb_agg(u - 'passwordHash') FROM jsonb_array_elements(data->'users') u),'[]'::jsonb)) WHERE id=1`);
   const coachEmail = normalizeEmail(process.env.COACH_EMAIL);
 const coachPassword = process.env.COACH_PASSWORD || "";
@@ -152,13 +155,15 @@ if (coachEmail && coachPassword) {
   authDiagnostic('COACH_ACCOUNT_READY');
 }
 }
-async function loadDb(){
+async function loadDb(scope){
+ if(typeof recordStore!=='undefined' && recordStore)return recordStore.load(scope);
  const result=await pool.query("SELECT data FROM app_state WHERE id = 1");
  return result.rows[0]?.data || {users:[],athletes:[],reports:[],transcripts:[]};
 }
 // All state writers use one short database transaction, shared across app instances.
 // Hashing and provider calls must finish before entering this critical section.
-async function mutateDb(change){
+async function mutateDb(change,scope){
+ if(typeof recordStore!=='undefined' && recordStore)return recordStore.mutate(change,scope);
  const client=await pool.connect();
  try{
    await client.query('BEGIN');
@@ -184,12 +189,12 @@ function parseCookies(req){
 async function getUser(req){
   const token=parseCookies(req).sb_session;
   if(!token || !sessions.has(token)) return null;
-  const db= await loadDb();
   const session=sessions.get(token);
   if(!session || session.expires<=Date.now()){sessions.delete(token);return null;}
   const saved=await credential(session.userId);
   if(!saved || saved.version!==session.version){sessions.delete(token);return null;}
-  return db.users.find(u=>u.id===session.userId && !u.accessSuspended) || null;
+  const user=typeof recordStore!=='undefined' && recordStore?await recordStore.user(session.userId):(await loadDb()).users.find(u=>u.id===session.userId);
+  return user&&!user.accessSuspended?user:null;
 }
 async function requireUser(req,res){
   const u=await getUser(req); if(!u){json(res,401,{error:"Unauthorized"}); return null;} return u;
@@ -226,12 +231,12 @@ const server=http.createServer(async (req,res)=>{
   try{
     const url=new URL(req.url, `http://${req.headers.host}`);
     res.once?.('finish',()=>{void operations.record(url.pathname,res.statusCode);});
-    if(url.pathname==='/api/reviews' && req.method==='GET')return json(res,200,require('./reviews').publicReviews(await loadDb()));
+    if(url.pathname==='/api/reviews' && req.method==='GET')return json(res,200,require('./reviews').publicReviews(await loadDb({collections:['users','reviews']})));
     if(['/api/my-review','/api/review-moderation'].includes(url.pathname)){
       const u=await requireUser(req,res);if(!u)return;
       const owner=url.pathname==='/api/review-moderation';
       if(owner&&!isOwner(u))return json(res,403,{error:'Owner access required.'});
-      if(req.method==='GET'){const db=await loadDb();return json(res,200,owner?{reviews:(db.reviews||[]).map(({userId,...r})=>r)}:{review:(db.reviews||[]).find(r=>r.userId===u.id)||null});}
+      if(req.method==='GET'){const db=await loadDb({collections:['reviews']});return json(res,200,owner?{reviews:(db.reviews||[]).map(({userId,...r})=>r)}:{review:(db.reviews||[]).find(r=>r.userId===u.id)||null});}
       if(req.method!=='POST')return json(res,405,{error:'Method not allowed.'});
       if(!allowAuth('reviews:'+u.id))return json(res,429,{error:'Please try again shortly.'});
       if(!(req.headers['content-type']||'').startsWith('application/json'))return json(res,415,{error:'JSON required.'});
@@ -242,7 +247,7 @@ const server=http.createServer(async (req,res)=>{
         if(owner)return require('./reviews').moderate(db,u.id,b);
         if(b.action==='remove'){db.reviews=(db.reviews||[]).filter(r=>r.userId!==u.id);return {ok:true};}
         return require('./reviews').submit(db,u.id,b);
-      }));
+      },{collections:['users','reviews']}));
     }
     if(req.method==='GET' && url.pathname==='/healthz'){
       try{await pool.query({text:'SELECT 1',query_timeout:3000});return json(res,200,{ok:true});}
@@ -347,7 +352,7 @@ const server=http.createServer(async (req,res)=>{
         postGradPlan:clean(body.postGradPlan,500),profileStatus:"Incomplete",createdAt:new Date().toISOString(),
         sessions:0,mocks:0,initialScore:0,currentScore:0,mainConcern:"New student — not yet assessed"
       });
-      });
+      },{collections:['users','athletes','guardianPermissions']});
       const token=startSession(userId,0);
       let verificationMessage;
       try{verificationMessage=(await emailVerification.request(userId)).message;}catch{verificationMessage='Account created. Sign in and use Resend email to verify your address. Email delivery may need a moment.';}
@@ -357,10 +362,9 @@ const server=http.createServer(async (req,res)=>{
 
     if(req.method==="POST" && url.pathname==="/api/login"){
       const body=JSON.parse((await readBody(req)).toString()||"{}");
-      const db=await loadDb();
       const email=normalizeEmail(body.email);
       if(!allowAuth('login:'+sha(email)))return json(res,429,{error:'Too many attempts. Please try again in one minute.'});
-      const user=email ? db.users.find(u=>normalizeEmail(u.email)===email) : null;
+      const user=email ? (typeof recordStore!=='undefined' && recordStore?await recordStore.userByEmail(email):(await loadDb()).users.find(u=>normalizeEmail(u.email)===email)) : null;
       let saved=user?await credential(user.id):null;
       if(!user || !saved || !await verifyPassword(body.password,saved.password_hash)){
         const reference="auth2-"+crypto.randomBytes(6).toString("hex");
@@ -484,7 +488,7 @@ const server=http.createServer(async (req,res)=>{
     if(req.method==="GET" && url.pathname==="/api/my-profile"){
       const u=await requireUser(req,res); if(!u) return;
       if(u.role!=="athlete" && !isOwner(u)) return json(res,403,{error:"Student access required"});
-      const db=await loadDb(); const athlete=db.athletes.find(a=>a.userId===u.id);
+      const db=await loadDb({userId:u.id}); const athlete=db.athletes.find(a=>a.userId===u.id);
       if(!athlete) return json(res,404,{error:"Student profile not found"});
       return json(res,200,athlete);
     }
@@ -511,23 +515,23 @@ const server=http.createServer(async (req,res)=>{
       if('welcomeCompleted' in body)athlete.welcomeCompleted=body.welcomeCompleted;
       athlete.profileStatus=profileRequirements.missing(athlete).length?'Incomplete':'Complete';
       athlete.updatedAt=new Date().toISOString(); return athlete;
-      });
+      },{userId:u.id});
       return json(res,200,updated);
     }
 
     if(req.method==="GET" && url.pathname==="/api/athletes"){
       const u=await requireUser(req,res); if(!u) return;
-      const db=await loadDb();
-      let athletes=db.athletes;
       if(u.role!=="athlete" && !isStaff(u))return json(res,403,{error:'Access denied.'});
-      athletes=athletes.filter(a=>canAccessStudent(u,a));
+      const athletes=typeof recordStore!=='undefined' && recordStore
+        ?await recordStore.studentsFor(u.id)
+        :(await loadDb()).athletes.filter(a=>canAccessStudent(u,a));
       return json(res,200,athletes);
     }
 
     const pdfMatch=url.pathname.match(/^\/api\/reports\/([^/]+)\/pdf$/);
     if(req.method==='GET' && pdfMatch){
       const u=await requireUser(req,res);if(!u)return;
-      const db=await loadDb();
+      const db=await loadDb({collections:['reports','athletes']});
       const report=db.reports.find(r=>r.id===decodeURIComponent(pdfMatch[1]));
       const student=report&&db.athletes.find(a=>a.id===report.athleteId);
       if(!report||!student||!canAccessStudent(u,student))return json(res,404,{error:'Report not found.'});
@@ -539,11 +543,14 @@ const server=http.createServer(async (req,res)=>{
 
     if(req.method==="GET" && url.pathname==="/api/reports"){
       const u=await requireUser(req,res); if(!u) return;
-      const db=await loadDb();
-      let reports=db.reports;
       if(u.role!=="athlete" && !isStaff(u))return json(res,403,{error:'Access denied.'});
-      const allowed=new Set(db.athletes.filter(a=>canAccessStudent(u,a)).map(a=>a.id));
-      reports=reports.filter(r=>allowed.has(r.athleteId));
+      let reports;
+      if(typeof recordStore!=='undefined' && recordStore)reports=await recordStore.reportsFor(u.id);
+      else{
+        const db=await loadDb();
+        const allowed=new Set(db.athletes.filter(a=>canAccessStudent(u,a)).map(a=>a.id));
+        reports=db.reports.filter(r=>allowed.has(r.athleteId));
+      }
       return json(res,200,reports.map(report=>({...report,practiceTargets:practiceTargets(report)})));
     }
 
@@ -557,7 +564,7 @@ const server=http.createServer(async (req,res)=>{
       if(!canAccessStudent(u,db.athletes.find(a=>a.id===report.athleteId)))throw stateError(403,"This student is not assigned to you.");
       report.humanReview={score:Number(body.score),note:String(body.note||""),reviewer:u.name,reviewedAt:new Date().toISOString()};
       return report;
-      });
+      },{collections:['athletes','reports']});
       return json(res,200,updated);
     }
 
@@ -574,7 +581,7 @@ const server=http.createServer(async (req,res)=>{
         transcript:Array.isArray(body.transcript)?body.transcript:[],
         createdAt:new Date().toISOString()
       });
-      });
+      },{userId:u.id,athleteId:body.athleteId});
       return json(res,200,{ok:true});
     }
 
@@ -582,7 +589,7 @@ const server=http.createServer(async (req,res)=>{
       const u=await requireUser(req,res); if(!u) return;
       if(needsVerification(u))return json(res,403,{error:'Verify your email before generating a report.'});
       const body=JSON.parse((await readBody(req)).toString()||"{}");
-      const db=await loadDb();
+      const db=await loadDb({userId:u.id,athleteId:body.athleteId});
       const athlete=db.athletes.find(a=>a.id===body.athleteId);
       if(!canAccessStudent(u,athlete)) return json(res,403,{error:"You cannot generate a report for this student."});
       if(!OPENAI_API_KEY) return json(res,503,{error:"OPENAI_API_KEY is not configured on the server."});
@@ -596,7 +603,7 @@ const server=http.createServer(async (req,res)=>{
         if(!session)throw stateError(400,'Finish a voice mock interview before requesting its report.');
         if(!session.transcript){session.transcript=interview;session.endedAt=new Date().toISOString();}
         return session;
-      });
+      },{userId:u.id,athleteId:athlete.id});
       interview=mockSession.transcript;
       const evaluationKey=sha(JSON.stringify([u.id,athlete.id,mockSession.id]));
       const previous=db.reports.find(report=>report.evaluationKey===evaluationKey);
@@ -604,11 +611,11 @@ const server=http.createServer(async (req,res)=>{
       const lease=await mutateDb(async current=>{
         if(!current.users.some(user=>user.id===u.id&&!user.accessSuspended)||!canAccessStudent(u,current.athletes.find(a=>a.id===athlete.id)))throw stateError(403,'This account or student is no longer available.');
         return evaluationLimits.reserve(u.id);
-      });
+      },{userId:u.id,athleteId:athlete.id});
       if(!lease)return json(res,429,{error:"A report is already processing. Please wait for it to finish before trying again."});
       try{
       // Recheck after admission in case another request finished between the first lookup and reservation.
-      const cached=(await loadDb()).reports.find(report=>report.evaluationKey===evaluationKey);
+      const cached=(await loadDb({userId:u.id,athleteId:athlete.id})).reports.find(report=>report.evaluationKey===evaluationKey);
       if(cached)return json(res,200,cached);
       const rubric = {
         purpose_of_study:15, university_knowledge:15, major_knowledge:15, scholarship_finances:15,
@@ -733,7 +740,7 @@ Use only information in the supplied profile and transcript. Do not reward inven
       currentAthlete.currentScore=result.overall;
       currentAthlete.mocks=(currentAthlete.mocks||0)+1;
       return report;
-      });
+      },{userId:u.id,athleteId:athlete.id});
       return json(res,200,savedReport);
       }catch(error){
         if(error.name==='TimeoutError'||error.name==='AbortError')return json(res,504,{error:"Report generation timed out. Please try again later."});
@@ -747,7 +754,7 @@ Use only information in the supplied profile and transcript. Do not reward inven
       const lessonId=url.pathname.slice("/api/learning/".length);
       if(!LESSONS.some(lesson=>lesson.id===lessonId))return json(res,404,{error:"Unknown lesson"});
       const u=await requireUser(req,res); if(!u) return;
-      const db=await loadDb();
+      const db=await loadDb({userId:u.id,athleteId:url.searchParams.get("athleteId")});
       const student=db.athletes.find(a=>a.id===url.searchParams.get("athleteId"));
       if(!canAccessStudent(u,student)) return json(res,403,{error:"You cannot access this student's learning."});
       if(req.method === "GET"){
@@ -762,7 +769,7 @@ Use only information in the supplied profile and transcript. Do not reward inven
       if(!current.users.some(user=>user.id===u.id&&!user.accessSuspended)||!canAccessStudent(u,current.athletes.find(a=>a.id===student.id)))throw stateError(403,'This account or student is no longer available.');
       await client.query(`INSERT INTO learning_progress (student_id,lesson_id,data) VALUES ($1,$2,$3::jsonb)
         ON CONFLICT (student_id,lesson_id) DO UPDATE SET data=EXCLUDED.data,updated_at=NOW()`,[student.id,lessonId,JSON.stringify(progress)]);
-      });
+      },{userId:u.id,athleteId:student.id});
       return json(res,200,{progress});
     }
 
@@ -794,7 +801,7 @@ Use only information in the supplied profile and transcript. Do not reward inven
       if(needsVerification(u))return json(res,403,{error:'Verify your email before starting voice practice.'});
       if(!OPENAI_API_KEY) return json(res,503,{error:"OPENAI_API_KEY is not configured on the server."});
       const athleteId=url.searchParams.get("athleteId");
-      const db=await loadDb();
+      const db=await loadDb({userId:u.id,athleteId});
       const athlete=db.athletes.find(a=>a.id===athleteId);
       if(!athlete) return json(res,404,{error:"Student not found"});
       if(!canAccessStudent(u,athlete)) return json(res,403,{error:"You cannot start a session for this student."});
@@ -818,7 +825,7 @@ Use only information in the supplied profile and transcript. Do not reward inven
       const voiceToken=await mutateDb(async current=>{
         if(!current.users.some(user=>user.id===u.id&&!user.accessSuspended)||!canAccessStudent(u,current.athletes.find(a=>a.id===athlete.id)))throw stateError(403,'This account or student is no longer available.');
         return voiceLimits.acquire(u.id);
-      });
+      },{userId:u.id,athleteId:athlete.id});
       if(!voiceToken)return json(res,429,{error:'End your current voice session before starting another. After a recent start, wait 10 seconds and try again.'});
       let voiceDelivered=false;
       try{
@@ -895,7 +902,7 @@ Start with the opening guidance in INTERVIEW DESIGN below.`;
           // Retain unreported sessions for 30 days. Existing reports remain available.
           current.mockSessions=current.mockSessions.filter(x=>Date.parse(x.createdAt)>Date.now()-30*86400000);
           current.mockSessions.push({id:mockSessionId,userId:u.id,athleteId:athlete.id,createdAt:new Date().toISOString(),difficulty,plan:interviewPlan,evaluationVersion:3,profile:interviewDesign.profileSnapshot(athlete)});
-        });
+        },{userId:u.id,athleteId:athlete.id});
       }
       if(res.destroyed)return;
       res.writeHead(rr.status,{"X-Voice-Token":voiceToken,"Content-Type":"application/sdp","Cache-Control":"no-store","X-Voice-Limit-Seconds":String(seconds),...(mockSessionId?{'X-Mock-Session-Id':mockSessionId}:{})});

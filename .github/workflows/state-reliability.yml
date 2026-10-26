@@ -26,7 +26,11 @@ jobs:
       # The existing lockfile is incomplete; lockfile repair remains separate work.
       - run: npm install --ignore-scripts --package-lock=false
       - run: node --test test/*.test.cjs
-      - run: node --test test/postgres-state.cjs test/postgres-recovery.cjs test/postgres-deletion.cjs test/postgres-operations.cjs test/postgres-voice.cjs
+      - run: node --test --test-concurrency=1 test/postgres-state.cjs test/postgres-recovery.cjs test/postgres-deletion.cjs test/postgres-operations.cjs test/postgres-record-store.cjs test/postgres-record-http.cjs test/postgres-voice.cjs
+        env:
+          TEST_DATABASE_URL: postgres://postgres:disposable-test-only@localhost:5432/visaatlas_test
+      - name: Measure integrated record storage
+        run: node scripts/record-capacity.cjs
         env:
           TEST_DATABASE_URL: postgres://postgres:disposable-test-only@localhost:5432/visaatlas_test
       - name: Verify synthetic database backup and restore

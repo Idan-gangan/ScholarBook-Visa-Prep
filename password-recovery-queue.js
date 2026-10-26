@@ -3,7 +3,7 @@ const digest=value=>crypto.createHash('sha256').update(value).digest('hex');
 const unavailable=()=>Object.assign(new Error('Email delivery is temporarily unavailable. Please try again shortly.'),{status:503,publicMessage:'Email delivery is temporarily unavailable. Please try again shortly.'});
 const MESSAGE='If an account matches that email, your reset email is queued. Check your inbox and spam folder. Allow a few minutes during busy periods.';
 
-function createRecoveryQueue(pool,{config,send,diagnostic}){
+function createRecoveryQueue(pool,{config,send,diagnostic,recordStorage=false}){
   let timer=null,busy=false,lastCleanup=0;
   async function init(){
     // New tables deliberately retire the previous hour-long request windows.
@@ -46,7 +46,7 @@ function createRecoveryQueue(pool,{config,send,diagnostic}){
       if(!pending.rowCount){
         const count=await client.query('SELECT COUNT(*)::integer AS total FROM password_reset_queue');
         if(count.rows[0].total>=1000)throw Object.assign(unavailable(),{publicMessage:'Email delivery is busy. Please try again in a few minutes.'});
-        const accounts=await client.query(`SELECT c.user_id,c.version FROM app_state s,
+        const accounts=await client.query(recordStorage ? `SELECT c.user_id,c.version FROM record_store_rows r JOIN user_credentials c ON c.user_id=r.data->>'id' WHERE r.collection='users' AND lower(trim(r.data->>'email'))=$1` : `SELECT c.user_id,c.version FROM app_state s,
           jsonb_array_elements(s.data->'users') u JOIN user_credentials c ON c.user_id=u->>'id'
           WHERE s.id=1 AND lower(trim(u->>'email'))=$1`,[email]);
         const account=accounts.rows.length===1?accounts.rows[0]:null;
@@ -87,7 +87,7 @@ function createRecoveryQueue(pool,{config,send,diagnostic}){
       if(!job)return false;
       const token=tokenFor(job.id,settings);
       if(!job.prepared){
-        const found=await client.query(`SELECT c.user_id,c.version FROM app_state s,
+        const found=await client.query(recordStorage ? `SELECT c.user_id,c.version FROM record_store_rows r JOIN user_credentials c ON c.user_id=r.data->>'id' WHERE r.collection='users' AND lower(trim(r.data->>'email'))=$1 AND c.user_id=$2 AND c.version=$3` : `SELECT c.user_id,c.version FROM app_state s,
           jsonb_array_elements(s.data->'users') u JOIN user_credentials c ON c.user_id=u->>'id'
           WHERE s.id=1 AND lower(trim(u->>'email'))=$1 AND c.user_id=$2 AND c.version=$3`,[job.email,job.user_id,job.credential_version]);
         if(found.rows.length!==1){
