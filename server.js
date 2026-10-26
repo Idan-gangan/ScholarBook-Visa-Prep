@@ -155,14 +155,14 @@ if (coachEmail && coachPassword) {
   authDiagnostic('COACH_ACCOUNT_READY');
 }
 }
-async function loadDb(){
+async function loadDb(scope){
  if(typeof recordStore!=='undefined' && recordStore)return recordStore.load(scope);
  const result=await pool.query("SELECT data FROM app_state WHERE id = 1");
  return result.rows[0]?.data || {users:[],athletes:[],reports:[],transcripts:[]};
 }
 // All state writers use one short database transaction, shared across app instances.
 // Hashing and provider calls must finish before entering this critical section.
-async function mutateDb(change){
+async function mutateDb(change,scope){
  if(typeof recordStore!=='undefined' && recordStore)return recordStore.mutate(change,scope);
  const client=await pool.connect();
  try{
