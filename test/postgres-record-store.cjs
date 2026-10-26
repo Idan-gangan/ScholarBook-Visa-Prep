@@ -23,6 +23,13 @@ test('record migration preserves every collection; updates and rollback retain l
  assert.deepEqual(await adapter.studentsFor('u1'),[]);
  assert.deepEqual(await adapter.reportsFor('u1'),[]);
  await adapter.mutate(async db=>{delete db.users[0].accessSuspended;db.users=db.users.filter(u=>!['owner','staff'].includes(u.id));});
+ // Scoped writes must preserve other students, collection ordering and global metadata.
+ await adapter.mutate(async db=>{db.athletes[0].note='Scoped profile edit';},{userId:'u1',athleteId:'a1'});
+ assert.equal((await adapter.load()).athletes[0].note,'Scoped profile edit');
+ assert.deepEqual((await adapter.load()).athletes[1],original.athletes[1]);
+ await adapter.mutate(async db=>{db.reviews.push({id:'new-review',userId:'u2'});},{collections:['reviews']});
+ assert.deepEqual((await adapter.load()).configuration,{version:1});
+ assert.equal((await adapter.load()).transcripts.length,1);
  await Promise.all(Array.from({length:10},()=>adapter.mutate(async db=>{db.configuration.version++;})));assert.equal((await adapter.load()).configuration.version,11);
  await assert.rejects(adapter.mutate(async(db,c)=>{db.users=[];await c.query("INSERT INTO user_credentials VALUES('failed',1)");throw Error('simulated');}),/simulated/);assert.equal((await adapter.load()).users.length,2);assert.equal((await pool.query('SELECT * FROM user_credentials')).rowCount,0);
  await adapter.mutate(async db=>{db.users=db.users.filter(u=>u.id!=='u1');db.athletes=db.athletes.filter(a=>a.userId!=='u1');db.reports=[];db.transcripts=[];db.reviews=[];});assert.equal(await adapter.user('u1'),null);assert.ok(await adapter.user('u2'));

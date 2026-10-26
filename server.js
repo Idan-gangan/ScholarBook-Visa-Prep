@@ -26,9 +26,9 @@ const evaluationLimits=createEvaluationLimits(pool);
 const {createPasswordRecovery}=require('./password-recovery');
 const passwordRecovery=createPasswordRecovery(pool,{env:process.env,diagnostic:authDiagnostic,recordStorage:!!recordStore});
 const {createEmailVerification,needsVerification}=require('./email-verification');
-const emailVerification=createEmailVerification({mutateDb,env:process.env});
+const emailVerification=createEmailVerification({mutateDb:(change)=>mutateDb(change,{collections:['users','athletes','verificationMailLog']}),env:process.env});
 const {checkAge,consumePermission,createGuardianPermissions}=require('./age-eligibility');
-const guardianPermissions=createGuardianPermissions({mutateDb,env:process.env});
+const guardianPermissions=createGuardianPermissions({mutateDb:(change)=>mutateDb(change,{collections:['guardianPermissions','guardianMailLog']}),env:process.env});
 const profileOptions=require('./profile-options');
 const planning=require('./public/planning');
 const profileRequirements=require('./public/profile-requirements');
@@ -231,12 +231,12 @@ const server=http.createServer(async (req,res)=>{
   try{
     const url=new URL(req.url, `http://${req.headers.host}`);
     res.once?.('finish',()=>{void operations.record(url.pathname,res.statusCode);});
-    if(url.pathname==='/api/reviews' && req.method==='GET')return json(res,200,require('./reviews').publicReviews(await loadDb()));
+    if(url.pathname==='/api/reviews' && req.method==='GET')return json(res,200,require('./reviews').publicReviews(await loadDb({collections:['users','reviews']})));
     if(['/api/my-review','/api/review-moderation'].includes(url.pathname)){
       const u=await requireUser(req,res);if(!u)return;
       const owner=url.pathname==='/api/review-moderation';
       if(owner&&!isOwner(u))return json(res,403,{error:'Owner access required.'});
-      if(req.method==='GET'){const db=await loadDb();return json(res,200,owner?{reviews:(db.reviews||[]).map(({userId,...r})=>r)}:{review:(db.reviews||[]).find(r=>r.userId===u.id)||null});}
+      if(req.method==='GET'){const db=await loadDb({collections:['reviews']});return json(res,200,owner?{reviews:(db.reviews||[]).map(({userId,...r})=>r)}:{review:(db.reviews||[]).find(r=>r.userId===u.id)||null});}
       if(req.method!=='POST')return json(res,405,{error:'Method not allowed.'});
       if(!allowAuth('reviews:'+u.id))return json(res,429,{error:'Please try again shortly.'});
       if(!(req.headers['content-type']||'').startsWith('application/json'))return json(res,415,{error:'JSON required.'});
@@ -247,7 +247,7 @@ const server=http.createServer(async (req,res)=>{
         if(owner)return require('./reviews').moderate(db,u.id,b);
         if(b.action==='remove'){db.reviews=(db.reviews||[]).filter(r=>r.userId!==u.id);return {ok:true};}
         return require('./reviews').submit(db,u.id,b);
-      }));
+      },{collections:['users','reviews']}));
     }
     if(req.method==='GET' && url.pathname==='/healthz'){
       try{await pool.query({text:'SELECT 1',query_timeout:3000});return json(res,200,{ok:true});}
@@ -352,7 +352,7 @@ const server=http.createServer(async (req,res)=>{
         postGradPlan:clean(body.postGradPlan,500),profileStatus:"Incomplete",createdAt:new Date().toISOString(),
         sessions:0,mocks:0,initialScore:0,currentScore:0,mainConcern:"New student — not yet assessed"
       });
-      });
+      },{collections:['users','athletes','guardianPermissions']});
       const token=startSession(userId,0);
       let verificationMessage;
       try{verificationMessage=(await emailVerification.request(userId)).message;}catch{verificationMessage='Account created. Sign in and use Resend email to verify your address. Email delivery may need a moment.';}
@@ -531,7 +531,7 @@ const server=http.createServer(async (req,res)=>{
     const pdfMatch=url.pathname.match(/^\/api\/reports\/([^/]+)\/pdf$/);
     if(req.method==='GET' && pdfMatch){
       const u=await requireUser(req,res);if(!u)return;
-      const db=await loadDb();
+      const db=await loadDb({collections:['reports','athletes']});
       const report=db.reports.find(r=>r.id===decodeURIComponent(pdfMatch[1]));
       const student=report&&db.athletes.find(a=>a.id===report.athleteId);
       if(!report||!student||!canAccessStudent(u,student))return json(res,404,{error:'Report not found.'});
@@ -564,7 +564,7 @@ const server=http.createServer(async (req,res)=>{
       if(!canAccessStudent(u,db.athletes.find(a=>a.id===report.athleteId)))throw stateError(403,"This student is not assigned to you.");
       report.humanReview={score:Number(body.score),note:String(body.note||""),reviewer:u.name,reviewedAt:new Date().toISOString()};
       return report;
-      });
+      },{collections:['athletes','reports']});
       return json(res,200,updated);
     }
 
@@ -581,7 +581,7 @@ const server=http.createServer(async (req,res)=>{
         transcript:Array.isArray(body.transcript)?body.transcript:[],
         createdAt:new Date().toISOString()
       });
-      });
+      },{userId:u.id,athleteId:body.athleteId});
       return json(res,200,{ok:true});
     }
 
