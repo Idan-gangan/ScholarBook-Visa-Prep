@@ -30,6 +30,8 @@ test('record migration preserves every collection; updates and rollback retain l
  await adapter.mutate(async db=>{db.reviews.push({id:'new-review',userId:'u2'});},{collections:['reviews']});
  assert.deepEqual((await adapter.load()).configuration,{version:1});
  assert.equal((await adapter.load()).transcripts.length,1);
+ await adapter.mutate(async db=>{db.transcripts.push({id:'new-transcript',athleteId:'a1',text:'new'});},{userId:'u1',athleteId:'a1'});
+ assert.equal((await adapter.load()).transcripts.length,2);
  await Promise.all(Array.from({length:10},()=>adapter.mutate(async db=>{db.configuration.version++;})));assert.equal((await adapter.load()).configuration.version,11);
  await assert.rejects(adapter.mutate(async(db,c)=>{db.users=[];await c.query("INSERT INTO user_credentials VALUES('failed',1)");throw Error('simulated');}),/simulated/);assert.equal((await adapter.load()).users.length,2);assert.equal((await pool.query('SELECT * FROM user_credentials')).rowCount,0);
  await adapter.mutate(async db=>{db.users=db.users.filter(u=>u.id!=='u1');db.athletes=db.athletes.filter(a=>a.userId!=='u1');db.reports=[];db.transcripts=[];db.reviews=[];});assert.equal(await adapter.user('u1'),null);assert.ok(await adapter.user('u2'));

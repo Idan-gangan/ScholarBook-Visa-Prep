@@ -1,25 +1,38 @@
-# Record storage integration — development only
+# Record storage rollout
 
-Status: feature-gated compatibility integration, NOT approved for production activation.
+The new mode is opt-in (`RECORD_STORAGE=enabled`). Merging this branch does not switch storage. No live schema or mode has been changed by this branch.
 
-The legacy mode remains the default. RECORD_STORAGE=enabled selects separate ordered collection records. All mutateDb callbacks retain a single transaction with credential, lesson and voice SQL operations. Reads use a repeatable-read snapshot. Each changed record is written separately; unchanged records are skipped. Session user lookup uses a primary-key query. Student and report list endpoints use SQL permission filters against the current account and staff assignments; suspended accounts return no records.
+## Implemented
 
-Current limitation: compatibility load/mutate still reconstruct the whole state and serialize writes. This is not the per-student prototype's full performance result. Remaining endpoint-specific readers and writers, full enabled-mode HTTP tests and a repeat capacity run are release gates. Existing tests passing in default mode do not certify enabled mode.
+Indexed account lookup by ID/email; permission-filtered student/report lists; student working sets for profile updates, lessons, voice admission, mock creation and report persistence; collection-scoped registration, reviews, verification and guardian operations. Recovery workers query the selected storage mode. Existing account deletion/export and owner operations retain complete transactional state where cross-collection consistency matters. Unchanged records are not rewritten.
 
-## Preservation
+All writers still use one database lock as a compatibility barrier. Heavy owner/account operations can delay ordinary writes. This is an intentional consistency tradeoff, not unlimited scaling. Sessions are process-local; this change does not enable multi-instance sessions.
 
-All array collections (including guardian requests, reviews, mock sessions and audit history) and scalar metadata are round-tripped. Credential, learning-progress, password-recovery, voice, usage and operations SQL tables remain in place. Import fails on duplicate keys or a parity mismatch and rolls back. No expiry or retention deletion is introduced.
+## Validation
 
-## Isolated rehearsal
+GitHub Actions run 40279731142 passed 194 existing tests and 12 PostgreSQL tests, including an actual HTTP server in record mode: registration/login, profile, learning, voice lifecycle and report/PDF with stubbed provider responses, report retry, reviews/moderation, staff assignment/revocation, guardian withdrawal, export, recovery for an account created after migration, active-call deletion refusal, and final account deletion.
 
-Use a disposable local PostgreSQL database. scripts/migrate-record-store.cjs accepts only TEST_DATABASE_URL on localhost with a visaatlas_ database name. Never point benchmark/rehearsal tools at production. The integration test uses synthetic state in an isolated schema and verifies parity, concurrent writes, atomic rollback with credentials, deletion and exporting the latest normalized state back into legacy app_state.
+Migration equality, credential rollback, latest-state rollback export and backup/restore checks passed. Synthetic integrated adapter measurements (five DB connections, 80% student reads / 20% profile writes) at 100 simultaneous operations:
 
-## Future production sequence — not yet authorized for activation
+| Stored accounts | p95 operation latency | Failures |
+| --- | --- | --- |
+| 200 | 78.5 ms | 0 |
+| 1,000 | 48.6 ms | 0 |
+| 10,000 | 51.6 ms | 0 |
 
-1. Finish enabled-mode endpoint tests, scoped reads/writes and representative benchmark. Resolve all parity or access failures.
-2. Take and verify a fresh backup. Stop incoming traffic AND all background writers across every instance. No mixed legacy/new writers are permitted.
-3. Under maintenance, migrate a copy, compare all counts and record contents, then rehearse the exact production migration with a reviewed production-capable tool. Current script intentionally cannot connect remotely.
-4. Switch all instances together. Verify login, permissions, learning, voice/report lifecycle, reviews, export, guardian withdrawal and deletion before reopening.
-5. Rollback must stop all writers and copy LATEST record-store contents back to app_state before reverting the mode. Simply disabling the flag exposes stale state and could restore deleted accounts. Keep other relational tables synchronized by using the same database transaction history; never restore only app_state from an old backup.
+These are short bursts on GitHub runner hardware, not sustained traffic on Render and not simultaneous real voice interviews. Production CPU/memory, AI quotas, cost and realistic session mixes remain separate constraints. Do not advertise these numbers as a supported concurrent-user limit.
 
-No production flag, schema or data has been changed by this branch.
+## Cutover
+
+1. Deploy code in default legacy mode; verify health and the exact deployment SHA.
+2. Verify a fresh recoverable database backup. Enable Render maintenance, allow in-flight requests to drain, and stop all background state writers. No mixed legacy/new writers are permitted.
+3. `node scripts/record-cutover.cjs status` is read-only. Ensure no active voice/report/recovery jobs remain. The migration helper refuses mutation while any remain.
+4. During verified maintenance only, run `RECORD_STORAGE_MAINTENANCE=confirmed node scripts/record-cutover.cjs migrate`. This copies data into new tables in one transaction and requires exact content equality before commit. Original app_state remains intact as the pre-cutover baseline. Failure rolls back the new tables.
+5. Set `RECORD_STORAGE=enabled` and deploy all instances together. Verify database counts, health, sign-in and important journeys before disabling maintenance. Take a post-cutover backup.
+6. Monitor errors, latency, memory and database/AI usage during a limited rollout; raise traffic only from measured results.
+
+## Rollback
+
+Stop traffic and all writers again. Never simply disable the flag after accepting new writes: the old app_state is stale and could resurrect deleted accounts. Run `RECORD_STORAGE_MAINTENANCE=confirmed node scripts/record-cutover.cjs rollback` to export the LATEST record state into app_state transactionally; then unset the mode and redeploy. Other relational tables remain in place. Never restore only an old app_state snapshot while keeping newer credentials or deletion state.
+
+The local rehearsal helper remains restricted to disposable localhost databases. No retention deletion is introduced. Every existing collection and metadata property is preserved, including reviews, guardian records, mock sessions and audit history.

@@ -35,11 +35,14 @@ async function writeStudent(client,before,after){
  if(!isDeepStrictEqual(Object.keys(before).sort(),Object.keys(after).sort()))throw Error('Student operation changed state collections');
  for(const collection of Object.keys(before)){
   if(isDeepStrictEqual(before[collection],after[collection]))continue;
-  const old=new Map(before[collection].map(data=>[data.id,data]));
-  const next=new Set(after[collection].map(data=>data.id));
-  if(after[collection].some(data=>typeof data.id!=='string')||next.size!==after[collection].length)throw Error('Student records require unique IDs');
+  const identified=data=>typeof data?.id==='string';
+  const legacyBefore=before[collection].filter(data=>!identified(data)),legacyAfter=after[collection].filter(data=>!identified(data));
+  if(!isDeepStrictEqual(legacyBefore,legacyAfter))throw Error('Legacy records without IDs require a collection transaction');
+  const old=new Map(before[collection].filter(identified).map(data=>[data.id,data]));
+  const identifiedAfter=after[collection].filter(identified),next=new Set(identifiedAfter.map(data=>data.id));
+  if(next.size!==identifiedAfter.length)throw Error('Student records require unique IDs');
   for(const id of old.keys())if(!next.has(id))await client.query('DELETE FROM record_store_rows WHERE collection=$1 AND record_key=$2',[collection,'id:'+id]);
-  for(const data of after[collection]){
+  for(const data of identifiedAfter){
    if(isDeepStrictEqual(old.get(data.id),data))continue;
    if(old.has(data.id))await client.query('UPDATE record_store_rows SET data=$3 WHERE collection=$1 AND record_key=$2',[collection,'id:'+data.id,data]);
    else await client.query('INSERT INTO record_store_rows(collection,record_key,position,data) SELECT $1,$2,COALESCE(MAX(position),-1)+1,$3 FROM record_store_rows WHERE collection=$1',[collection,'id:'+data.id,data]);
