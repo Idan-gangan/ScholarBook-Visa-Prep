@@ -18,6 +18,7 @@ function harness(user={id:'u1',role:'athlete'},env={}){
    if(sql==='SELECT student_id,lesson_id,data,updated_at FROM learning_progress WHERE student_id = ANY($1::text[])')return {rows:[]};
    if(sql.startsWith('SELECT day,operation'))return {rows:[]};
    if(typeof sql==='object'&&sql.text==='SELECT 1')return {rows:[{}]};
+   if(sql.startsWith('SELECT COUNT(*)::integer AS total FROM ('))return {rows:[{total:[...admission.values()].filter(row=>row.token&&(row.call_id||row.until>voiceClock)).length}]};
    if(sql.startsWith('SELECT 1 FROM voice_admission'))return {rows:admission.get(args[0])?.token?[{active:1}]:[]};
    if(sql.startsWith('DELETE FROM user_credentials')){credentials.delete(args[0]);return {rows:[]};}
    if(/^DELETE FROM (password_reset_tokens|voice_mode_usage|voice_admission|voice_call_limits|evaluation_daily_usage|learning_progress)/.test(sql))return {rows:[]};
@@ -685,4 +686,14 @@ test('student export requires password and excludes credentials and other studen
  const result=await h.request('POST','/api/export-account',{currentPassword:password,userId:'u2'});
  assert.equal(result.status,200);assert.equal(result.body.account.id,'u1');assert.equal(result.body.profiles.length,1);
  assert.doesNotMatch(result.text,/passwordHash|password_hash|secret|private-other/);
+});
+
+test('default shared voice capacity rejects the eleventh user with a busy message',async()=>{
+ const h=harness();
+ for(let i=0;i<10;i++)h.admission.set('busy'+i,{token:'reserved',call_id:'call'+i,until:Infinity});
+ const full=await h.request('POST','/api/realtime-session?athleteId=s1&mode=mock','v=0\r\n');
+ assert.equal(full.status,429);assert.match(full.body.error,/slots are currently in use/);assert.equal(h.calls.length,0);
+ h.admission.delete('busy0');
+ const available=await h.request('POST','/api/realtime-session?athleteId=s1&mode=mock','v=0\r\n');
+ assert.equal(available.status,200);assert.equal(h.calls.length,1);
 });
