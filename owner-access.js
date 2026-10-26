@@ -45,4 +45,21 @@ function assignStudent(db, actorId, studentId, staffIds) {
   db.securityAudit=[...(db.securityAudit||[]),{action:'student-assignment',actorId,targetId:student.id,previousRole:previous.join(', ')||'No staff',role:student.staffIds.join(', ')||'No staff',at:new Date().toISOString()}].slice(-1000);
   return {id:student.id,staffIds:student.staffIds};
 }
-module.exports = {assignStudent, isStaff, isOwner, changeRole, selectOwnerTarget, audit};
+async function withdrawGuardianPermission(db, client, actorId, body) {
+  if (!isOwner(db.users.find(user => user.id === actorId))) throw fail(403, 'Owner access required.');
+  if (body.verifiedGuardian !== true || body.confirmation !== 'WITHDRAW') throw fail(400, 'Verify the guardian request and type WITHDRAW.');
+  const target = db.users.find(user => user.id === body.userId);
+  if (!target || target.role !== 'athlete' || target.ageEligibility?.ageBand !== '13-17' || !target.ageEligibility.guardian) throw fail(400, 'This student has no recorded guardian permission. Contact support for legacy accounts.');
+  if (target.accessSuspended) return {id:target.id, accessSuspended:true};
+  // Admission also holds the app_state lock, so no new AI session can race this check.
+  const active = await client.query(`SELECT 1 FROM voice_admission WHERE user_id=$1 AND (call_id IS NOT NULL OR (token IS NOT NULL AND pending_until>NOW()))
+    UNION ALL SELECT 1 FROM voice_call_limits WHERE user_id=$1
+    UNION ALL SELECT 1 FROM evaluation_daily_usage WHERE user_id=$1 AND lease_token IS NOT NULL AND lease_until>NOW() LIMIT 1`, [target.id]);
+  if (active.rows.length) throw fail(409, 'A voice session or report is still active. Ask the student to end it, then retry after processing finishes. Permission has not yet been withdrawn.');
+  target.accessSuspended = true;
+  target.ageEligibility.guardian.withdrawnAt = new Date().toISOString();
+  await client.query('UPDATE user_credentials SET version=version+1 WHERE user_id=$1', [target.id]);
+  audit(db, actorId, target, target.role, 'guardian-withdrawal');
+  return {id:target.id, accessSuspended:true};
+}
+module.exports = {withdrawGuardianPermission,assignStudent, isStaff, isOwner, changeRole, selectOwnerTarget, audit};
