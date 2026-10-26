@@ -226,6 +226,24 @@ const server=http.createServer(async (req,res)=>{
   try{
     const url=new URL(req.url, `http://${req.headers.host}`);
     res.once?.('finish',()=>{void operations.record(url.pathname,res.statusCode);});
+    if(url.pathname==='/api/reviews' && req.method==='GET')return json(res,200,require('./reviews').publicReviews(await loadDb()));
+    if(['/api/my-review','/api/review-moderation'].includes(url.pathname)){
+      const u=await requireUser(req,res);if(!u)return;
+      const owner=url.pathname==='/api/review-moderation';
+      if(owner&&!isOwner(u))return json(res,403,{error:'Owner access required.'});
+      if(req.method==='GET'){const db=await loadDb();return json(res,200,owner?{reviews:(db.reviews||[]).map(({userId,...r})=>r)}:{review:(db.reviews||[]).find(r=>r.userId===u.id)||null});}
+      if(req.method!=='POST')return json(res,405,{error:'Method not allowed.'});
+      if(!allowAuth('reviews:'+u.id))return json(res,429,{error:'Please try again shortly.'});
+      if(!(req.headers['content-type']||'').startsWith('application/json'))return json(res,415,{error:'JSON required.'});
+      let b;try{b=JSON.parse((await readBody(req,12000)).toString());}catch{return json(res,400,{error:'Invalid request.'});}
+      if(!b||typeof b!=='object'||Array.isArray(b))return json(res,400,{error:'Invalid request.'});
+      return json(res,200,await mutateDb(async db=>{
+        const current=db.users.find(x=>x.id===u.id);if(!current||current.accessSuspended)throw stateError(403,'Account unavailable.');
+        if(owner)return require('./reviews').moderate(db,u.id,b);
+        if(b.action==='remove'){db.reviews=(db.reviews||[]).filter(r=>r.userId!==u.id);return {ok:true};}
+        return require('./reviews').submit(db,u.id,b);
+      }));
+    }
     if(req.method==='GET' && url.pathname==='/healthz'){
       try{await pool.query({text:'SELECT 1',query_timeout:3000});return json(res,200,{ok:true});}
       catch{return json(res,503,{ok:false});}
