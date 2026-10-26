@@ -14,6 +14,7 @@ const pool = new Pool({
 
 // Update this version and the registration checkbox together when Terms change.
 const TERMS_VERSION = "2026-10-25";
+const operations=require('./operations').createOperations(pool);
 const PORT = process.env.PORT || 3000;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 const {POLICY,createVoiceLimits,dailyLimit}=require('./voice-limits');
@@ -224,6 +225,30 @@ function outputText(resp){
 const server=http.createServer(async (req,res)=>{
   try{
     const url=new URL(req.url, `http://${req.headers.host}`);
+    res.once?.('finish',()=>{void operations.record(url.pathname,res.statusCode);});
+    if(req.method==='GET' && url.pathname==='/healthz'){
+      try{await pool.query({text:'SELECT 1',query_timeout:3000});return json(res,200,{ok:true});}
+      catch{return json(res,503,{ok:false});}
+    }
+    if(process.env.AI_ENABLED==='false' && req.method==='POST' && ['/api/realtime-session','/api/evaluate'].includes(url.pathname))return json(res,503,{error:'AI practice is temporarily paused. Your saved work remains available. Please try again later.'});
+    if(req.method==='POST' && url.pathname==='/api/export-account'){
+      const u=await requireUser(req,res);if(!u)return;
+      if(u.role!=='athlete')return json(res,403,{error:'Contact support for staff data requests.'});
+      if(!allowAuth('export:'+u.id))return json(res,429,{error:'Please wait before trying again.'});
+      if(!(req.headers['content-type']||'').toLowerCase().startsWith('application/json'))return json(res,415,{error:'JSON required.'});
+      let body;try{body=JSON.parse((await readBody(req,4096)).toString());}catch{return json(res,400,{error:'Invalid request.'});}
+      const saved=await credential(u.id);
+      if(!saved||!await verifyPassword(body?.currentPassword,saved.password_hash))return json(res,403,{error:'Current password is incorrect.'});
+      const result=await mutateDb(async(db,client)=>{
+        const user=db.users.find(user=>user.id===u.id);if(!user||user.role!=='athlete')throw stateError(403,'Account is unavailable.');
+        const current=(await client.query('SELECT password_hash, version FROM user_credentials WHERE user_id=$1 FOR UPDATE',[u.id])).rows[0];
+        if(!current||current.password_hash!==saved.password_hash||current.version!==saved.version)throw stateError(401,'Unauthorized');
+        const ids=db.athletes.filter(a=>a.userId===u.id).map(a=>a.id);
+        const progress=(await client.query('SELECT student_id,lesson_id,data,updated_at FROM learning_progress WHERE student_id = ANY($1::text[])',[ids])).rows;
+        return require('./privacy-export').studentExport(db,user,progress);
+      });
+      return json(res,200,result);
+    }
     if(req.method==='POST' && ['/api/guardian-request','/api/guardian-permission'].includes(url.pathname)){
       if(!(req.headers['content-type']||'').toLowerCase().startsWith('application/json'))return json(res,415,{error:'JSON required.'});
       let body;try{body=JSON.parse((await readBody(req,4096)).toString());}catch{return json(res,400,{error:'Invalid request.'});}
@@ -391,6 +416,7 @@ const server=http.createServer(async (req,res)=>{
     if(url.pathname.startsWith('/api/owner/')){
       const u=await requireUser(req,res); if(!u)return;
       if(!isOwner(u))return json(res,403,{error:'Owner access required.'});
+      if(req.method==='GET' && url.pathname==='/api/owner/operations')return json(res,200,{aiEnabled:process.env.AI_ENABLED!=='false',days:await operations.summary(),costNote:'Request counts are not billing totals. Check the OpenAI project Usage and Limits pages for actual cost and alerts.'});
       if(req.method==='GET' && url.pathname==='/api/owner/accounts'){
         const db=await loadDb();
         return json(res,200,{
@@ -865,11 +891,11 @@ Start with the opening guidance in INTERVIEW DESIGN below.`;
   }catch(err){
     if(err.status===429||err.status===413)return json(res,err.status,{error:err.message});
     if(err.publicMessage)return json(res,err.status,{error:err.publicMessage});
-    console.error(err);
+    console.error('[server] REQUEST_FAILED');
     return json(res,500,{error:"Server error"});
   }
 });
-initDb().then(()=>passwordRecovery.init()).then(()=>voiceLimits.init()).then(()=>evaluationLimits.init()).then(() => {
+initDb().then(()=>passwordRecovery.init()).then(()=>voiceLimits.init()).then(()=>evaluationLimits.init()).then(()=>operations.init()).then(() => {
   voiceLimits.start();
   passwordRecovery.start();
   server.listen(PORT, () => console.log(`VisaAtlas demo running on http://localhost:${PORT}`));

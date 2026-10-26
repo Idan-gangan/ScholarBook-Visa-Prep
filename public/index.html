@@ -291,6 +291,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
         <div id="ownerAccounts" class="owner-table-wrap"></div><div id="ownerAssignments" class="owner-table-wrap hidden"></div><div id="ownerAudit" class="owner-table-wrap hidden"></div>
         <div class="owner-pagination"><span id="ownerRange" role="status" aria-live="polite"></span><div><button id="ownerPrev" class="btn secondary" onclick="ownerPage--;renderOwnerDirectory()">Previous</button><button id="ownerNext" class="btn secondary" onclick="ownerPage++;renderOwnerDirectory()">Next</button></div></div>
       </div>
+      <details class="card" style="margin-top:24px"><summary>Service health and usage</summary><p>Counts cover the last seven UTC dates. They do not show actual AI spending. Hosting backup and alert settings must be checked in Render and OpenAI.</p><button class="btn secondary" type="button" onclick="loadOperations()">Refresh service activity</button><p id="operationsStatus" role="status"></p><div id="operationsTable" style="overflow:auto"></div></details>
       <p class="owner-footnote">Staff see only their assigned students. Only you can manage roles and assignments.</p>
       <dialog id="ownerEdit" class="owner-dialog" aria-labelledby="ownerEditTitle" onclose="$('ownerPassword').value=''" oncancel="if(ownerSaving)event.preventDefault()">
         <form onsubmit="event.preventDefault();submitOwnerEdit()"><span class="eyebrow">ACCESS MANAGEMENT</span><h2 id="ownerEditTitle">Manage access</h2><p id="ownerEditPerson"></p><div id="ownerEditFields"></div><p id="ownerEditHelp" class="small muted"></p><div class="field"><label for="ownerPassword">Confirm with your current password</label><input id="ownerPassword" type="password" autocomplete="current-password" required></div><p id="ownerEditStatus" role="status" aria-live="polite"></p><div class="owner-dialog-actions"><button id="ownerEditCancel" type="button" class="btn secondary" onclick="$('ownerEdit').close()">Cancel</button><button id="ownerEditSave" type="submit" class="btn primary">Save changes</button></div></form>
@@ -305,6 +306,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
         <button id="changePasswordBtn" class="btn primary" type="submit">Save new password</button>
         <p id="passwordMessage" role="status" aria-live="polite"></p>
       </form>
+      <form id="exportAccountSection" class="card hidden" style="max-width:560px;margin-top:24px" onsubmit="event.preventDefault();downloadMyData()"><h2>Download my data</h2><p>Download your profile, saved notes, progress, transcripts and reports as a JSON file. Keep the file private.</p><div class="field"><label for="exportPassword">Current password</label><input id="exportPassword" type="password" autocomplete="current-password" required maxlength="128"></div><button id="exportBtn" class="btn secondary" type="submit">Download my data</button><p id="exportStatus" role="status"></p></form>
       <div id="deleteAccountSection" class="card hidden" style="max-width:560px;margin-top:24px">
         <h2>Delete account</h2>
         <p>This permanently removes your VisaAtlas account, study profile, saved notes, learning progress, mock interviews, transcripts and reports from our active database. You cannot undo it.</p>
@@ -340,7 +342,7 @@ function returnToSignIn(message=sessionMessage){
  if(voice)stopVoice('Session ended. Please sign in again.');
  me=null;athletes=[];reports=[];transcript=[];learningTranscript=[];mockStudentId=null;mockSessionId=null;
  lessonOpen=false;$('lessonDetails').classList.add('hidden');lessonPractice=null;renderPracticeFocus();courseSaved={};activeLessonId="study-purpose";$("moduleCards").replaceChildren();$("courseProgress").textContent="";lessonVersion++;lessonStudentId=null;lessonDirty=false;lessonCompleted=false;
- clearPasswordForm();
+ clearPasswordForm();$('exportPassword').value='';$('exportStatus').textContent='';$('operationsTable').replaceChildren();$('operationsStatus').textContent='';
  $('deleteAccountDialog').close();clearDeleteAccountForm();
  for(const id of ['verificationPassword','verificationNewEmail'])$(id).value='';
  $('verificationStatus').textContent='';renderVerification();
@@ -444,6 +446,22 @@ async function deleteMyAccount(){
  }catch(error){$('deleteAccountMessage').textContent=error.message;}
  finally{deletingAccount=false;$('deleteAccountPassword').value='';$('deleteAccountSubmit').disabled=false;$('deleteAccountCancel').disabled=false;}
 }
+async function downloadMyData(){
+ const button=$('exportBtn');if(button.disabled)return;button.disabled=true;$('exportStatus').textContent='Preparing your download…';
+ try{
+ const data=await api('/api/export-account',{method:'POST',body:JSON.stringify({currentPassword:$('exportPassword').value})});
+ const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
+ const link=document.createElement('a');link.href=url;link.download='VisaAtlas-my-data.json';document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+ $('exportStatus').textContent='Download prepared. Store this file somewhere private.';
+ }catch(error){$('exportStatus').textContent=error.message;}
+ finally{$('exportPassword').value='';button.disabled=false;}
+}
+async function loadOperations(){
+ if(me?.role!=='owner')return;$('operationsStatus').textContent='Loading…';
+ try{const data=await api('/api/owner/operations');$('operationsStatus').textContent=(data.aiEnabled?'AI practice is enabled. ':'AI practice is paused. ')+data.costNote;
+ $('operationsTable').innerHTML='<table><thead><tr><th>Date (UTC)</th><th>Operation</th><th>Requests</th><th>Successful</th><th>Rejected</th><th>Service failures</th></tr></thead><tbody>'+data.days.map(r=>'<tr>'+[String(r.day).slice(0,10),r.operation,r.requests,r.successes,r.rejected,r.failures].map(v=>'<td>'+escapeHtml(v)+'</td>').join('')+'</tr>').join('')+'</tbody></table>';
+ }catch(error){$('operationsStatus').textContent=error.message;}
+}
 function navItems(){
  if(me.role==='athlete')return [["Home","dashboard"],["Learning","learning"],["Mock Interview","interview"],["Reports","reports"],["My Profile","profile"],["Account security","account"]];
  const base=[["My Learning","learning"],["Dashboard","dashboard"],["Live Mock Interview","interview"],["Readiness Reports","reports"]];
@@ -468,6 +486,7 @@ async function boot(){
  me=await api("/api/me"); athletes=await api("/api/athletes"); reports=await api("/api/reports");
  ["welcome","login","registration"].forEach(id=>$(id).classList.add("hidden"));$("password").value="";$("app").classList.remove("hidden");$("who").textContent=me.name;$("role").textContent=me.role==="athlete"?"Student":me.role==='owner'?'Owner':me.role;
  $("accountAvatar").textContent=String(me.name||'S').trim().split(/\s+/).slice(0,2).map(part=>part[0]||'').join('').toUpperCase();
+ $('exportAccountSection').classList.toggle('hidden',me.role!=='athlete');
  $('deleteAccountSection').classList.toggle('hidden',me.role!=='athlete');
  $("nav").innerHTML=navItems().map((x,i)=>`<button type="button" data-screen="${x[1]}" class="nav ${i===0?"on":""} ${me.role==='athlete'&&x[1]==='profile'?'nav-secondary-start':''}" onclick="show('${x[1]}',this)">${navIcon(x[1])}<span>${x[0]}</span></button>`).join("");
  $("athleteSelect").replaceChildren(...athletes.map(a=>new Option(a.name+" — "+(a.university||""),a.id)));

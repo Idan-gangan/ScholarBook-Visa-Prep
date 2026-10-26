@@ -11,9 +11,13 @@ function harness(user={id:'u1',role:'athlete'},env={}){
  const evaluationUsage=new Map(),admission=new Map();let voiceClock=Date.now();
  const db={users:[user],athletes:[{academicLevel:'Undergraduate',...structuredClone(student)},{id:'s2',userId:'u2'}],reports:[],transcripts:[]};
  const pool={query:async(sql,args)=>{
+   if(typeof sql==='object'&&sql.text==='SELECT 1')return {rows:[{}]};
    if(sql.trim().startsWith('ALTER TABLE') || sql.trim().startsWith('CREATE TABLE') || sql.trim().startsWith('INSERT INTO app_state'))return {rows:[]};
    if(sql==='SELECT pg_advisory_xact_lock(172343992,1)')return {rows:[]};
    if(sql.startsWith('DELETE FROM password_reset_queue')||sql.startsWith('DELETE FROM password_reset_cooldowns'))return {rows:[]};
+   if(sql==='SELECT student_id,lesson_id,data,updated_at FROM learning_progress WHERE student_id = ANY($1::text[])')return {rows:[]};
+   if(sql.startsWith('SELECT day,operation'))return {rows:[]};
+   if(typeof sql==='object'&&sql.text==='SELECT 1')return {rows:[{}]};
    if(sql.startsWith('SELECT 1 FROM voice_admission'))return {rows:admission.get(args[0])?.token?[{active:1}]:[]};
    if(sql.startsWith('DELETE FROM user_credentials')){credentials.delete(args[0]);return {rows:[]};}
    if(/^DELETE FROM (password_reset_tokens|voice_mode_usage|voice_admission|voice_call_limits|evaluation_daily_usage|learning_progress)/.test(sql))return {rows:[]};
@@ -68,7 +72,7 @@ function harness(user={id:'u1',role:'athlete'},env={}){
      return pool.query(sql,args);
    },release(){if(unlock)unlock();}};
  };
- const context=vm.createContext({require:id=>id==='./age-eligibility'?require('../age-eligibility'):id==='./account-deletion'?require('../account-deletion'):id==='./report-pdf'?require('../report-pdf'):id==='./public/planning'?require('../public/planning'):id==='./interview-design'?require('../interview-design'):id==='./public/profile-requirements'?require('../public/profile-requirements'):id==='./interview-posts.json'?require('../interview-posts.json'):id==='./email-verification'?require('../email-verification'):id==='./profile-options'?require('../profile-options'):id==='./owner-access'?require('../owner-access'):id==='./report-practice'?require('../report-practice'):id==='http'?{createServer:fn=>{handler=fn;return {}}}:id==='pg'?{Pool:function(){return pool}}:id==='fs'?{...fs,readFileSync:(file,...args)=>file===path.resolve(__dirname,'../data/db.json')?'{}':fs.readFileSync(file,...args)}:id==='./evaluation-limits'?require('../evaluation-limits'):id==='./voice-limits'?require('../voice-limits'):id==='./learning'?learning:id==='./passwords'?passwords:id==='./password-recovery'?require('../password-recovery'):require(id),__dirname:path.resolve(__dirname,'..'),process:{env:{OPENAI_API_KEY:'test-only',...env}},console:{log:(...args)=>logs.push(args.join(' ')),warn:(...args)=>logs.push(args.join(' ')),error:(...args)=>logs.push(args.join(' '))},Buffer,URL,FormData,AbortSignal,fetch:async(url,options)=>{if(url.endsWith('/hangup'))return {ok:true,status:200};if(url.endsWith('/responses')){calls.push({url,request:JSON.parse(options.body)});return {ok:true,json:async()=>({output_text:JSON.stringify(JSON.parse(options.body).input.includes('VISAATLAS_EVIDENCE_REPORT_V3')?{summary:'Only limited answers were captured.',strengths:[],assessments:require('../interview-design').TOPICS.map(([topic])=>({topic,status:'not_covered'}))}:{scores:{},overall:45,readiness:'High Concern',biggestWeakness:'Test',feedback:'Test feedback',nextStep:'Practice'})})};}calls.push({url,session:JSON.parse(options.body.get('session'))});return {ok:true,status:200,headers:{get:()=>'/v1/realtime/calls/rtc_test'},text:async()=> 'test-sdp-answer'}}});
+ const context=vm.createContext({require:id=>id==='./operations'?require('../operations'):id==='./privacy-export'?require('../privacy-export'):id==='./age-eligibility'?require('../age-eligibility'):id==='./account-deletion'?require('../account-deletion'):id==='./report-pdf'?require('../report-pdf'):id==='./public/planning'?require('../public/planning'):id==='./interview-design'?require('../interview-design'):id==='./public/profile-requirements'?require('../public/profile-requirements'):id==='./interview-posts.json'?require('../interview-posts.json'):id==='./email-verification'?require('../email-verification'):id==='./profile-options'?require('../profile-options'):id==='./owner-access'?require('../owner-access'):id==='./report-practice'?require('../report-practice'):id==='http'?{createServer:fn=>{handler=fn;return {}}}:id==='pg'?{Pool:function(){return pool}}:id==='fs'?{...fs,readFileSync:(file,...args)=>file===path.resolve(__dirname,'../data/db.json')?'{}':fs.readFileSync(file,...args)}:id==='./evaluation-limits'?require('../evaluation-limits'):id==='./voice-limits'?require('../voice-limits'):id==='./learning'?learning:id==='./passwords'?passwords:id==='./password-recovery'?require('../password-recovery'):require(id),__dirname:path.resolve(__dirname,'..'),process:{env:{OPENAI_API_KEY:'test-only',...env}},console:{log:(...args)=>logs.push(args.join(' ')),warn:(...args)=>logs.push(args.join(' ')),error:(...args)=>logs.push(args.join(' '))},Buffer,URL,FormData,AbortSignal,fetch:async(url,options)=>{if(url.endsWith('/hangup'))return {ok:true,status:200};if(url.endsWith('/responses')){calls.push({url,request:JSON.parse(options.body)});return {ok:true,json:async()=>({output_text:JSON.stringify(JSON.parse(options.body).input.includes('VISAATLAS_EVIDENCE_REPORT_V3')?{summary:'Only limited answers were captured.',strengths:[],assessments:require('../interview-design').TOPICS.map(([topic])=>({topic,status:'not_covered'}))}:{scores:{},overall:45,readiness:'High Concern',biggestWeakness:'Test',feedback:'Test feedback',nextStep:'Practice'})})};}calls.push({url,session:JSON.parse(options.body.get('session'))});return {ok:true,status:200,headers:{get:()=>'/v1/realtime/calls/rtc_test'},text:async()=> 'test-sdp-answer'}}});
  let source=fs.readFileSync(path.join(__dirname,'../server.js'),'utf8');source=source.slice(0,source.indexOf('initDb().then('));vm.runInContext(source,context);vm.runInContext(`sessions.set('test-token',{userId:${JSON.stringify(user.id)},version:0,expires:Date.now()+60000})`,context);
  async function request(method,url,body,authenticated=true){
    // Existing evaluation fixtures represent distinct server-issued mock sessions.
@@ -663,4 +667,22 @@ test('registration API rejects underage or undeclared age and unapproved teens w
  const h=harness();const result=await h.request('POST','/api/register-athlete',{name:'Test',email:'new@example.test',password:'a sufficiently long password',termsAccepted:true,termsVersion:'2026-10-25',ageBand},false);
  assert.equal(result.status,ageBand===undefined?400:403);assert.equal(h.db.users.length,1);assert.equal(h.credentials.size,1);
  }
+});
+
+test('health check is public, operations are owner-only, and AI emergency pause blocks new calls',async()=>{
+ assert.equal((await harness().request('GET','/healthz',undefined,false)).status,200);
+ for(const role of ['athlete','coach'])assert.equal((await harness({id:'u',role}).request('GET','/api/owner/operations')).status,403);
+ assert.equal((await harness({id:'u',role:'owner'}).request('GET','/api/owner/operations')).status,200);
+ const paused=harness(undefined,{AI_ENABLED:'false'});
+ for(const route of ['/api/realtime-session','/api/evaluate'])assert.equal((await paused.request('POST',route,{})).status,503);
+ assert.equal(paused.calls.length,0);
+});
+test('student export requires password and excludes credentials and other students',async()=>{
+ const password='An export test passphrase';const h=harness({id:'u1',role:'athlete',passwordHash:await passwords.hashPassword(password),emailVerification:{hash:'secret'}});
+ assert.equal((await h.request('POST','/api/export-account',{},false)).status,401);
+ assert.equal((await h.request('POST','/api/export-account',{currentPassword:'wrong'})).status,403);
+ h.db.reports=[{athleteId:'s1',feedback:'own'},{athleteId:'s2',feedback:'private-other'}];
+ const result=await h.request('POST','/api/export-account',{currentPassword:password,userId:'u2'});
+ assert.equal(result.status,200);assert.equal(result.body.account.id,'u1');assert.equal(result.body.profiles.length,1);
+ assert.doesNotMatch(result.text,/passwordHash|password_hash|secret|private-other/);
 });
