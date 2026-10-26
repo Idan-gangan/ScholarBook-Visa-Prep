@@ -159,15 +159,16 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
  </div>
 </div>
 
+    <div id="verificationNotice" class="card hidden" style="max-width:520px;margin:8vh auto;padding:32px">
+      <div class="brand">VisaAtlas</div><h1>Check your email</h1><p id="verificationEmail"></p><p>Verify your email to finish registration and enter VisaAtlas. Open the link in your inbox, then continue below. Check your spam folder if you cannot find it.</p>
+      <button class="btn primary" onclick="sendVerification()">Resend email</button> <button class="btn secondary" onclick="refreshVerification()">Continue after verification</button>
+      <details><summary>Wrong email address?</summary><label for="verificationNewEmail">Correct email</label><input id="verificationNewEmail" type="email" autocomplete="email"><label for="verificationPassword">Current password</label><input id="verificationPassword" type="password" autocomplete="current-password"><button class="btn secondary" onclick="sendVerification(true)">Change email &amp; resend</button></details>
+      <p id="verificationStatus" role="status"></p><button class="linkbtn" onclick="logout()">Sign out</button>
+    </div>
+
 <div id="app" class="hidden">
   <div class="top"><div class="brand"><div class="logo" aria-hidden="true">VA</div>VisaAtlas</div><div class="account-summary"><span class="account-avatar" id="accountAvatar" aria-hidden="true"></span><div class="account-copy"><b id="who"></b><span id="role" class="muted"></span></div><button class="btn secondary" onclick="logout()">Log out</button></div></div>
   <div class="layout"><nav class="side" id="nav" aria-label="Main navigation"></nav><main class="main">
-    <div id="verificationNotice" class="card hidden" style="margin-bottom:18px">
-      <h2>Verify your email</h2><p id="verificationEmail"></p><p>You can set up your profile and read lessons now. Verify your email to unlock voice practice and reports.</p>
-      <button class="btn primary" onclick="sendVerification()">Resend email</button> <button class="btn secondary" onclick="refreshVerification()">I’ve verified my email</button>
-      <details><summary>Wrong email address?</summary><label for="verificationNewEmail">Correct email</label><input id="verificationNewEmail" type="email" autocomplete="email"><label for="verificationPassword">Current password</label><input id="verificationPassword" type="password" autocomplete="current-password"><button class="btn secondary" onclick="sendVerification(true)">Change email &amp; resend</button></details>
-      <p id="verificationStatus" role="status"></p>
-    </div>
     <section id="learning" class="screen">
       <div class="learning-welcome"><div><h1 id="learningGreeting">Welcome back</h1><p>Continue your preparation for your F-1 interview.</p></div><div class="course-status"><p id="courseProgress" role="status">Loading progress…</p><progress id="courseMeter" class="course-meter" max="6" value="0" aria-label="Modules completed"></progress></div></div>
       <div class="field learning-student-picker" id="learningStudentPicker"><label for="learn_athleteSelect">Student</label><select id="learn_athleteSelect" onchange="changeLearningStudent()"></select></div>
@@ -405,7 +406,7 @@ function renderVerification(){
  $('verificationNotice').classList.toggle('hidden',!me?.needsEmailVerification);
  $('verificationEmail').textContent=me?.needsEmailVerification?'Check the inbox for '+me.email:'';
 }
-async function refreshVerification(){try{me=await api('/api/me');renderVerification();$('verificationStatus').textContent=me.needsEmailVerification?'Not verified yet. Open the link in your email first.':'Email verified.';}catch(e){$('verificationStatus').textContent=e.message;}}
+async function refreshVerification(){try{me=await api('/api/me');renderVerification();if(!me.needsEmailVerification){await boot();return;}$('verificationStatus').textContent=me.needsEmailVerification?'Not verified yet. Open the link in your email first.':'Email verified.';}catch(e){$('verificationStatus').textContent=e.message;}}
 let verificationSending=false;
 async function sendVerification(change=false){
  if(verificationSending)return;verificationSending=true;$('verificationStatus').textContent='Sending…';
@@ -484,7 +485,13 @@ function show(id,el){
 document.querySelectorAll(".screen").forEach(x=>x.classList.remove("on"));$(id).classList.add("on");document.querySelectorAll(".nav").forEach(x=>x.classList.remove("on"));document.querySelectorAll(".nav").forEach(x=>{const active=x.dataset.screen===id;x.classList.toggle("on",active);if(active)x.setAttribute("aria-current","page");else x.removeAttribute("aria-current")})}
 function escapeHtml(value){return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 async function boot(){
- me=await api("/api/me"); if(typeof URLSearchParams!=="undefined" && new URLSearchParams(location.search).get("next")==="review"){location.replace("/share-review.html");return;} athletes=await api("/api/athletes"); reports=await api("/api/reports");
+ me=await api("/api/me");
+ renderVerification();
+ if(me.needsEmailVerification){
+  ["welcome","login","registration","app"].forEach(id=>$(id).classList.add("hidden"));
+  $("password").value="";return;
+ }
+ if(typeof URLSearchParams!=="undefined" && new URLSearchParams(location.search).get("next")==="review"){location.replace("/share-review.html");return;} athletes=await api("/api/athletes"); reports=await api("/api/reports");
  ["welcome","login","registration"].forEach(id=>$(id).classList.add("hidden"));$("password").value="";$("app").classList.remove("hidden");$("who").textContent=me.name;$("role").textContent=me.role==="athlete"?"Student":me.role==='owner'?'Owner':me.role;
  $("accountAvatar").textContent=String(me.name||'S').trim().split(/\s+/).slice(0,2).map(part=>part[0]||'').join('').toUpperCase();
  $('exportAccountSection').classList.toggle('hidden',me.role!=='athlete');

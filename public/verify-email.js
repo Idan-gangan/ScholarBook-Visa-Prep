@@ -8,7 +8,8 @@
   try{
    const r=await fetch('/api/verify-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token})});
    const data=await r.json();if(!r.ok)throw Error(data.error||'Verification failed.');
-   status.textContent='Email verified. Return to VisaAtlas and refresh your verification status.';
+   status.textContent='Email verified. Opening VisaAtlas…';
+   location.replace('/?signin=1');
   }catch(e){status.textContent=e.message;button.disabled=false;}
  };
 })();

@@ -697,3 +697,14 @@ test('default shared voice capacity rejects the eleventh user with a busy messag
  const available=await h.request('POST','/api/realtime-session?athleteId=s1&mode=mock','v=0\r\n');
  assert.equal(available.status,200);assert.equal(h.calls.length,1);
 });
+
+ test('verification gate blocks preparation APIs until email is verified',async()=>{
+ const h=harness({id:'u1',role:'athlete',verificationRequired:true,email:'test@example.test'});
+ for(const url of ['/api/athletes','/api/my-profile','/api/reports','/api/learning/study-purpose','/api/my-review','/api/voice-usage']){
+  const r=await h.request('GET',url);assert.equal(r.status,403,url);assert.equal(r.body.code,'EMAIL_VERIFICATION_REQUIRED');
+ }
+ assert.equal((await h.request('PUT','/api/my-profile',{major:'Blocked'})).status,403);
+ assert.equal((await h.request('GET','/api/me')).body.needsEmailVerification,true);
+ h.db.users.find(u=>u.id==='u1').emailVerifiedAt=new Date().toISOString();
+ assert.equal((await h.request('GET','/api/athletes')).status,200);
+ });
