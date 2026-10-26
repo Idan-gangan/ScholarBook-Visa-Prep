@@ -21,6 +21,8 @@ const PORT = process.env.PORT || 3000;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 const {POLICY,createVoiceLimits,dailyLimit}=require('./voice-limits');
 const voiceLimits=createVoiceLimits(pool,OPENAI_API_KEY,(url,options)=>fetch(url,options));
+const MAX_CONCURRENT_VOICE=Number(process.env.MAX_CONCURRENT_VOICE || 10);
+if(!Number.isInteger(MAX_CONCURRENT_VOICE)||MAX_CONCURRENT_VOICE<1||MAX_CONCURRENT_VOICE>100)throw Error('MAX_CONCURRENT_VOICE must be an integer from 1 to 100');
 const {EVALUATION_POLICY,normalizeTranscript,createEvaluationLimits}=require("./evaluation-limits");
 const evaluationLimits=createEvaluationLimits(pool);
 const {createPasswordRecovery}=require('./password-recovery');
@@ -824,6 +826,13 @@ Use only information in the supplied profile and transcript. Do not reward inven
       if(!sdp.startsWith('v=0') || sdp.length>64000)return json(res,400,{error:'Invalid voice connection offer.'});
       const voiceToken=await mutateDb(async (current,client)=>{
         if(!current.users.some(user=>user.id===u.id&&!user.accessSuspended)||!canAccessStudent(u,current.athletes.find(a=>a.id===athlete.id)))throw stateError(403,'This account or student is no longer available.');
+        // This runs under the shared state lock. Count pending starts and tracked
+        // calls together so concurrent processes cannot overbook the last slot.
+        const active=await client.query(`SELECT COUNT(*)::integer AS total FROM (
+          SELECT user_id FROM voice_admission WHERE token IS NOT NULL AND (call_id IS NOT NULL OR pending_until>NOW())
+          UNION SELECT user_id FROM voice_call_limits WHERE user_id IS NOT NULL
+        ) AS active_voice_users`);
+        if(active.rows[0].total>=MAX_CONCURRENT_VOICE)throw stateError(429,'All interview and tutor slots are currently in use. Please try again shortly.');
         return voiceLimits.acquire(u.id,client);
       },{userId:u.id,athleteId:athlete.id});
       if(!voiceToken)return json(res,429,{error:'End your current voice session before starting another. After a recent start, wait 10 seconds and try again.'});
