@@ -43,10 +43,12 @@ For each request, keep a private support ticket with receipt date, request type,
 - **Under-13 report:** treat as urgent, verify enough to identify the account, stop further use through a reviewed admin change, and arrange removal. Do not ask the child for extra personal documents to investigate.
 - **Incident:** restrict the affected access, preserve minimum useful evidence, investigate scope, and determine notification duties for the affected jurisdictions. Avoid broad promises about deadlines not yet verified.
 
-## Retention decisions to approve before automation
+## Retention policy — owner decision recorded October 26, 2026
 
-Proposed operating choices, NOT a published promise or enabled deletion job:
-- Inactive student accounts: consider review after 12 months without activity, give 30 days' notice, and offer export before deletion. This needs a reliable last-activity field, notification delivery, guardian handling and a tested cleanup job.
+The owner selected two years of inactivity for student accounts. The implementation rules below retain a 30-day warning period. Automatic deletion is not enabled yet. Other record categories remain separate decisions:
+- Inactive student accounts: retain for 24 calendar months after last authenticated activity, then send a warning to the verified account email with at least 30 days to sign in or download data before deletion. A return to authenticated use cancels the pending deletion and restarts the inactivity period. Warn the recorded guardian as appropriate for a minor. Failed/unknown delivery must not authorize automatic deletion.
+- Existing accounts: never infer inactivity from account age or missing timestamps. Establish an activity baseline at rollout; missing activity dates are ineligible for deletion. Staff/owner accounts are excluded. Active sessions, pending privacy requests and justified holds require review.
+- Rollout gate: implement reliable activity tracking, durable warning delivery/retries, cancellation on renewed use, and transactional deletion using the existing account cleanup. Verify with synthetic data and a dry-run report before enabling scheduled deletion. Until then, no records are deleted based on inactivity.
 - Support correspondence and completed privacy tickets: choose a documented period appropriate to the actual purpose and applicable obligations; do not store indefinitely by default.
 - Backups: use the verified provider recovery window; avoid extra unmanaged copies. Document when deleted data ages out and how deletions are reapplied after recovery.
 - Guardian pending requests: their links expire after 24 hours; current code purges expired requests lazily during later permission API activity. Do not describe this as guaranteed deletion exactly at 24 hours.
