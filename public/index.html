@@ -484,12 +484,13 @@ function show(id,el){
 document.querySelectorAll(".screen").forEach(x=>x.classList.remove("on"));$(id).classList.add("on");document.querySelectorAll(".nav").forEach(x=>x.classList.remove("on"));document.querySelectorAll(".nav").forEach(x=>{const active=x.dataset.screen===id;x.classList.toggle("on",active);if(active)x.setAttribute("aria-current","page");else x.removeAttribute("aria-current")})}
 function escapeHtml(value){return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 async function boot(){
- me=await api("/api/me"); athletes=await api("/api/athletes"); reports=await api("/api/reports");
+ me=await api("/api/me"); if(typeof URLSearchParams!=="undefined" && new URLSearchParams(location.search).get("next")==="review"){location.replace("/share-review.html");return;} athletes=await api("/api/athletes"); reports=await api("/api/reports");
  ["welcome","login","registration"].forEach(id=>$(id).classList.add("hidden"));$("password").value="";$("app").classList.remove("hidden");$("who").textContent=me.name;$("role").textContent=me.role==="athlete"?"Student":me.role==='owner'?'Owner':me.role;
  $("accountAvatar").textContent=String(me.name||'S').trim().split(/\s+/).slice(0,2).map(part=>part[0]||'').join('').toUpperCase();
  $('exportAccountSection').classList.toggle('hidden',me.role!=='athlete');
  $('deleteAccountSection').classList.toggle('hidden',me.role!=='athlete');
  $("nav").innerHTML=navItems().map((x,i)=>`<button type="button" data-screen="${x[1]}" class="nav ${i===0?"on":""} ${me.role==='athlete'&&x[1]==='profile'?'nav-secondary-start':''}" onclick="show('${x[1]}',this)">${navIcon(x[1])}<span>${x[0]}</span></button>`).join("");
+ if(me.role==='athlete')$('nav').innerHTML+='<a class="nav" href="/share-review.html"><span>Write a review</span></a>';
  $("athleteSelect").replaceChildren(...athletes.map(a=>new Option(a.name+" — "+(a.university||""),a.id)));
  $("learn_athleteSelect").replaceChildren(...athletes.map(a=>new Option(a.name+" — "+(a.university||""),a.id)));
  guideIndex=0;guideOpen=me.role==='athlete'&&!athletes.find(a=>a.userId===me.id)?.welcomeCompleted;
