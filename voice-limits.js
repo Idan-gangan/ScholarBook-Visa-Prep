@@ -1,5 +1,5 @@
 // Persistent admission limits and server-side call expiry. No transcripts stored here.
-const POLICY = Object.freeze({learn: {seconds:480,tokens:1024},mock: {seconds:720,tokens:512}});
+const POLICY = Object.freeze({learn: {seconds:480,tokens:1024},mock: {seconds:480,tokens:512}});
 function dailyLimit(user,mode='mock'){if(!['learn','mock'].includes(mode))throw new Error('Invalid voice mode');return null;}
 function createVoiceLimits(pool, apiKey, request=fetch) {
   async function init() {

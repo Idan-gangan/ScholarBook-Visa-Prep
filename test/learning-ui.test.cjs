@@ -1,10 +1,12 @@
-const {test}=require('node:test');
+const {test,afterEach}=require('node:test');
+const activeFixtures=[];
+afterEach(()=>{for(const context of activeFixtures.splice(0))vm.runInContext('if(voice)stopVoice()',context);});
 const assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const html=fs.readFileSync(path.join(__dirname,'../public/index.html'),'utf8');
 function fixture(){
  const elements=new Map();
- function element(){const classes=new Set();return {value:'',textContent:'',innerHTML:'',disabled:false,checked:false,children:[],dataset:{},classList:{add:x=>classes.add(x),remove:x=>classes.delete(x),contains:x=>classes.has(x),toggle:(x,on)=>on?classes.add(x):classes.delete(x)},querySelectorAll(){return []},setAttribute(){},addEventListener(){},append(...items){this.children.push(...items)},appendChild(item){this.children.push(item)},replaceChildren(...items){this.children=items;if(items[0]?.value)this.value=items[0].value},pause(){},focus(){},showModal(){this.open=true},close(){this.open=false}}}
+ function element(){const classes=new Set();return {style:{},value:'',textContent:'',innerHTML:'',disabled:false,checked:false,children:[],dataset:{},classList:{add:x=>classes.add(x),remove:x=>classes.delete(x),contains:x=>classes.has(x),toggle:(x,on)=>on?classes.add(x):classes.delete(x)},querySelectorAll(){return []},setAttribute(){},addEventListener(){},append(...items){this.children.push(...items)},appendChild(item){this.children.push(item)},replaceChildren(...items){this.children=items;if(items[0]?.value)this.value=items[0].value},pause(){},focus(){},showModal(){this.open=true},close(){this.open=false}}}
  for(const match of html.matchAll(/id="([^"]+)"/g))elements.set(match[1],element());
  const document={getElementById:id=>{if(!elements.has(id)){if(id.startsWith('p_')||['educationHistory','educationHistoryTitle','interviewCities'].includes(id))elements.set(id,element());else throw new Error('Missing DOM element '+id);}return elements.get(id)},querySelector:selector=>{if(!elements.has(selector))elements.set(selector,element());return elements.get(selector)},querySelectorAll:selector=>selector==='.screen'?['learning','dashboard','interview','profile','reports','manager'].map(id=>elements.get(id)):[],createElement:()=>element(),createTextNode:text=>({textContent:text})};
  const student={id:'s1',userId:'u1',name:'Test Student',university:'Example University',major:'Biology',currentScore:0};
@@ -34,7 +36,7 @@ function fixture(){
  }});
  ctx.requestVoiceConsent=(mode,agree)=>agree();
  vm.runInContext(html.match(/<script>([\s\S]*?)<\/script>/)[1].replace('boot().catch(()=>{if(new URLSearchParams(location.search).get("signin")==="1")backToLogin()});',''),ctx);
- return {elements,store,ctx,run:code=>vm.runInContext(code,ctx)};
+ activeFixtures.push(ctx);return {elements,store,ctx,run:code=>vm.runInContext(code,ctx)};
 }
 test('unlimited usage is readable without null counters or reset promises',async()=>{
  const f=fixture();f.store.usage={learn:{unlimited:true,limit:null,remaining:null},mock:{unlimited:true,limit:null,remaining:null},reports:{unlimited:true,limit:null,remaining:null}};
@@ -109,7 +111,7 @@ test('report practice opens the matched lesson and clears on module change',asyn
  assert.equal(f.run('activeLessonId'),'funding');assert.match(f.elements.get('practiceFocusText').textContent,/Clarify tuition coverage/);
  assert.equal(f.run('reportPracticeQuery()'),'&reportId=r1&focus=0');
  await f.run('startLearningTutor()');
- assert.ok(f.store.requests.some(request=>request.url.includes('mode=learn&lesson=funding&reportId=r1&focus=0')));
+ assert.ok(f.store.requests.some(request=>request.url.includes('mode=learn') && request.url.includes('&lesson=funding&reportId=r1&focus=0')));
  await f.run("selectLearningModule('study-purpose')");assert.equal(f.run('reportPracticeQuery()'),'');assert.equal(f.run('lessonPractice'),null);
 });
 test('report practice escapes feedback and rejects unavailable student targets',async()=>{
@@ -162,7 +164,7 @@ test('students land at home and saved notes/completion reload',async()=>{
 });
 test('tutor routes separately, preserves mock transcript, and navigation stops microphone',async()=>{
  const f=fixture();await f.run('boot()');f.run('show("learning");addLine("athlete","Mock answer","mock")');await f.run('startLearningTutor()');
- assert.match(f.store.requests.find(r=>r.url.includes('realtime-session')).url,/mode=learn&lesson=study-purpose/);
+ assert.match(f.store.requests.find(r=>r.url.includes('realtime-session')).url,/mode=learn&language=.*&lesson=study-purpose/);
  f.run('addLine("assistant","<img src=x>")');assert.equal(f.run('transcript.length'),1);assert.equal(f.run('learningTranscript.length'),1);
  assert.equal(f.elements.get('learn_transcript').children[0].children[1].textContent,'<img src=x>');
  f.run('show("interview")');assert.equal(f.store.tracks[0].stopped,true);assert.equal(f.run('voice'),null);
@@ -460,4 +462,20 @@ test('unverified sign-in shows only verification screen and loads no preparation
  await f.run('refreshVerification()');
  assert.equal(f.elements.get('verificationNotice').classList.contains('hidden'),true);
  assert.equal(f.elements.get('app').classList.contains('hidden'),false);
+});
+test('selected tutor language reaches server and language choices lock only during voice',async()=>{
+ const f=fixture();await f.run('boot()');await f.run("show('learning');selectLearningModule('study-purpose')");
+ f.elements.get('tutorLanguage').value='fr';f.elements.get('feedbackLanguage').value='ar';
+ await f.run("startVoice('learn')");
+ const request=f.store.requests.find(r=>r.url.includes('/api/realtime-session'));
+ assert.equal(new URL(request.url,'http://local').searchParams.get('language'),'fr');
+ assert.equal(f.elements.get('tutorLanguage').disabled,true);
+ f.run('stopVoice()');assert.equal(f.elements.get('tutorLanguage').disabled,false);
+});
+
+test('Arabic conversation text is isolated from English speaker labels',()=>{
+ const f=fixture();f.run('addLine("assistant","لماذا اخترت الجامعة؟","mock")');
+ const line=f.elements.get('transcript').children[0];
+ assert.equal(line.children[1].dir,'auto');assert.equal(line.children[1].style.unicodeBidi,'plaintext');
+ assert.equal(line.children[1].textContent,'لماذا اخترت الجامعة؟');
 });

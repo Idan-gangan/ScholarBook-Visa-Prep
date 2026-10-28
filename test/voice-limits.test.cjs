@@ -42,8 +42,8 @@ test('tester allowance is capped at 18 and changing access does not erase usage'
 });
 test('server stores mode-specific deadlines and can expire a call after restart',async()=>{
  const f=fixture();assert.equal(await f.make().track('https://api.openai.com/v1/realtime/calls/rtc_one','learn'),480);
- assert.equal(await f.make().track('/v1/realtime/calls/rtc_two','mock'),720);
- assert.equal(f.calls.get('rtc_one'),480);assert.equal(f.calls.get('rtc_two'),720);
+ assert.equal(await f.make().track('/v1/realtime/calls/rtc_two','mock'),480);
+ assert.equal(f.calls.get('rtc_one'),480);assert.equal(f.calls.get('rtc_two'),480);
  await f.make().sweep();assert.equal(f.calls.size,0);assert.equal(f.requests.length,2);
  assert.ok(f.requests.every(r=>r.options.method==='POST'&&r.url.endsWith('/hangup')));
 });
@@ -119,5 +119,5 @@ test('abandoned pending reservations expire, but tracked orphan calls keep admis
  await a.track('/v1/realtime/calls/rtc_1','mock','one');
  f.failAttach(true);f.failHangup(true);await assert.rejects(a.attach('one',token,'/v1/realtime/calls/rtc_1'));
  await a.end('one',token);f.advance(91000);assert.equal(await a.acquire('one'),null);
- f.advance(720000);f.failHangup(false);await a.sweep();assert.ok(await a.acquire('one'));
+ f.advance(480000);f.failHangup(false);await a.sweep();assert.ok(await a.acquire('one'));
 });

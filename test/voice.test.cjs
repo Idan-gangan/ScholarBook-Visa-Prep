@@ -6,7 +6,7 @@ const code=html.slice(html.indexOf('// Voice lifecycle:'),html.indexOf('async fu
 function setup(){
  const els=new Map(),sent=[],lines=[],timers=new Map();let next=0;
  const track={enabled:false,stop(){this.stopped=true}};
- const ctx=vm.createContext({console,AbortController,JSON,confirm:()=>true,refreshVoiceUsage(){},navigator:{},RTCPeerConnection:function(){},setTimeout:fn=>{timers.set(++next,fn);return next},clearTimeout:id=>timers.delete(id),$:id=>{if(!els.has(id))els.set(id,{value:'athlete1',dataset:{},replaceChildren(){}});return els.get(id)},addLine:(role,text)=>lines.push({role,text}),api:async()=>({ok:true}),fetch(){}});
+ const ctx=vm.createContext({VisaAtlasLanguages:require("../public/practice-languages"),console,AbortController,JSON,confirm:()=>true,refreshVoiceUsage(){},navigator:{},RTCPeerConnection:function(){},setTimeout:fn=>{timers.set(++next,fn);return next},clearTimeout:id=>timers.delete(id),$:id=>{if(!els.has(id))els.set(id,{value:'athlete1',dataset:{},replaceChildren(){}});return els.get(id)},addLine:(role,text)=>lines.push({role,text}),api:async()=>({ok:true}),fetch(){}});
  ctx.requestVoiceConsent=(mode,agree)=>agree();
  vm.runInContext('let pc=null,dc=null,stream=null,transcript=[];'+code,ctx);
  ctx.channel={readyState:'open',send:s=>sent.push(JSON.parse(s)),close(){}};ctx.mic={getAudioTracks:()=>[track],getTracks:()=>[track]};
@@ -75,10 +75,10 @@ test('session deadline stops media while preserving the captured transcript',asy
  s.ctx.navigator.mediaDevices={getUserMedia:async()=>s.ctx.mic};
  s.ctx.document={createElement:()=>({pause(){}})};
  s.ctx.RTCPeerConnection=class{addTrack(){}createDataChannel(){return {addEventListener(){},close(){}}}async createOffer(){return {sdp:'v=0'}}async setLocalDescription(){}async setRemoteDescription(){}close(){}};
- s.ctx.fetch=async()=>({ok:true,text:async()=> 'answer',headers:{get:()=> '720'}});
+ s.ctx.fetch=async()=>({ok:true,text:async()=> 'answer',headers:{get:()=> '480'}});
  await s.run('startVoice()');s.run('transcript.push({text:"keep this answer"})');
  assert.equal(s.timers.size,3);
- assert.equal(s.els.get('voiceClock').textContent,'12:00');
+ assert.equal(s.els.get('voiceClock').textContent,'08:00');
  const deadline=s.timers.get(s.run('voice.limitTimer'));deadline();
  assert.equal(s.run('voice'),null);assert.equal(s.track.stopped,true);
  assert.equal(s.run('transcript[0].text'),'keep this answer');assert.equal(s.timers.size,0);
@@ -123,8 +123,16 @@ test('ending while connection is being created closes the late server call witho
  const pending=s.run('startVoice()');
  while(!requested)await new Promise(r=>setImmediate(r));
  s.run('stopVoice()');
- resolve({ok:true,text:async()=> 'answer',headers:{get:name=>name==='X-Voice-Token'?token:'720'}});
+ resolve({ok:true,text:async()=> 'answer',headers:{get:name=>name==='X-Voice-Token'?token:'480'}});
  await pending;
  assert.equal(s.track.stopped,true);assert.equal(s.run('voice'),null);
  assert.deepEqual(ended,[{url:'/api/voice/end',body:{token}}]);assert.equal(s.timers.size,0);
 });
+
+for(const language of require('../public/practice-languages').languages){
+ test('localized closing waits for audio before ending: '+language.code,()=>{
+  const s=setup();s.ctx.lang=language;s.run("voice.mode='mock';voice.language=lang.code;voice.busy=true;voice.playing=true");
+  s.event({type:'response.output_audio_transcript.done',transcript:language.close});
+  assert.equal(s.run('voice.closing'),true);assert.notEqual(s.run('voice'),null);
+ });
+}

@@ -54,3 +54,19 @@ function createReportPdf(report,student){
  });
 }
 module.exports={createReportPdf};
+
+// Browser printing supplies Unicode bidi layout for Arabic and mixed-script text.
+// Keep this authenticated and uncached, just like the binary PDF export.
+function createReportHtml(report,student){
+ const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const p=value=>value?`<p dir="auto">${esc(value)}</p>`:'';
+ const section=(title,value)=>value?`<section><h2>${esc(title)}</h2>${p(value)}</section>`:'';
+ const list=(title,values)=>Array.isArray(values)&&values.length?`<section><h2>${esc(title)}</h2><ol>${values.map(x=>`<li dir="auto">${esc(x)}</li>`).join('')}</ol></section>`:'';
+ const score=Number.isFinite(report.overall)?report.overall:Number.isFinite(report.partialScore)?report.partialScore:null;
+ const date=new Date(report.createdAt);
+ const topics=TOPICS.map(([id,label])=>{const item=report.assessments?.find(a=>a.topic===id||a.label===label);return `<section><h3>${esc(label)}</h3>${p(item?.status==='assessed'?(Number.isFinite(item.score)?item.score+'/10':'Assessed'):'Not assessed')}${item?.status==='assessed'?p(item.feedback):''}</section>`;}).join('');
+ return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>VisaAtlas practice report</title><style>
+ body{font:16px/1.6 Arial,sans-serif;color:#17334c;max-width:800px;margin:24px auto;padding:0 22px}h1{font-size:30px}h2{font-size:20px}h3{font-size:17px}p,li{overflow-wrap:anywhere;unicode-bidi:plaintext}section{break-inside:avoid}li{margin-bottom:10px}button{font:inherit;padding:12px 18px;cursor:pointer}.tools{padding:16px;background:#eef3ff}.score{font-size:28px;font-weight:bold}@page{size:A4;margin:18mm}@media print{body{max-width:none;margin:0;padding:0;font-size:11pt}.tools{display:none}h1,h2,h3{break-after:avoid}}
+ </style><script src="/report-print.js" defer></script></head><body><div class="tools"><button id="printReport" type="button">Print / save as PDF</button><p>Choose Save as PDF in the print dialog. On iPhone, use Share → Print to preview and save the report.</p></div><h1>VisaAtlas</h1><p>F-1 INTERVIEW PRACTICE REPORT</p><h2 dir="auto">${esc(student.name||'Student')}</h2>${p('Mock #'+(report.mockNumber??'Not recorded')+' | '+({standard:'Standard',challenging:'Challenging',intensive:'Intensive'}[report.difficulty]||'Mode not recorded'))}${p('Practice date: '+(Number.isFinite(date.getTime())?date.toISOString().slice(0,10)+' (UTC)':'Not recorded'))}<p class="score">${score===null?'Not scored':esc(score)+'/100'}</p>${p(report.scoreType==='partial'?'Overall preparation — incomplete interview':'Practice preparation score')}${p('Practice feedback only. This is not a prediction or guarantee of visa approval.')}${p(report.scoreExplanation)}${section('Interview feedback',report.feedback)}${section('Focus first',report.biggestWeakness)}${list('Your next steps',report.nextSteps?.length?report.nextSteps:report.nextStep?[report.nextStep]:[])}${list('What went well',report.strengths)}${list('Points to clarify',report.clarifications)}<h2>Topic coverage and scores</h2>${p(report.coverage?report.coverage.assessed+' of '+report.coverage.required+' areas assessed.':'')}${topics}${section('Scoring basis',report.scoringMethod==='all-seven-v1'?`${report.earnedPoints} / ${report.possiblePoints} points across all seven areas. Unassessed areas earn no points yet; this does not mean a wrong answer.`:'Assessed topic scores only; unanswered topics are excluded.')}${report.humanReview?section('Human review — '+report.humanReview.reviewer,report.humanReview.note)+p(Number.isFinite(report.humanReview.score)?'Coach-adjusted score: '+report.humanReview.score+'/100':''):''}<footer>VisaAtlas | Private practice feedback</footer></body></html>`;
+}
+module.exports.createReportHtml=createReportHtml;
