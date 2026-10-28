@@ -447,7 +447,7 @@ const server=http.createServer(async (req,res)=>{
     if(url.pathname.startsWith('/api/owner/')){
       const u=await requireUser(req,res); if(!u)return;
       if(!isOwner(u))return json(res,403,{error:'Owner access required.'});
-      if(req.method==='GET' && url.pathname==='/api/owner/operations')return json(res,200,{aiEnabled:process.env.AI_ENABLED!=='false',days:await operations.summary(),costNote:'Request counts are not billing totals. Check the OpenAI project Usage and Limits pages for actual cost and alerts.'});
+      if(req.method==='GET' && url.pathname==='/api/owner/operations')return json(res,200,{aiEnabled:process.env.AI_ENABLED!=='false',days:await operations.summary(),costs:await operations.costs.summary(),costNote:'Request counts are not billing totals. Check the OpenAI project Usage and Limits pages for actual cost and alerts.'});
       if(req.method==='GET' && url.pathname==='/api/owner/accounts'){
         const db=await loadDb();
         return json(res,200,{
@@ -682,6 +682,7 @@ Use only information in the supplied profile and transcript. Do not reward inven
         body:JSON.stringify({model:EVALUATION_MODEL,input:prompt.replace("using plain English", "using the selected feedback language")+practiceLanguages.feedbackInstructions(mockSession.feedbackLanguage,mockSession.practiceLanguage),max_output_tokens:EVALUATION_POLICY.outputTokens,store:false})
       });
       const api=await r.json();
+      await operations.costs.report(mockSession.id,'report',EVALUATION_MODEL,api);
       if(!r.ok)return json(res,502,{error:"Report generation is temporarily unavailable. Please try again later."});
       if(api.status==="incomplete")return json(res,502,{error:"The report could not finish within its output limit. Please try again later."});
       let text=outputText(api).trim().replace(/^```json\s*/,"").replace(/```$/,"").trim();
@@ -701,6 +702,7 @@ Use only information in the supplied profile and transcript. Do not reward inven
             body:JSON.stringify({model:EVALUATION_MODEL,input:interviewDesign.evidenceReviewPrompt(result,interview),max_output_tokens:EVALUATION_POLICY.outputTokens,store:false})
           });
           const reviewApi=await reviewResponse.json();
+          await operations.costs.report(mockSession.id,'review',EVALUATION_MODEL,reviewApi);
           if(!reviewResponse.ok||reviewApi.status==='incomplete')throw new Error('Evidence review unavailable');
           const review=JSON.parse(outputText(reviewApi).trim().replace(/^```json\s*/,"").replace(/```$/,"").trim());
           result=interviewDesign.applyEvidenceReview(result,review);
@@ -808,6 +810,7 @@ Use only information in the supplied profile and transcript. Do not reward inven
       catch(error){if(error.status===413)throw error;return json(res,400,{error:'Invalid voice session.'});}
       if(!body||typeof body.token!=='string'||!/^[a-f0-9]{48}$/.test(body.token))return json(res,400,{error:'Invalid voice session.'});
       await voiceLimits.end(u.id,body.token);
+      await operations.costs.voiceEnd(u.id,body.token,body.costSample);
       return json(res,200,{ok:true});
     }
     if(req.method==="POST" && url.pathname==="/api/realtime-session"){
@@ -928,6 +931,7 @@ Start with the opening guidance in INTERVIEW DESIGN below.`;
           current.mockSessions.push({id:mockSessionId,userId:u.id,athleteId:athlete.id,createdAt:new Date().toISOString(),difficulty,practiceLanguage,feedbackLanguage,plan:interviewPlan,evaluationVersion:3,profile:interviewDesign.profileSnapshot(athlete)});
         },{userId:u.id,athleteId:athlete.id});
       }
+      await operations.costs.voiceStart(u.id,voiceToken,mode,mockSessionId);
       if(res.destroyed)return;
       res.writeHead(rr.status,{"X-Voice-Token":voiceToken,"Content-Type":"application/sdp","Cache-Control":"no-store","X-Voice-Limit-Seconds":String(seconds),...(mockSessionId?{'X-Mock-Session-Id':mockSessionId}:{})});
       res.end(answer);
