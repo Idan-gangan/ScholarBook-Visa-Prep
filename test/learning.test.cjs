@@ -16,7 +16,8 @@ function harness(user={id:'u1',role:'athlete'},env={}){
    if(sql==='SELECT pg_advisory_xact_lock(172343992,1)')return {rows:[]};
    if(sql.startsWith('DELETE FROM password_reset_queue')||sql.startsWith('DELETE FROM password_reset_cooldowns'))return {rows:[]};
    if(sql==='SELECT student_id,lesson_id,data,updated_at FROM learning_progress WHERE student_id = ANY($1::text[])')return {rows:[]};
-   if(sql.startsWith('SELECT day,operation'))return {rows:[]};
+   if(sql.startsWith('SELECT day,operation')||sql.startsWith('SELECT category,model,source'))return {rows:[]};
+   if(/^(INSERT INTO|UPDATE|DELETE FROM) ai_cost_samples/.test(sql))return {rows:[]};
    if(typeof sql==='object'&&sql.text==='SELECT 1')return {rows:[{}]};
    if(sql.startsWith('SELECT COUNT(*)::integer AS total FROM ('))return {rows:[{total:[...admission.values()].filter(row=>row.token&&(row.call_id||row.until>voiceClock)).length}]};
    if(sql.startsWith('SELECT 1 FROM voice_admission'))return {rows:admission.get(args[0])?.token?[{active:1}]:[]};

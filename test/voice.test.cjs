@@ -136,3 +136,13 @@ for(const language of require('../public/practice-languages').languages){
   assert.equal(s.run('voice.closing'),true);assert.notEqual(s.run('voice'),null);
  });
 }
+
+test('ending a voice session sends only deduplicated numeric diagnostic counters',async()=>{
+ const s=setup(),requests=[];s.ctx.counter=require('../public/voice-cost-sample').create();
+ s.ctx.api=async(url,options)=>{requests.push({url,body:JSON.parse(options.body)});return {ok:true}};
+ s.run("voice.costCounter=counter;voice.serverToken='a'.repeat(48);voice.mode='learn';voice.audioSeen=false");
+ const response={id:'resp_cost',usage:{input_tokens:3,output_tokens:2,input_token_details:{audio_tokens:2,text_tokens:1,cached_tokens:0},output_token_details:{audio_tokens:1,text_tokens:1}},output:[{content:[{type:'text',text:'private text'}]}]};
+ s.event({type:'response.done',response});s.event({type:'response.done',response});
+ await s.run('stopVoice();voiceEnd');
+ assert.equal(requests.length,1);assert.equal(requests[0].body.costSample.responses,1);assert.equal(requests[0].body.costSample.inputAudio,2);assert.doesNotMatch(JSON.stringify(requests),/private text|resp_cost/);
+});
