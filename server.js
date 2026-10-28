@@ -536,13 +536,18 @@ const server=http.createServer(async (req,res)=>{
       return json(res,200,athletes);
     }
 
-    const pdfMatch=url.pathname.match(/^\/api\/reports\/([^/]+)\/pdf$/);
+    const pdfMatch=url.pathname.match(/^\/api\/reports\/([^/]+)\/(pdf|print)$/);
     if(req.method==='GET' && pdfMatch){
       const u=await requireUser(req,res);if(!u)return;
       const db=await loadDb({collections:['reports','athletes']});
       const report=db.reports.find(r=>r.id===decodeURIComponent(pdfMatch[1]));
       const student=report&&db.athletes.find(a=>a.id===report.athleteId);
       if(!report||!student||!canAccessStudent(u,student))return json(res,404,{error:'Report not found.'});
+      if(pdfMatch[2]==='print' || report.feedbackLanguage==='ar'){
+        const html=require('./report-pdf').createReportHtml(report,student);
+        res.writeHead(200,{...RESPONSE_HEADERS,'Content-Type':'text/html; charset=utf-8','Cache-Control':'private, no-store','Content-Security-Policy':"default-src 'none'; style-src 'unsafe-inline'; script-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"});
+        return res.end(html);
+      }
       const bytes=await require('./report-pdf').createReportPdf(report,student);
       const number=String(report.mockNumber??'report').replace(/[^a-zA-Z0-9_-]/g,'').slice(0,40)||'report';
       res.writeHead(200,{...RESPONSE_HEADERS,'Content-Type':'application/pdf','Content-Disposition':'attachment; filename="VisaAtlas-Mock-'+number+'.pdf"','Cache-Control':'private, no-store','Content-Length':bytes.length});

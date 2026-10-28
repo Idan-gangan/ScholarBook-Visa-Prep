@@ -15,11 +15,26 @@ session. Mock closing detection uses the corresponding localized sentence.
 Feedback must retain JSON identifiers and assess meaning in the practice language,
 not imply an English proficiency assessment.
 
-Validation: 86 focused tests pass (voice lifecycle, translated closures, prompt
-validation, interview design, learning UI and language request propagation).
-Before release: visually inspect desktop/mobile controls, run actual tutor and
-mock sessions in each language, verify recognition and closing, and review narrative
-feedback and downloaded PDFs (especially Arabic shaping/direction). Browser QA in
-this environment was blocked by unavailable Chromium and a failed browser download.
-No production AI calls or deployment were performed. Session durations, pricing and
-usage allowances are unchanged by this branch.
+Validation (2026-10-28): 211 unit/API/UI tests pass with
+`node --test test/*.test.cjs`. Includes provider prompt propagation, immutable
+report language selection, localized voice closures, print-export authorization,
+HTML escaping, and conversation direction. UI test fixtures now stop their voice
+timers after each test rather than leaving the test process running.
+
+Chromium QA with synthetic API fixtures: complete Learning, Mock Interview and
+Reports screens at 320, 390, 768 and 1280 pixels; no horizontal overflow or page
+JavaScript errors. Six options and touch-sized controls verified. Arabic and mixed
+script text rendered with automatic direction. Arabic print output was generated
+with Chromium and visually inspected. This is not an actual iOS Safari test.
+
+Found and fixed: PDFKit's word wrapping scrambled Arabic word order. Arabic reports
+now open an authenticated, uncached print-ready page; browser Print / Save as PDF
+preserves bidi shaping. The legacy /pdf URL also serves this page for Arabic.
+Other languages retain their ordinary PDF download. Headings, standard score
+messages and navigation remain English; generated narrative uses the chosen language.
+
+Remaining release gate: actual microphone/provider testing for tutor and mock in
+all six languages, including recognition, closing and generated feedback. No API
+key or connected test deployment is available in this workspace. Synthetic tests
+verify wiring, not pronunciation or real-provider behavior. No production AI calls,
+merge or deployment performed. Session durations, pricing and allowances unchanged.

@@ -736,3 +736,17 @@ test('invalid language codes are rejected before spending provider or voice allo
   assert.equal(response.status,400);assert.equal(h.calls.length,0);assert.equal(h.admission.size,0);
  }
 });
+
+test('Arabic print exports preserve text and escaping behind the same report access checks',async()=>{
+ const report={id:'arabic1',athleteId:'s1',mockNumber:1,feedbackLanguage:'ar',createdAt:'2026-10-28',feedback:'أوضحت هدفك الدراسي. <script>alert(1)</script>',nextSteps:['راجع المنحة.']};
+ for(const suffix of ['print','pdf']){
+  const h=harness();h.db.reports.push(report);
+  const r=await h.request('GET','/api/reports/arabic1/'+suffix);
+  assert.equal(r.status,200);assert.match(r.headers['Content-Type'],/text\/html/);assert.match(r.headers['Cache-Control'],/no-store/);
+  assert.match(String(r.text),/أوضحت هدفك الدراسي/);assert.match(String(r.text),/&lt;script&gt;/);assert.doesNotMatch(String(r.text),/<script>alert/);
+  assert.match(r.headers['Content-Security-Policy'],/script-src 'self'/);
+  assert.equal((await h.request('GET','/api/reports/arabic1/'+suffix,undefined,false)).status,401);
+  const other=harness({id:'u2',role:'athlete'});other.db.reports.push(report);
+  assert.equal((await other.request('GET','/api/reports/arabic1/'+suffix)).status,404);
+ }
+});

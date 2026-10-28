@@ -1,10 +1,12 @@
-const {test}=require('node:test');
+const {test,afterEach}=require('node:test');
+const activeFixtures=[];
+afterEach(()=>{for(const context of activeFixtures.splice(0))vm.runInContext('if(voice)stopVoice()',context);});
 const assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const html=fs.readFileSync(path.join(__dirname,'../public/index.html'),'utf8');
 function fixture(){
  const elements=new Map();
- function element(){const classes=new Set();return {value:'',textContent:'',innerHTML:'',disabled:false,checked:false,children:[],dataset:{},classList:{add:x=>classes.add(x),remove:x=>classes.delete(x),contains:x=>classes.has(x),toggle:(x,on)=>on?classes.add(x):classes.delete(x)},querySelectorAll(){return []},setAttribute(){},addEventListener(){},append(...items){this.children.push(...items)},appendChild(item){this.children.push(item)},replaceChildren(...items){this.children=items;if(items[0]?.value)this.value=items[0].value},pause(){},focus(){},showModal(){this.open=true},close(){this.open=false}}}
+ function element(){const classes=new Set();return {style:{},value:'',textContent:'',innerHTML:'',disabled:false,checked:false,children:[],dataset:{},classList:{add:x=>classes.add(x),remove:x=>classes.delete(x),contains:x=>classes.has(x),toggle:(x,on)=>on?classes.add(x):classes.delete(x)},querySelectorAll(){return []},setAttribute(){},addEventListener(){},append(...items){this.children.push(...items)},appendChild(item){this.children.push(item)},replaceChildren(...items){this.children=items;if(items[0]?.value)this.value=items[0].value},pause(){},focus(){},showModal(){this.open=true},close(){this.open=false}}}
  for(const match of html.matchAll(/id="([^"]+)"/g))elements.set(match[1],element());
  const document={getElementById:id=>{if(!elements.has(id)){if(id.startsWith('p_')||['educationHistory','educationHistoryTitle','interviewCities'].includes(id))elements.set(id,element());else throw new Error('Missing DOM element '+id);}return elements.get(id)},querySelector:selector=>{if(!elements.has(selector))elements.set(selector,element());return elements.get(selector)},querySelectorAll:selector=>selector==='.screen'?['learning','dashboard','interview','profile','reports','manager'].map(id=>elements.get(id)):[],createElement:()=>element(),createTextNode:text=>({textContent:text})};
  const student={id:'s1',userId:'u1',name:'Test Student',university:'Example University',major:'Biology',currentScore:0};
@@ -34,7 +36,7 @@ function fixture(){
  }});
  ctx.requestVoiceConsent=(mode,agree)=>agree();
  vm.runInContext(html.match(/<script>([\s\S]*?)<\/script>/)[1].replace('boot().catch(()=>{if(new URLSearchParams(location.search).get("signin")==="1")backToLogin()});',''),ctx);
- return {elements,store,ctx,run:code=>vm.runInContext(code,ctx)};
+ activeFixtures.push(ctx);return {elements,store,ctx,run:code=>vm.runInContext(code,ctx)};
 }
 test('unlimited usage is readable without null counters or reset promises',async()=>{
  const f=fixture();f.store.usage={learn:{unlimited:true,limit:null,remaining:null},mock:{unlimited:true,limit:null,remaining:null},reports:{unlimited:true,limit:null,remaining:null}};
@@ -469,4 +471,11 @@ test('selected tutor language reaches server and language choices lock only duri
  assert.equal(new URL(request.url,'http://local').searchParams.get('language'),'fr');
  assert.equal(f.elements.get('tutorLanguage').disabled,true);
  f.run('stopVoice()');assert.equal(f.elements.get('tutorLanguage').disabled,false);
+});
+
+test('Arabic conversation text is isolated from English speaker labels',()=>{
+ const f=fixture();f.run('addLine("assistant","لماذا اخترت الجامعة؟","mock")');
+ const line=f.elements.get('transcript').children[0];
+ assert.equal(line.children[1].dir,'auto');assert.equal(line.children[1].style.unicodeBidi,'plaintext');
+ assert.equal(line.children[1].textContent,'لماذا اخترت الجامعة؟');
 });
