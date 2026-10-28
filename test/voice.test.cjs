@@ -75,10 +75,10 @@ test('session deadline stops media while preserving the captured transcript',asy
  s.ctx.navigator.mediaDevices={getUserMedia:async()=>s.ctx.mic};
  s.ctx.document={createElement:()=>({pause(){}})};
  s.ctx.RTCPeerConnection=class{addTrack(){}createDataChannel(){return {addEventListener(){},close(){}}}async createOffer(){return {sdp:'v=0'}}async setLocalDescription(){}async setRemoteDescription(){}close(){}};
- s.ctx.fetch=async()=>({ok:true,text:async()=> 'answer',headers:{get:()=> '720'}});
+ s.ctx.fetch=async()=>({ok:true,text:async()=> 'answer',headers:{get:()=> '480'}});
  await s.run('startVoice()');s.run('transcript.push({text:"keep this answer"})');
  assert.equal(s.timers.size,3);
- assert.equal(s.els.get('voiceClock').textContent,'12:00');
+ assert.equal(s.els.get('voiceClock').textContent,'08:00');
  const deadline=s.timers.get(s.run('voice.limitTimer'));deadline();
  assert.equal(s.run('voice'),null);assert.equal(s.track.stopped,true);
  assert.equal(s.run('transcript[0].text'),'keep this answer');assert.equal(s.timers.size,0);
@@ -123,7 +123,7 @@ test('ending while connection is being created closes the late server call witho
  const pending=s.run('startVoice()');
  while(!requested)await new Promise(r=>setImmediate(r));
  s.run('stopVoice()');
- resolve({ok:true,text:async()=> 'answer',headers:{get:name=>name==='X-Voice-Token'?token:'720'}});
+ resolve({ok:true,text:async()=> 'answer',headers:{get:name=>name==='X-Voice-Token'?token:'480'}});
  await pending;
  assert.equal(s.track.stopped,true);assert.equal(s.run('voice'),null);
  assert.deepEqual(ended,[{url:'/api/voice/end',body:{token}}]);assert.equal(s.timers.size,0);

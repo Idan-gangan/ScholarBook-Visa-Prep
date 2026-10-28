@@ -380,7 +380,7 @@ test('voice admission is checked before upstream calls and rejects malformed SDP
  assert.equal(h.calls.length,0);
  for(let i=0;i<25;i++){
    const r=await h.request('POST',route,'v=0\r\noffer');assert.equal(r.status,200);
-   assert.equal(r.headers['X-Voice-Limit-Seconds'],'720');await h.finishVoice();
+   assert.equal(r.headers['X-Voice-Limit-Seconds'],'480');await h.finishVoice();
  }
  assert.equal(h.calls[0].session.max_output_tokens,512);
  assert.equal((await h.request('POST',route,'v=0\r\noffer')).status,200);
