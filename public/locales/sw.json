@@ -1,0 +1,288 @@
+{
+  "lessons": [
+    {
+      "title": "Mipango yako ya masomo",
+      "summary": "Eleza unachotaka kusoma na sababu zako.",
+      "intro": "Unaweza kuulizwa kwa nini ulichagua Marekani, shule au programu hii.",
+      "structure": "Sema utakachosoma na mahali, kisha ongeza sababu yako halisi na maalum.",
+      "points": [
+        "Eleza unachopenda kuhusu somo kwa kutumia darasa, uzoefu au kitu unachotaka kujifunza.",
+        "Toa sababu halisi ya kuchagua Marekani kulingana na ulichohakikisha kuhusu programu.",
+        "Taja kozi, mradi au sifa ya shule uliyoihakikisha. Linganisha shule ulizozifikiria kweli tu."
+      ],
+      "questions": [
+        "Kwa nini somo hili linakuvutia?",
+        "Kwa nini shule hii na Marekani?",
+        "Ungependa kujifunza nini?"
+      ],
+      "prompts": [
+        "Kwa nini somo hili linakuvutia?",
+        "Kwa nini shule hii na Marekani?",
+        "Ungependa kujifunza nini?"
+      ],
+      "example": "Nataka kusoma [somo] katika [shule] kwa sababu [sababu halisi]."
+    },
+    {
+      "title": "Historia yako ya masomo",
+      "summary": "Eleza masomo yako na ulichofanya tangu wakati huo.",
+      "intro": "Maswali haya yanahusu elimu yako na sababu ya kuendelea kusoma.",
+      "structure": "Eleza masomo, tarehe na shughuli zilizofuata kwa kutumia matokeo yako halisi.",
+      "points": [
+        "Kuwa mkweli kuhusu alama zako na eleza mapumziko au mabadiliko ya shule.",
+        "Kwa uzamili au uzamivu, unganisha masomo, kazi au utafiti wako na programu mpya. Eleza kwa ukweli mabadiliko ya taaluma.",
+        "Tofautisha masomo yaliyokamilika na yanayoendelea. Tarehe inayotarajiwa ya kumaliza haimaanishi tayari umepata sifa hiyo."
+      ],
+      "questions": [
+        "Unasoma au ulisoma nini, na lini?",
+        "Umefanya nini tangu wakati huo au unafanya nini sasa?",
+        "Kwa nini unataka kusoma programu hii sasa?"
+      ],
+      "prompts": [
+        "Unasoma au ulisoma nini, na lini?",
+        "Umefanya nini tangu wakati huo au unafanya nini sasa?",
+        "Kwa nini unataka kusoma programu hii sasa?"
+      ],
+      "example": "Ninasoma sasa au nilimaliza [masomo] mwaka [halisi au unaotarajiwa]. Tangu hapo, [shughuli halisi]."
+    },
+    {
+      "title": "Ufadhili wako",
+      "summary": "Eleza anayelipa na gharama zinazolipiwa.",
+      "intro": "Unaweza kuulizwa jinsi utakavyolipia masomo na maisha.",
+      "structure": "Taja vyanzo, kiasi kilichothibitishwa, masharti na gharama zilizobaki.",
+      "points": [
+        "Hakikisha ada, makazi, chakula na gharama nyingine kwa kipindi kilekile. Kagua pia usafiri, majira ya joto na bima.",
+        "Ikiwa una ufadhili wa masomo, eleza ulivyoupata na yaliyothibitishwa kwenye barua. Usidhani ufadhili «kamili» unalipia kila kitu.",
+        "Eleza anayelipa kilichobaki, uhusiano wenu na chanzo cha pesa. Hakikisha usiyoyajua; usidhani michango ni sawa."
+      ],
+      "questions": [
+        "Nani anafadhili masomo yako?",
+        "Ufadhili uliothibitishwa unalipia nini na kwa masharti gani?",
+        "Gharama zilizobaki zitalipwaje?"
+      ],
+      "prompts": [
+        "Nani anafadhili masomo yako?",
+        "Ufadhili uliothibitishwa unalipia nini na kwa masharti gani?",
+        "Gharama zilizobaki zitalipwaje?"
+      ],
+      "example": "[Chanzo halisi] kitalipia [gharama zilizothibitishwa]. Gharama zilizobaki zitalipwa na [chanzo kilichothibitishwa]."
+    },
+    {
+      "title": "Mipango yako ya baadaye",
+      "summary": "Eleza unachotaka kufanya baada ya masomo.",
+      "intro": "Unganisha masomo yako na malengo yako halisi.",
+      "structure": "Taja lengo lako, ujuzi utakaosaidia na mambo ambayo bado hujaamua.",
+      "points": [
+        "Eleza jinsi programu itakavyosaidia kazi au masomo ya baadaye.",
+        "Tofautisha mipango iliyothibitishwa na matumaini. Ni sawa ikiwa maamuzi mengine bado yako wazi.",
+        "Usibuni ofa ya kazi, wajibu wa familia au ahadi ya kurudi nyumbani. Taja michezo tu ikiwa ni sehemu halisi ya mipango yako."
+      ],
+      "questions": [
+        "Unataka kufanya nini baada ya masomo?",
+        "Programu hii itakusaidiaje?",
+        "Nini kimethibitishwa na bado unafikiria nini?"
+      ],
+      "prompts": [
+        "Unataka kufanya nini baada ya masomo?",
+        "Programu hii itakusaidiaje?",
+        "Nini kimethibitishwa na bado unafikiria nini?"
+      ],
+      "example": "Baada ya masomo, nataka [lengo halisi]. Programu hii itanisaidia kupata [ujuzi muhimu]."
+    },
+    {
+      "title": "Hali yako binafsi",
+      "summary": "Eleza maombi ya awali na mabadiliko yanayohusika.",
+      "intro": "Fanyia mazoezi mada zinazokuhusu tu.",
+      "structure": "Eleza kilichotokea, kilichobadilika na kilichothibitishwa sasa.",
+      "points": [
+        "Ikiwa ulikataliwa awali, eleza ukweli na mabadiliko yoyote. Shule au hati mpya haihakikishi kukubaliwa.",
+        "Ikiwa shule au tarehe ya kuanza imebadilika, eleza sababu na hakikisha mipango mipya na shule.",
+        "Ikiwa unacheza michezo, eleza ulivyochaguliwa, matokeo yako na jinsi utakavyounganisha michezo na masomo. Usibuni makubaliano yaliyothibitishwa."
+      ],
+      "questions": [
+        "Umewahi kutuma maombi? Nini kimebadilika?",
+        "Shule au tarehe yako ya kuanza imebadilika?",
+        "Ikiwa unacheza michezo, ulichaguliwaje?"
+      ],
+      "prompts": [
+        "Umewahi kutuma maombi? Nini kimebadilika?",
+        "Shule au tarehe yako ya kuanza imebadilika?",
+        "Ikiwa unacheza michezo, ulichaguliwaje?"
+      ],
+      "example": "[Hali halisi]. Kilichobadilika: [mabadiliko yoyote]. Mipango iliyothibitishwa ni [ukweli]."
+    },
+    {
+      "title": "Mazoezi ya mahojiano",
+      "summary": "Fanyia mazoezi majibu mafupi kabla ya mahojiano ya mazoezi.",
+      "intro": "Maswali yanaweza kuja kwa mpangilio tofauti.",
+      "structure": "Jibu swali, ongeza jambo moja muhimu, kisha tulia.",
+      "points": [
+        "Sikiliza kwa makini. Tumia maneno yako badala ya hotuba uliyokariri.",
+        "Fanyia mazoezi masomo, ufadhili na mipango ya baadaye. Tumia ukweli uleule hata swali likibadilishwa.",
+        "Omba swali lirudiwe au lielezwe inapohitajika. Sema ikiwa hujui jambo. Tumia ripoti kuchagua mazoezi yanayofuata."
+      ],
+      "questions": [
+        "Ni maswali gani unayoweza kujibu kwa uwazi?",
+        "Bado unahitaji kuhakikisha au kufanyia mazoezi nini?",
+        "Unataka kuboresha nini kwenye mahojiano ya mazoezi?"
+      ],
+      "prompts": [
+        "Ni maswali gani unayoweza kujibu kwa uwazi?",
+        "Bado unahitaji kuhakikisha au kufanyia mazoezi nini?",
+        "Unataka kuboresha nini kwenye mahojiano ya mazoezi?"
+      ],
+      "example": "Nilichagua [shule] kwa sababu [sababu halisi]. Nilihakikisha [jambo husika]."
+    }
+  ],
+  "levels": {
+    "high-school": "Kwa sekondari, eleza darasa na masomo yako ya sasa. Usidhani tayari umemaliza. Hakikisha makazi na msaada wa mtu mzima au shule. Si lazima uwe umechagua kazi au taaluma ya chuo bado.",
+    "undergraduate": "Kwa shahada ya kwanza, eleza elimu ya sekondari, masomo ya chuo na uhamisho au mapumziko halisi. Tofautisha kiwango unachopanga kuanza na hali yako ya sasa.",
+    "masters": "Kwa uzamili, unganisha shahada ya awali na uzoefu wako na programu. Hakikisha masharti halisi ya ufadhili au kazi ya msaidizi.",
+    "phd": "Kwa uzamivu, eleza utafiti kwa lugha rahisi. Tofautisha msimamizi unayemtazamia na makubaliano yaliyothibitishwa. Usidhani ufadhili ni kamili; hakikisha muda, masharti na gharama zilizobaki."
+  },
+  "strings": {
+    "Your learning path": "Njia yako ya kujifunza",
+    "Your students’ learning": "Masomo ya wanafunzi wako",
+    "Continue your preparation for your F-1 interview.": "Endelea kujiandaa kwa mahojiano ya F-1.",
+    "Learn in your language": "Jifunze kwa lugha yako",
+    "Learning language": "Lugha ya kujifunza",
+    "Choose the language for lessons and your voice tutor. Mock interview language is separate.": "Chagua lugha ya masomo na mkufunzi wa sauti. Lugha ya mahojiano ni tofauti.",
+    "Choose before starting a session. Your notes stay in the language you wrote them.": "Chagua kabla ya kuanza. Vidokezo vyako vitabaki katika lugha uliyoviandika.",
+    "Choose a module": "Chagua moduli",
+    "Completion tracks your learning, not visa approval or interview readiness.": "Kukamilisha huonyesha kujifunza, si kukubaliwa kwa visa au utayari wa mahojiano.",
+    "← Back to all modules": "← Moduli zote",
+    "1. Learn": "1. Jifunze",
+    "Understand the question": "Elewa swali",
+    "How to answer": "Jinsi ya kujibu",
+    "See an example": "Ona mfano",
+    "Use your actual facts. Note anything you still need to check.": "Tumia ukweli wako. Andika unachohitaji kuhakikisha.",
+    "2. Practise with your tutor": "2. Fanya mazoezi na mkufunzi",
+    "Your tutor explains, gives an example, and helps you practise in your own words. Ask “explain more” if you need help, or say “next” to move on.": "Mkufunzi anaeleza, anatoa mfano na kukusaidia kwa maneno yako. Sema «eleza zaidi» au «inayofuata» kuendelea.",
+    "Ready to start": "Tayari kuanza",
+    "Start voice lesson": "Anza somo la sauti",
+    "End lesson conversation": "Maliza mazungumzo",
+    "Voice lessons last up to 8 minutes. Daily practice attempts are unlimited. Reading and notes remain available.": "Masomo ya sauti ni hadi dakika 8. Majaribio ya kila siku hayana kikomo. Kusoma na vidokezo vinabaki kupatikana.",
+    "Your conversation is for learning, with no readiness score. Save the points you want to keep in your notes; the conversation itself is not saved.": "Mazungumzo ni ya kujifunza, bila alama ya utayari. Hifadhi muhimu kwenye vidokezo; mazungumzo yenyewe hayahifadhiwi.",
+    "My notes — optional": "Vidokezo vyangu — hiari",
+    "You do not need to write anything to finish. Your saved notes stay here if you want to use them.": "Huhitaji kuandika ili kumaliza. Vidokezo ulivyohifadhi vinabaki hapa.",
+    "Questions you can practise aloud or write about:": "Maswali ya kufanya mazoezi kwa sauti au maandishi:",
+    "Anything you want to remember": "Chochote unachotaka kukumbuka",
+    "Save notes": "Hifadhi vidokezo",
+    "3. Finish this module": "3. Maliza moduli hii",
+    "By completing this module, you confirm that you reviewed it and practised an answer. You can practise with the tutor or on your own.": "Kwa kumaliza unathibitisha kuwa umepitia moduli na kufanya mazoezi ya jibu, na mkufunzi au peke yako.",
+    "Complete module & continue →": "Maliza na uendelee →",
+    "Complete module & go to mock interview →": "Maliza na uende mahojianoni →",
+    "Retry loading lesson": "Jaribu kupakia tena",
+    "Completion records your progress through this lesson, not an assessment of readiness. You can revisit it any time.": "Kukamilisha hurekodi maendeleo, si tathmini ya utayari. Unaweza kurudi wakati wowote.",
+    "Completed": "Imekamilika",
+    "In progress": "Inaendelea",
+    "Not started": "Haijaanza",
+    "Not completed": "Haijakamilika",
+    "Module": "Moduli",
+    "Review your course": "Pitia masomo",
+    "Continue lesson": "Endelea na somo",
+    "Use your actual facts; note anything you need to check.": "Tumia ukweli wako; andika unachohitaji kuhakikisha.",
+    "This is an example template, not a statement about you. Replace brackets with confirmed facts; do not memorize it.": "Huu ni mfano, si maelezo ya maisha yako. Badili mabano kwa ukweli uliothibitishwa; usikariri.",
+    "Unsaved changes": "Mabadiliko hayajahifadhiwa",
+    "Loading your notes…": "Inapakia vidokezo…",
+    "Saving…": "Inahifadhi…",
+    "Notes saved. You can return to them later.": "Vidokezo vimehifadhiwa. Unaweza kurudi baadaye.",
+    "Earlier notes saved. You have new unsaved changes.": "Vidokezo vya awali vimehifadhiwa. Mabadiliko mapya hayajahifadhiwa.",
+    "Lesson complete. You can keep practising or try a mock interview.": "Somo limekamilika. Endelea kufanya mazoezi au jaribu mahojiano.",
+    "Unlimited tutoring starts. Session time limits still apply.": "Unaweza kuanza masomo bila kikomo. Kikomo cha muda wa kila kipindi bado kinatumika.",
+    "Up to 8 minutes. Voice stops automatically at the limit.": "Hadi dakika 8. Sauti hukoma moja kwa moja muda ukiisha.",
+    "Your tutor is responding…": "Mkufunzi anajibu…",
+    "Focus first": "Anza hapa",
+    "Your next steps": "Hatua zako zinazofuata",
+    "More next steps": "Hatua zaidi",
+    "What went well": "Kilichoenda vizuri",
+    "Points to clarify": "Mambo ya kufafanua",
+    "There is not enough evidence in this interview to identify a clear strength yet.": "Bado hakuna ushahidi wa kutosha kutambua nguvu iliyo wazi katika mahojiano haya.",
+    "No specific improvement identified in the answers assessed.": "Hakuna jambo maalum la kuboresha lililotambuliwa katika majibu yaliyotathminiwa.",
+    "No specific weakness identified from the answers assessed.": "Hakuna udhaifu maalum uliotambuliwa katika majibu yaliyotathminiwa.",
+    "Interview feedback": "Maoni ya mahojiano",
+    "Next step": "Hatua inayofuata",
+    "What to work on next": "Cha kufanyia mazoezi baadaye",
+    "Practise this": "Fanyia hili mazoezi",
+    "How your score was calculated": "Jinsi alama yako ilivyohesabiwa",
+    "Overall preparation": "Maandalizi ya jumla",
+    "Partial practice score": "Alama ya mazoezi ya sehemu",
+    "Practice readiness": "Utayari wa mazoezi",
+    "Practice score": "Alama ya mazoezi",
+    "Practice preparation score": "Alama ya maandalizi",
+    "Interview incomplete": "Mahojiano hayajakamilika",
+    "Partial interview · assessed answers only": "Mahojiano ya sehemu · majibu yaliyotathminiwa tu",
+    "Not enough information to score": "Taarifa hazitoshi kutoa alama",
+    "Feedback on this practice interview, not a prediction of visa approval.": "Maoni kuhusu mazoezi haya, si utabiri wa kukubaliwa kwa visa.",
+    "Practice feedback only. This is not a prediction or guarantee of visa approval.": "Maoni ya mazoezi tu. Si utabiri wala hakikisho la kukubaliwa kwa visa.",
+    "Interview coverage": "Mada zilizoshughulikiwa",
+    "Partial interview · keep practising the remaining areas": "Mahojiano ya sehemu · endelea na mada zilizobaki",
+    "Not assessed — no points earned yet": "Haijatathminiwa — hakuna alama bado",
+    "Not covered — not counted against you": "Haijashughulikiwa — haijahesabiwa dhidi yako",
+    "All relevant main areas were covered.": "Mada zote kuu zinazohusika zimeshughulikiwa.",
+    "Not assessed": "Haijatathminiwa",
+    "Assessed": "Imetathminiwa",
+    "Not scored": "Bila alama",
+    "Ready": "Tayari",
+    "Almost Ready": "Karibu kuwa tayari",
+    "Needs Significant Prep": "Inahitaji maandalizi zaidi",
+    "High Concern": "Mambo muhimu ya kuboresha",
+    "Standard": "Kawaida",
+    "Challenging": "Yenye changamoto",
+    "Intensive": "Ya kina",
+    "Study plans": "Mipango ya masomo",
+    "School choice": "Uchaguzi wa shule",
+    "Your subject": "Somo lako",
+    "Academic history": "Historia ya masomo",
+    "Funding": "Ufadhili",
+    "Future plans": "Mipango ya baadaye",
+    "Previous applications and travel": "Maombi na safari za awali",
+    "Print / save report as PDF": "Chapisha / hifadhi ripoti PDF",
+    "Print / save as PDF": "Chapisha / hifadhi PDF",
+    "Download report (PDF)": "Pakua ripoti (PDF)",
+    "Opens a print-ready report. Choose Save as PDF in your browser.": "Hufungua ripoti ya kuchapisha. Chagua kuhifadhi PDF katika kivinjari.",
+    "F-1 INTERVIEW PRACTICE REPORT": "RIPOTI YA MAZOEZI YA MAHOJIANO YA F-1",
+    "Topic coverage and scores": "Mada na alama",
+    "Scoring basis": "Msingi wa alama",
+    "Not assessed means no points earned yet; it does not mean a wrong answer.": "Kutotathminiwa kunamaanisha hakuna alama bado, si kwamba jibu ni baya.",
+    "Each assessed topic is scored out of 10. The average is converted to a score out of 100. Unanswered topics are excluded.": "Kila mada iliyotathminiwa ina alama kati ya 10. Wastani hubadilishwa kuwa kati ya 100. Mada zisizojibiwa hazijumuishwi.",
+    "At least two distinct substantive answers are needed for a score. Feedback is still available.": "Majibu mawili tofauti yenye maelezo yanahitajika kutoa alama. Maoni bado yanapatikana.",
+    "All seven areas were assessed.": "Mada zote saba zimetathminiwa.",
+    "Interview incomplete. Unassessed areas earn no points yet; this does not mean their answers were wrong.": "Mahojiano hayajakamilika. Mada zisizotathminiwa hazina alama bado; hii haimaanishi majibu yalikuwa mabaya.",
+    "Try another mock to cover the topics listed below.": "Jaribu mahojiano mengine kushughulikia mada zifuatazo.",
+    "Keep practising clear answers in your own words.": "Endelea kufanya mazoezi ya majibu wazi kwa maneno yako.",
+    "Human review": "Tathmini ya binadamu",
+    "Add human review": "Ongeza tathmini ya binadamu",
+    "Student": "Mwanafunzi",
+    "Not recorded": "Haijarekodiwa",
+    "Mode not recorded": "Aina haijarekodiwa",
+    "No written feedback was recorded.": "Hakuna maoni yaliyoandikwa yaliyorekodiwa.",
+    "Detailed topic assessments were not recorded for this historical report.": "Ripoti hii ya zamani haina tathmini za kina zilizorekodiwa.",
+    "Private practice feedback": "Maoni binafsi ya mazoezi",
+    "Choose Save as PDF in the print dialog. On iPhone, use Share → Print to preview and save the report.": "Chagua Hifadhi kama PDF kwenye dirisha la kuchapisha. Kwenye iPhone, tumia Shiriki → Chapisha kuona na kuhifadhi.",
+    "Scoring basis: assessed topic scores only. Unanswered topics are excluded.": "Alama za mada zilizotathminiwa tu. Mada zisizojibiwa hazijumuishwi.",
+    "Assessed topic scores only; unanswered topics are excluded.": "Mada zilizotathminiwa tu; zisizojibiwa hazijumuishwi.",
+    "Assessed - score not recorded": "Imetathminiwa — alama haijarekodiwa",
+    "Focused practice": "Mazoezi maalum",
+    "Review this feedback with your tutor. Starting this lesson does not mark the issue as resolved.": "Pitia maoni haya na mkufunzi. Kuanza somo hakumaanishi tatizo limetatuliwa.",
+    "Return to regular lesson": "Rudi kwenye somo la kawaida",
+    "A student profile is needed to save notes or start a lesson.": "Wasifu wa mwanafunzi unahitajika kuhifadhi vidokezo au kuanza.",
+    "An answer, a useful point, or something to check later.": "Jibu, jambo muhimu au kitu cha kuhakikisha baadaye.",
+    "Requesting microphone…": "Inaomba maikrofoni…",
+    "Listening — answer when you’re ready.": "Ninasikiliza — jibu ukiwa tayari.",
+    "One minute remaining in this voice session.": "Dakika moja imebaki.",
+    "Switch modules without saving these notes?": "Badili moduli bila kuhifadhi vidokezo?",
+    "Return to modules without saving your changes?": "Rudi bila kuhifadhi mabadiliko?",
+    "Switch students without saving these notes?": "Badili mwanafunzi bila kuhifadhi?"
+  },
+  "formats": {
+    "progress": "Moduli {0} kati ya {1} zimekamilika",
+    "module": "Moduli {0} kati ya {1}",
+    "coverage": "Mada {0} kati ya {1} zimetathminiwa",
+    "score": "Alama {0} kati ya {1} katika mada saba, zimebadilishwa kuwa alama kati ya 100.",
+    "quality": "Ubora wa mada zilizojibiwa: {0}/100. Wastani wa mada zilizotathminiwa tu.",
+    "date": "Tarehe ya mazoezi: {0}",
+    "mock": "Mahojiano ya mazoezi #{0}",
+    "adjusted": "Alama iliyorekebishwa: {0}/100",
+    "reviewer": "Mtathmini: {0}"
+  }
+}
