@@ -1,0 +1,288 @@
+{
+  "lessons": [
+    {
+      "title": "خططك الدراسية",
+      "summary": "اشرح ما تريد دراسته ولماذا.",
+      "intro": "قد تُسأل عن سبب اختيار الولايات المتحدة أو المؤسسة التعليمية أو البرنامج.",
+      "structure": "اذكر ما ستدرسه وأين، ثم أضف سببًا شخصيًا محددًا.",
+      "points": [
+        "اشرح اهتمامك بالمجال من خلال مادة دراسية أو تجربة أو شيء تريد تعلمه.",
+        "اذكر سببًا حقيقيًا لاختيار الولايات المتحدة بناءً على معلومات تحققت منها عن البرنامج.",
+        "اذكر مادة أو مشروعًا أو ميزة تحققت منها في المؤسسة. قارن فقط بالمؤسسات التي فكرت فيها فعلًا."
+      ],
+      "questions": [
+        "لماذا يهمك هذا المجال؟",
+        "لماذا هذه المؤسسة والولايات المتحدة؟",
+        "ماذا تريد أن تتعلم؟"
+      ],
+      "prompts": [
+        "لماذا يهمك هذا المجال؟",
+        "لماذا هذه المؤسسة والولايات المتحدة؟",
+        "ماذا تريد أن تتعلم؟"
+      ],
+      "example": "أريد دراسة [المجال] في [المؤسسة] لأن [سبب حقيقي]."
+    },
+    {
+      "title": "مسيرتك الدراسية",
+      "summary": "تحدث عن دراستك وما فعلته بعدها.",
+      "intro": "تتناول هذه الأسئلة تعليمك وسبب رغبتك في مواصلة الدراسة.",
+      "structure": "اذكر دراستك وتواريخها وأنشطتك التالية ونتائجك الحقيقية.",
+      "points": [
+        "كن صادقًا بشأن درجاتك، واشرح أي انقطاع أو تغيير في المؤسسة التعليمية.",
+        "للماجستير أو الدكتوراه، اربط دراستك أو عملك أو أبحاثك بالبرنامج الجديد. اشرح تغيير المجال بصدق.",
+        "ميّز بين الدراسة المكتملة والجارية. موعد التخرج المتوقع لا يعني حصولك على المؤهل بالفعل."
+      ],
+      "questions": [
+        "ماذا تدرس أو درست، ومتى؟",
+        "ماذا فعلت منذ ذلك الوقت، أو ماذا تفعل الآن؟",
+        "لماذا تريد الالتحاق بهذا البرنامج الآن؟"
+      ],
+      "prompts": [
+        "ماذا تدرس أو درست، ومتى؟",
+        "ماذا فعلت منذ ذلك الوقت، أو ماذا تفعل الآن؟",
+        "لماذا تريد الالتحاق بهذا البرنامج الآن؟"
+      ],
+      "example": "أدرس حاليًا أو أنهيت [الدراسة] في [سنة فعلية أو متوقعة]. ومنذ ذلك الوقت، [نشاط حقيقي]."
+    },
+    {
+      "title": "تمويل دراستك",
+      "summary": "اشرح من يدفع وما النفقات التي يغطيها.",
+      "intro": "قد تُسأل عن كيفية دفع تكاليف الدراسة والمعيشة.",
+      "structure": "اذكر مصادر التمويل والمبالغ المؤكدة والشروط والتكاليف المتبقية.",
+      "points": [
+        "تحقق من الرسوم والسكن والطعام والنفقات الأخرى للفترة نفسها. تحقق أيضًا من السفر والصيف والتأمين.",
+        "إذا كانت لديك منحة، اشرح كيف حصلت عليها وما يؤكده خطاب المنحة. لا تفترض أن المنحة «الكاملة» تغطي كل شيء.",
+        "اشرح من سيدفع الباقي وعلاقتك به ومصدر المال. تحقق مما لا تعرفه، ولا تفترض تساوي المساهمات."
+      ],
+      "questions": [
+        "من يمول دراستك؟",
+        "ما الذي يغطيه التمويل المؤكد وما شروطه؟",
+        "كيف ستُدفع التكاليف المتبقية؟"
+      ],
+      "prompts": [
+        "من يمول دراستك؟",
+        "ما الذي يغطيه التمويل المؤكد وما شروطه؟",
+        "كيف ستُدفع التكاليف المتبقية؟"
+      ],
+      "example": "سيدفع [المصدر الحقيقي] تكاليف [النفقات المؤكدة]. وسيغطي [مصدر مؤكد] التكاليف المتبقية."
+    },
+    {
+      "title": "خططك المستقبلية",
+      "summary": "تحدث عما تريد فعله بعد الدراسة.",
+      "intro": "اربط دراستك بأهدافك الحقيقية.",
+      "structure": "اذكر هدفك والمهارات المفيدة وما لم تقرره بعد.",
+      "points": [
+        "اشرح كيف قد يساعدك البرنامج في عملك أو دراستك المستقبلية.",
+        "ميّز بين الترتيبات المؤكدة والأمور التي تأمل تحقيقها. لا بأس إذا بقيت بعض القرارات مفتوحة.",
+        "لا تختلق عرض عمل أو التزامًا عائليًا أو وعدًا بالعودة. اذكر الرياضة فقط إذا كانت جزءًا حقيقيًا من خططك."
+      ],
+      "questions": [
+        "ماذا تريد أن تفعل بعد الدراسة؟",
+        "كيف سيساعدك هذا البرنامج؟",
+        "ما المؤكد وما الذي لا تزال تفكر فيه؟"
+      ],
+      "prompts": [
+        "ماذا تريد أن تفعل بعد الدراسة؟",
+        "كيف سيساعدك هذا البرنامج؟",
+        "ما المؤكد وما الذي لا تزال تفكر فيه؟"
+      ],
+      "example": "بعد الدراسة، أريد [هدف حقيقي]. سيساعدني البرنامج على تطوير [مهارات مفيدة]."
+    },
+    {
+      "title": "ظروفك الخاصة",
+      "summary": "تحدث عن الطلبات السابقة والتغييرات ذات الصلة.",
+      "intro": "تدرّب فقط على الموضوعات التي تنطبق عليك.",
+      "structure": "اشرح ما حدث وما تغير وما هو مؤكد الآن.",
+      "points": [
+        "إذا رُفض طلبك سابقًا، اشرح الوقائع وأي تغييرات. المؤسسة أو الوثيقة الجديدة لا تضمن الموافقة.",
+        "إذا تغيرت المؤسسة أو موعد البدء، اشرح السبب وتحقق من الترتيبات الجديدة مع المؤسسة.",
+        "إذا كنت تمارس الرياضة، اشرح استقطابك ونتائجك وكيف ستجمع بين الدراسة والرياضة. لا تختلق التزامات مؤكدة."
+      ],
+      "questions": [
+        "هل قدمت طلبًا سابقًا؟ وما الذي تغير؟",
+        "هل تغيرت المؤسسة أو موعد البدء؟",
+        "إذا كنت تمارس الرياضة، كيف جرى استقطابك؟"
+      ],
+      "prompts": [
+        "هل قدمت طلبًا سابقًا؟ وما الذي تغير؟",
+        "هل تغيرت المؤسسة أو موعد البدء؟",
+        "إذا كنت تمارس الرياضة، كيف جرى استقطابك؟"
+      ],
+      "example": "[الوضع الحقيقي]. ما تغير: [تغيير إن وجد]. والترتيبات المؤكدة هي [حقائق]."
+    },
+    {
+      "title": "التدرب على المقابلة",
+      "summary": "تدرّب على إجابات قصيرة قبل المقابلة التجريبية.",
+      "intro": "قد تأتي الأسئلة بترتيب مختلف.",
+      "structure": "أجب عن السؤال، وأضف تفصيلًا مفيدًا، ثم توقف قليلًا.",
+      "points": [
+        "استمع بانتباه. استخدم كلماتك بدلًا من خطاب محفوظ.",
+        "تدرّب على الدراسة والتمويل والخطط المستقبلية. حافظ على الحقائق نفسها حتى إذا تغيرت صياغة السؤال.",
+        "اطلب التكرار أو التوضيح عند الحاجة. قل إنك لا تعرف إذا غاب عنك تفصيل. استخدم التقرير لاختيار التدريب التالي."
+      ],
+      "questions": [
+        "ما الأسئلة التي تستطيع الإجابة عنها بوضوح؟",
+        "ما الذي ما زلت تحتاج إلى التحقق منه أو التدرب عليه؟",
+        "ما الذي تريد تحسينه في المقابلة التجريبية؟"
+      ],
+      "prompts": [
+        "ما الأسئلة التي تستطيع الإجابة عنها بوضوح؟",
+        "ما الذي ما زلت تحتاج إلى التحقق منه أو التدرب عليه؟",
+        "ما الذي تريد تحسينه في المقابلة التجريبية؟"
+      ],
+      "example": "اخترت [المؤسسة] لأن [سبب حقيقي]. وقد تحققت من [تفصيل ذي صلة]."
+    }
+  ],
+  "levels": {
+    "high-school": "للمرحلة الثانوية، تحدث عن صفك الحالي وموادك. لا تفترض أنك أكملت الدراسة. تحقق من السكن ودعم شخص بالغ أو المؤسسة. ليس مطلوبًا أن تكون قد اخترت مهنة أو تخصصًا جامعيًا.",
+    "undergraduate": "للبكالوريوس، اشرح تعليمك الثانوي وأي دراسة جامعية وانتقالات أو انقطاعات فعلية. ميّز بين المستوى الذي تنوي بدءه ووضعك الحالي.",
+    "masters": "للماجستير، اربط مؤهلك السابق وخبرتك بالبرنامج. تحقق من الشروط الفعلية للمنح أو وظائف المساعدة.",
+    "phd": "للدكتوراه، اشرح بحثك ببساطة. ميّز بين مشرف تأمل العمل معه واتفاق مؤكد. لا تفترض التمويل الكامل؛ تحقق من مدته وشروطه والتكاليف المتبقية."
+  },
+  "strings": {
+    "Your learning path": "مسارك التعليمي",
+    "Your students’ learning": "تعلم طلابك",
+    "Continue your preparation for your F-1 interview.": "واصل الاستعداد لمقابلة F-1.",
+    "Learn in your language": "تعلّم بلغتك",
+    "Learning language": "لغة التعلم",
+    "Choose the language for lessons and your voice tutor. Mock interview language is separate.": "اختر لغة الدروس والمعلم الصوتي. لغة المقابلة مستقلة.",
+    "Choose before starting a session. Your notes stay in the language you wrote them.": "اختر قبل بدء الجلسة. تبقى ملاحظاتك باللغة التي كتبتها بها.",
+    "Choose a module": "اختر وحدة",
+    "Completion tracks your learning, not visa approval or interview readiness.": "الإكمال يسجل تعلمك، وليس الموافقة على التأشيرة أو جاهزيتك للمقابلة.",
+    "← Back to all modules": "← جميع الوحدات",
+    "1. Learn": "1. تعلّم",
+    "Understand the question": "افهم السؤال",
+    "How to answer": "كيف تجيب",
+    "See an example": "شاهد مثالًا",
+    "Use your actual facts. Note anything you still need to check.": "استخدم حقائقك الفعلية. دوّن ما تحتاج إلى التحقق منه.",
+    "2. Practise with your tutor": "2. تدرّب مع معلمك",
+    "Your tutor explains, gives an example, and helps you practise in your own words. Ask “explain more” if you need help, or say “next” to move on.": "يشرح المعلم ويقدم مثالًا ويساعدك على التدرب بكلماتك. اطلب «اشرح أكثر» أو قل «التالي» للمتابعة.",
+    "Ready to start": "جاهز للبدء",
+    "Start voice lesson": "ابدأ الدرس الصوتي",
+    "End lesson conversation": "إنهاء المحادثة",
+    "Voice lessons last up to 8 minutes. Daily practice attempts are unlimited. Reading and notes remain available.": "مدة الدرس الصوتي حتى 8 دقائق. المحاولات اليومية غير محدودة. تبقى القراءة والملاحظات متاحة.",
+    "Your conversation is for learning, with no readiness score. Save the points you want to keep in your notes; the conversation itself is not saved.": "هذه المحادثة للتعلم دون درجة جاهزية. احفظ النقاط المفيدة في ملاحظاتك؛ المحادثة نفسها لا تُحفظ.",
+    "My notes — optional": "ملاحظاتي — اختياري",
+    "You do not need to write anything to finish. Your saved notes stay here if you want to use them.": "لا يلزم أن تكتب لإكمال الدرس. تبقى ملاحظاتك المحفوظة هنا.",
+    "Questions you can practise aloud or write about:": "أسئلة للتدرب شفهيًا أو كتابيًا:",
+    "Anything you want to remember": "أي شيء تريد تذكره",
+    "Save notes": "حفظ الملاحظات",
+    "3. Finish this module": "3. أكمل الوحدة",
+    "By completing this module, you confirm that you reviewed it and practised an answer. You can practise with the tutor or on your own.": "بإكمال الوحدة تؤكد مراجعتها والتدرب على إجابة، مع المعلم أو بمفردك.",
+    "Complete module & continue →": "أكمل وتابع →",
+    "Complete module & go to mock interview →": "أكمل وانتقل للمقابلة →",
+    "Retry loading lesson": "أعد تحميل الدرس",
+    "Completion records your progress through this lesson, not an assessment of readiness. You can revisit it any time.": "الإكمال يسجل تقدمك ولا يقيّم جاهزيتك. يمكنك العودة في أي وقت.",
+    "Completed": "مكتمل",
+    "In progress": "قيد التقدم",
+    "Not started": "لم يبدأ",
+    "Not completed": "غير مكتمل",
+    "Module": "الوحدة",
+    "Review your course": "راجع الدروس",
+    "Continue lesson": "تابع الدرس",
+    "Use your actual facts; note anything you need to check.": "استخدم حقائقك ودوّن ما تحتاج للتحقق منه.",
+    "This is an example template, not a statement about you. Replace brackets with confirmed facts; do not memorize it.": "هذا نموذج وليس وصفًا لك. استبدل الأقواس بحقائق مؤكدة ولا تحفظه حرفيًا.",
+    "Unsaved changes": "تغييرات غير محفوظة",
+    "Loading your notes…": "جارٍ تحميل ملاحظاتك…",
+    "Saving…": "جارٍ الحفظ…",
+    "Notes saved. You can return to them later.": "حُفظت الملاحظات. يمكنك العودة إليها لاحقًا.",
+    "Earlier notes saved. You have new unsaved changes.": "حُفظت الملاحظات السابقة. توجد تغييرات جديدة غير محفوظة.",
+    "Lesson complete. You can keep practising or try a mock interview.": "اكتمل الدرس. واصل التدريب أو جرّب مقابلة.",
+    "Unlimited tutoring starts. Session time limits still apply.": "بدء الدروس غير محدود. تظل مدة الجلسة محدودة.",
+    "Up to 8 minutes. Voice stops automatically at the limit.": "حتى 8 دقائق. يتوقف الصوت تلقائيًا عند الحد.",
+    "Your tutor is responding…": "المعلم يرد…",
+    "Focus first": "ابدأ بهذا",
+    "Your next steps": "خطواتك التالية",
+    "More next steps": "خطوات أخرى",
+    "What went well": "ما سار جيدًا",
+    "Points to clarify": "نقاط تحتاج إلى توضيح",
+    "There is not enough evidence in this interview to identify a clear strength yet.": "لا توجد أدلة كافية في هذه المقابلة لتحديد نقطة قوة واضحة بعد.",
+    "No specific improvement identified in the answers assessed.": "لم يُحدد تحسين معين في الإجابات المقيّمة.",
+    "No specific weakness identified from the answers assessed.": "لم تُحدد نقطة ضعف معينة في الإجابات المقيّمة.",
+    "Interview feedback": "ملاحظات المقابلة",
+    "Next step": "الخطوة التالية",
+    "What to work on next": "ما تتدرب عليه بعد ذلك",
+    "Practise this": "تدرّب على هذا",
+    "How your score was calculated": "كيف حُسبت درجتك",
+    "Overall preparation": "الاستعداد العام",
+    "Partial practice score": "درجة تدريب جزئية",
+    "Practice readiness": "الجاهزية للتدريب",
+    "Practice score": "درجة التدريب",
+    "Practice preparation score": "درجة الاستعداد للتدريب",
+    "Interview incomplete": "المقابلة غير مكتملة",
+    "Partial interview · assessed answers only": "مقابلة جزئية · الإجابات المقيّمة فقط",
+    "Not enough information to score": "معلومات غير كافية للتقييم",
+    "Feedback on this practice interview, not a prediction of visa approval.": "ملاحظات على هذا التدريب وليست توقعًا للموافقة على التأشيرة.",
+    "Practice feedback only. This is not a prediction or guarantee of visa approval.": "ملاحظات تدريبية فقط، وليست توقعًا أو ضمانًا للموافقة على التأشيرة.",
+    "Interview coverage": "تغطية موضوعات المقابلة",
+    "Partial interview · keep practising the remaining areas": "مقابلة جزئية · واصل التدرب على الموضوعات المتبقية",
+    "Not assessed — no points earned yet": "لم يُقيّم — لا نقاط مكتسبة بعد",
+    "Not covered — not counted against you": "لم يُغطّ — لا يُحسب ضدك",
+    "All relevant main areas were covered.": "تمت تغطية جميع الموضوعات الرئيسية ذات الصلة.",
+    "Not assessed": "لم يُقيّم",
+    "Assessed": "تم التقييم",
+    "Not scored": "دون درجة",
+    "Ready": "جاهز",
+    "Almost Ready": "شبه جاهز",
+    "Needs Significant Prep": "يحتاج إلى إعداد كبير",
+    "High Concern": "نقاط مهمة تحتاج إلى تحسين",
+    "Standard": "عادي",
+    "Challenging": "متقدم",
+    "Intensive": "مكثف",
+    "Study plans": "الخطط الدراسية",
+    "School choice": "اختيار المؤسسة",
+    "Your subject": "مجالك الدراسي",
+    "Academic history": "التاريخ الدراسي",
+    "Funding": "التمويل",
+    "Future plans": "الخطط المستقبلية",
+    "Previous applications and travel": "الطلبات والسفر السابقان",
+    "Print / save report as PDF": "طباعة التقرير أو حفظه PDF",
+    "Print / save as PDF": "طباعة أو حفظ PDF",
+    "Download report (PDF)": "تنزيل التقرير (PDF)",
+    "Opens a print-ready report. Choose Save as PDF in your browser.": "يفتح تقريرًا للطباعة. اختر الحفظ بصيغة PDF في المتصفح.",
+    "F-1 INTERVIEW PRACTICE REPORT": "تقرير التدريب على مقابلة F-1",
+    "Topic coverage and scores": "الموضوعات والدرجات",
+    "Scoring basis": "أساس احتساب الدرجة",
+    "Not assessed means no points earned yet; it does not mean a wrong answer.": "عدم التقييم يعني عدم اكتساب نقاط بعد، وليس أن الإجابة خاطئة.",
+    "Each assessed topic is scored out of 10. The average is converted to a score out of 100. Unanswered topics are excluded.": "كل موضوع مقيّم درجته من 10. يُحوّل المتوسط إلى 100. تُستثنى الموضوعات غير المجاب عنها.",
+    "At least two distinct substantive answers are needed for a score. Feedback is still available.": "يلزم تقديم إجابتين مختلفتين ذواتي مضمون على الأقل لاحتساب درجة. تظل الملاحظات متاحة.",
+    "All seven areas were assessed.": "تم تقييم الموضوعات السبعة.",
+    "Interview incomplete. Unassessed areas earn no points yet; this does not mean their answers were wrong.": "المقابلة غير مكتملة. الموضوعات غير المقيّمة لم تكتسب نقاطًا بعد؛ هذا لا يعني أن إجاباتها خاطئة.",
+    "Try another mock to cover the topics listed below.": "جرّب مقابلة أخرى لتغطية الموضوعات التالية.",
+    "Keep practising clear answers in your own words.": "واصل التدرب على إجابات واضحة بكلماتك.",
+    "Human review": "مراجعة بشرية",
+    "Add human review": "إضافة مراجعة بشرية",
+    "Student": "الطالب",
+    "Not recorded": "غير مسجل",
+    "Mode not recorded": "النمط غير مسجل",
+    "No written feedback was recorded.": "لم تُسجل ملاحظات مكتوبة.",
+    "Detailed topic assessments were not recorded for this historical report.": "لم تُسجل تقييمات تفصيلية لهذا التقرير القديم.",
+    "Private practice feedback": "ملاحظات تدريبية خاصة",
+    "Choose Save as PDF in the print dialog. On iPhone, use Share → Print to preview and save the report.": "اختر الحفظ بصيغة PDF في نافذة الطباعة. على iPhone استخدم مشاركة ← طباعة للمعاينة والحفظ.",
+    "Scoring basis: assessed topic scores only. Unanswered topics are excluded.": "تُحتسب درجات الموضوعات المقيّمة فقط. تُستثنى الموضوعات غير المجاب عنها.",
+    "Assessed topic scores only; unanswered topics are excluded.": "الموضوعات المقيّمة فقط؛ تُستثنى غير المجاب عنها.",
+    "Assessed - score not recorded": "تم التقييم — الدرجة غير مسجلة",
+    "Focused practice": "تدريب مركّز",
+    "Review this feedback with your tutor. Starting this lesson does not mark the issue as resolved.": "راجع هذه الملاحظات مع المعلم. بدء الدرس لا يعني حل المشكلة.",
+    "Return to regular lesson": "العودة للدرس العادي",
+    "A student profile is needed to save notes or start a lesson.": "يلزم ملف طالب لحفظ الملاحظات أو بدء الدرس.",
+    "An answer, a useful point, or something to check later.": "إجابة أو نقطة مفيدة أو شيء للتحقق منه لاحقًا.",
+    "Requesting microphone…": "جارٍ طلب الميكروفون…",
+    "Listening — answer when you’re ready.": "أستمع — أجب عندما تكون مستعدًا.",
+    "One minute remaining in this voice session.": "تبقت دقيقة واحدة.",
+    "Switch modules without saving these notes?": "تغيير الوحدة دون حفظ الملاحظات؟",
+    "Return to modules without saving your changes?": "العودة دون حفظ التغييرات؟",
+    "Switch students without saving these notes?": "تغيير الطالب دون حفظ الملاحظات؟"
+  },
+  "formats": {
+    "progress": "اكتملت {0} من {1} وحدات",
+    "module": "الوحدة {0} من {1}",
+    "coverage": "تم تقييم {0} من {1} موضوعات",
+    "score": "{0} نقاط من {1} عبر الموضوعات السبعة، محوّلة إلى درجة من 100.",
+    "quality": "جودة الموضوعات المجاب عنها: {0}/100. متوسط الموضوعات المقيّمة فقط.",
+    "date": "تاريخ التدريب: {0}",
+    "mock": "المقابلة التجريبية رقم {0}",
+    "adjusted": "الدرجة المعدّلة: {0}/100",
+    "reviewer": "المراجع: {0}"
+  }
+}

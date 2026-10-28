@@ -1,0 +1,288 @@
+{
+  "lessons": [
+    {
+      "title": "Seus planos de estudo",
+      "summary": "Explique o que quer estudar e por quê.",
+      "intro": "Podem perguntar por que você escolheu os Estados Unidos, a instituição ou o curso.",
+      "structure": "Diga o que vai estudar e onde, e acrescente uma razão pessoal e concreta.",
+      "points": [
+        "Explique seu interesse pela área com uma aula, uma experiência ou algo que queira aprender.",
+        "Dê uma razão real para escolher os Estados Unidos, baseada no que verificou sobre o curso.",
+        "Cite uma disciplina, projeto ou característica da instituição que você verificou. Compare apenas instituições que realmente considerou."
+      ],
+      "questions": [
+        "Por que essa área interessa a você?",
+        "Por que essa instituição e os Estados Unidos?",
+        "O que gostaria de aprender?"
+      ],
+      "prompts": [
+        "Por que essa área interessa a você?",
+        "Por que essa instituição e os Estados Unidos?",
+        "O que gostaria de aprender?"
+      ],
+      "example": "Quero estudar [área] em [instituição] porque [razão real]."
+    },
+    {
+      "title": "Sua trajetória acadêmica",
+      "summary": "Fale sobre seus estudos e o que fez desde então.",
+      "intro": "Estas perguntas tratam da sua formação e da decisão de continuar estudando.",
+      "structure": "Explique seus estudos, datas e atividades seguintes com resultados reais.",
+      "points": [
+        "Seja honesto sobre suas notas e explique pausas ou mudanças de instituição.",
+        "Para mestrado ou doutorado, relacione estudos, trabalho ou pesquisa ao novo curso. Explique uma mudança de área com honestidade.",
+        "Diferencie estudos concluídos dos que estão em andamento. Uma data prevista de conclusão não é um diploma já obtido."
+      ],
+      "questions": [
+        "O que você estuda ou estudou, e quando?",
+        "O que fez desde então ou está fazendo agora?",
+        "Por que quer fazer esse curso agora?"
+      ],
+      "prompts": [
+        "O que você estuda ou estudou, e quando?",
+        "O que fez desde então ou está fazendo agora?",
+        "Por que quer fazer esse curso agora?"
+      ],
+      "example": "Atualmente estudo ou concluí [formação] em [ano real ou previsto]. Desde então, [atividade real]."
+    },
+    {
+      "title": "Seu financiamento",
+      "summary": "Explique quem paga e quais despesas estão cobertas.",
+      "intro": "Podem perguntar como você pagará os estudos e as despesas de vida.",
+      "structure": "Apresente as fontes, valores confirmados, condições e despesas restantes.",
+      "points": [
+        "Confira mensalidades, moradia, alimentação e outras despesas para o mesmo período. Verifique também viagem, verão e seguro.",
+        "Se tiver bolsa, explique como a recebeu e o que a carta de concessão confirma. Não suponha que uma bolsa «integral» cubra tudo.",
+        "Explique quem pagará o restante, sua relação com essa pessoa e a origem do dinheiro. Confira o que não sabe; não suponha contribuições iguais."
+      ],
+      "questions": [
+        "Quem financia seus estudos?",
+        "O que o financiamento confirmado cobre e sob quais condições?",
+        "Como serão pagas as despesas restantes?"
+      ],
+      "prompts": [
+        "Quem financia seus estudos?",
+        "O que o financiamento confirmado cobre e sob quais condições?",
+        "Como serão pagas as despesas restantes?"
+      ],
+      "example": "[Fonte real] pagará [despesas confirmadas]. As despesas restantes serão cobertas por [fonte confirmada]."
+    },
+    {
+      "title": "Seus planos futuros",
+      "summary": "Fale sobre o que quer fazer depois dos estudos.",
+      "intro": "Relacione a formação aos seus objetivos reais.",
+      "structure": "Apresente seu objetivo, as habilidades úteis e o que ainda precisa decidir.",
+      "points": [
+        "Explique como o curso pode ajudar no trabalho ou em estudos futuros.",
+        "Diferencie acordos confirmados de aspirações. Algumas decisões podem continuar em aberto.",
+        "Não invente oferta de emprego, obrigação familiar ou promessa de retorno. Mencione o esporte apenas se fizer parte real dos seus planos."
+      ],
+      "questions": [
+        "O que quer fazer depois dos estudos?",
+        "Como esse curso vai ajudar?",
+        "O que está confirmado e o que ainda está considerando?"
+      ],
+      "prompts": [
+        "O que quer fazer depois dos estudos?",
+        "Como esse curso vai ajudar?",
+        "O que está confirmado e o que ainda está considerando?"
+      ],
+      "example": "Depois dos estudos, quero [objetivo real]. Esse curso me ajudará a desenvolver [habilidades úteis]."
+    },
+    {
+      "title": "Suas circunstâncias",
+      "summary": "Fale sobre solicitações anteriores e mudanças relevantes.",
+      "intro": "Pratique apenas os assuntos que se aplicam a você.",
+      "structure": "Explique o que aconteceu, o que mudou e o que está confirmado agora.",
+      "points": [
+        "Se recebeu uma recusa, explique os fatos e eventuais mudanças. Uma instituição ou documento novo não garante aprovação.",
+        "Se mudou de instituição ou de data de início, explique por quê e confirme os novos acordos com a instituição.",
+        "Se pratica esporte, explique seu recrutamento, resultados e como conciliará estudo e esporte. Não invente compromissos confirmados."
+      ],
+      "questions": [
+        "Já apresentou uma solicitação? O que mudou?",
+        "Sua instituição ou data de início mudou?",
+        "Se pratica esporte, como foi recrutado?"
+      ],
+      "prompts": [
+        "Já apresentou uma solicitação? O que mudou?",
+        "Sua instituição ou data de início mudou?",
+        "Se pratica esporte, como foi recrutado?"
+      ],
+      "example": "[Situação real]. O que mudou: [mudança, se houver]. Os acordos confirmados são [fatos]."
+    },
+    {
+      "title": "Prática de entrevista",
+      "summary": "Pratique respostas curtas antes da entrevista simulada.",
+      "intro": "As perguntas podem aparecer em outra ordem.",
+      "structure": "Responda à pergunta, acrescente um detalhe útil e faça uma pausa.",
+      "points": [
+        "Ouça com atenção. Use suas próprias palavras em vez de um discurso decorado.",
+        "Pratique estudos, financiamento e planos futuros. Mantenha os mesmos fatos mesmo quando a pergunta mudar.",
+        "Peça para repetir ou explicar quando necessário. Diga quando não souber um detalhe. Use o relatório para escolher a próxima prática."
+      ],
+      "questions": [
+        "Quais perguntas consegue responder com clareza?",
+        "O que ainda precisa conferir ou praticar?",
+        "O que quer melhorar na entrevista simulada?"
+      ],
+      "prompts": [
+        "Quais perguntas consegue responder com clareza?",
+        "O que ainda precisa conferir ou praticar?",
+        "O que quer melhorar na entrevista simulada?"
+      ],
+      "example": "Escolhi [instituição] porque [razão real]. Verifiquei [detalhe relevante]."
+    }
+  ],
+  "levels": {
+    "high-school": "Para o ensino médio, fale da série atual e das matérias. Não suponha que já terminou. Verifique moradia e apoio de um adulto ou da escola. Não precisa já ter escolhido profissão ou curso universitário.",
+    "undergraduate": "Para graduação, explique o ensino médio, estudos superiores e transferências ou pausas reais. Diferencie o nível que planeja iniciar da sua situação atual.",
+    "masters": "Para mestrado, relacione a formação anterior e a experiência com o curso. Confira as condições reais de bolsas ou funções de assistente.",
+    "phd": "Para doutorado, explique a pesquisa com simplicidade. Diferencie um possível orientador de um acordo confirmado. Não suponha financiamento integral; confira duração, condições e despesas restantes."
+  },
+  "strings": {
+    "Your learning path": "Seu caminho de aprendizagem",
+    "Your students’ learning": "A aprendizagem dos seus alunos",
+    "Continue your preparation for your F-1 interview.": "Continue sua preparação para a entrevista F-1.",
+    "Learn in your language": "Aprenda no seu idioma",
+    "Learning language": "Idioma de aprendizagem",
+    "Choose the language for lessons and your voice tutor. Mock interview language is separate.": "Escolha o idioma das lições e do tutor de voz. O idioma da entrevista é separado.",
+    "Choose before starting a session. Your notes stay in the language you wrote them.": "Escolha antes de começar. Suas notas ficam no idioma em que foram escritas.",
+    "Choose a module": "Escolha um módulo",
+    "Completion tracks your learning, not visa approval or interview readiness.": "A conclusão registra aprendizagem, não aprovação de visto nem prontidão para a entrevista.",
+    "← Back to all modules": "← Todos os módulos",
+    "1. Learn": "1. Aprender",
+    "Understand the question": "Entenda a pergunta",
+    "How to answer": "Como responder",
+    "See an example": "Veja um exemplo",
+    "Use your actual facts. Note anything you still need to check.": "Use seus fatos reais. Anote o que precisa conferir.",
+    "2. Practise with your tutor": "2. Pratique com seu tutor",
+    "Your tutor explains, gives an example, and helps you practise in your own words. Ask “explain more” if you need help, or say “next” to move on.": "O tutor explica, dá um exemplo e ajuda você a praticar com suas palavras. Peça «explique mais» ou diga «próximo» para continuar.",
+    "Ready to start": "Pronto para começar",
+    "Start voice lesson": "Iniciar lição de voz",
+    "End lesson conversation": "Encerrar conversa",
+    "Voice lessons last up to 8 minutes. Daily practice attempts are unlimited. Reading and notes remain available.": "As lições de voz duram até 8 minutos. As tentativas diárias são ilimitadas. A leitura e as notas continuam disponíveis.",
+    "Your conversation is for learning, with no readiness score. Save the points you want to keep in your notes; the conversation itself is not saved.": "Esta conversa é para aprender, sem pontuação. Guarde os pontos úteis nas notas; a conversa não é salva.",
+    "My notes — optional": "Minhas notas — opcional",
+    "You do not need to write anything to finish. Your saved notes stay here if you want to use them.": "Não é preciso escrever para concluir. Suas notas salvas ficam aqui.",
+    "Questions you can practise aloud or write about:": "Perguntas para praticar falando ou escrevendo:",
+    "Anything you want to remember": "O que quiser lembrar",
+    "Save notes": "Salvar notas",
+    "3. Finish this module": "3. Conclua este módulo",
+    "By completing this module, you confirm that you reviewed it and practised an answer. You can practise with the tutor or on your own.": "Ao concluir, confirma que revisou o módulo e praticou uma resposta, com o tutor ou sozinho.",
+    "Complete module & continue →": "Concluir e continuar →",
+    "Complete module & go to mock interview →": "Concluir e ir à entrevista →",
+    "Retry loading lesson": "Tentar carregar novamente",
+    "Completion records your progress through this lesson, not an assessment of readiness. You can revisit it any time.": "Concluir registra progresso, não uma avaliação de prontidão. Pode voltar quando quiser.",
+    "Completed": "Concluído",
+    "In progress": "Em andamento",
+    "Not started": "Não iniciado",
+    "Not completed": "Não concluído",
+    "Module": "Módulo",
+    "Review your course": "Revisar o curso",
+    "Continue lesson": "Continuar lição",
+    "Use your actual facts; note anything you need to check.": "Use seus fatos reais; anote o que precisa conferir.",
+    "This is an example template, not a statement about you. Replace brackets with confirmed facts; do not memorize it.": "É um modelo, não uma afirmação sobre você. Substitua os colchetes por fatos confirmados; não decore.",
+    "Unsaved changes": "Alterações não salvas",
+    "Loading your notes…": "Carregando notas…",
+    "Saving…": "Salvando…",
+    "Notes saved. You can return to them later.": "Notas salvas. Pode voltar depois.",
+    "Earlier notes saved. You have new unsaved changes.": "Notas anteriores salvas. Há novas alterações não salvas.",
+    "Lesson complete. You can keep practising or try a mock interview.": "Lição concluída. Continue praticando ou tente uma entrevista.",
+    "Unlimited tutoring starts. Session time limits still apply.": "Inícios de tutoria ilimitados. O limite por sessão continua válido.",
+    "Up to 8 minutes. Voice stops automatically at the limit.": "Até 8 minutos. A voz para automaticamente no limite.",
+    "Your tutor is responding…": "Seu tutor está respondendo…",
+    "Focus first": "Prioridade",
+    "Your next steps": "Seus próximos passos",
+    "More next steps": "Mais passos",
+    "What went well": "O que foi bem",
+    "Points to clarify": "Pontos a esclarecer",
+    "There is not enough evidence in this interview to identify a clear strength yet.": "Ainda não há evidências suficientes para identificar um ponto forte.",
+    "No specific improvement identified in the answers assessed.": "Não foi identificada melhoria específica nas respostas avaliadas.",
+    "No specific weakness identified from the answers assessed.": "Não foi identificado ponto fraco específico nas respostas avaliadas.",
+    "Interview feedback": "Feedback da entrevista",
+    "Next step": "Próximo passo",
+    "What to work on next": "O que praticar depois",
+    "Practise this": "Praticar isto",
+    "How your score was calculated": "Como sua pontuação foi calculada",
+    "Overall preparation": "Preparação geral",
+    "Partial practice score": "Pontuação parcial de prática",
+    "Practice readiness": "Prontidão para a prática",
+    "Practice score": "Pontuação de prática",
+    "Practice preparation score": "Pontuação de preparação",
+    "Interview incomplete": "Entrevista incompleta",
+    "Partial interview · assessed answers only": "Entrevista parcial · apenas respostas avaliadas",
+    "Not enough information to score": "Informações insuficientes para pontuar",
+    "Feedback on this practice interview, not a prediction of visa approval.": "Feedback desta prática, não uma previsão de aprovação de visto.",
+    "Practice feedback only. This is not a prediction or guarantee of visa approval.": "Apenas feedback de prática. Não prevê nem garante aprovação de visto.",
+    "Interview coverage": "Cobertura da entrevista",
+    "Partial interview · keep practising the remaining areas": "Entrevista parcial · pratique as áreas restantes",
+    "Not assessed — no points earned yet": "Não avaliado — ainda sem pontos",
+    "Not covered — not counted against you": "Não abordado — sem penalização",
+    "All relevant main areas were covered.": "Todas as áreas principais relevantes foram abordadas.",
+    "Not assessed": "Não avaliado",
+    "Assessed": "Avaliado",
+    "Not scored": "Sem pontuação",
+    "Ready": "Pronto",
+    "Almost Ready": "Quase pronto",
+    "Needs Significant Prep": "Precisa de bastante preparação",
+    "High Concern": "Pontos importantes a melhorar",
+    "Standard": "Padrão",
+    "Challenging": "Desafiador",
+    "Intensive": "Intensivo",
+    "Study plans": "Planos de estudo",
+    "School choice": "Escolha da instituição",
+    "Your subject": "Sua área",
+    "Academic history": "Histórico acadêmico",
+    "Funding": "Financiamento",
+    "Future plans": "Planos futuros",
+    "Previous applications and travel": "Solicitações e viagens anteriores",
+    "Print / save report as PDF": "Imprimir / salvar relatório PDF",
+    "Print / save as PDF": "Imprimir / salvar PDF",
+    "Download report (PDF)": "Baixar relatório (PDF)",
+    "Opens a print-ready report. Choose Save as PDF in your browser.": "Abre um relatório para impressão. Escolha Salvar como PDF no navegador.",
+    "F-1 INTERVIEW PRACTICE REPORT": "RELATÓRIO DE PRÁTICA DE ENTREVISTA F-1",
+    "Topic coverage and scores": "Temas e pontuações",
+    "Scoring basis": "Base da pontuação",
+    "Not assessed means no points earned yet; it does not mean a wrong answer.": "Não avaliado significa ainda sem pontos, não uma resposta errada.",
+    "Each assessed topic is scored out of 10. The average is converted to a score out of 100. Unanswered topics are excluded.": "Cada tema avaliado recebe nota de 0 a 10. A média é convertida para 100. Temas sem resposta são excluídos.",
+    "At least two distinct substantive answers are needed for a score. Feedback is still available.": "São necessárias pelo menos duas respostas substanciais distintas para pontuar. O feedback continua disponível.",
+    "All seven areas were assessed.": "As sete áreas foram avaliadas.",
+    "Interview incomplete. Unassessed areas earn no points yet; this does not mean their answers were wrong.": "Entrevista incompleta. Áreas não avaliadas ainda não somam pontos; isso não significa respostas erradas.",
+    "Try another mock to cover the topics listed below.": "Tente outra entrevista para abordar os temas abaixo.",
+    "Keep practising clear answers in your own words.": "Continue praticando respostas claras com suas palavras.",
+    "Human review": "Revisão humana",
+    "Add human review": "Adicionar revisão humana",
+    "Student": "Estudante",
+    "Not recorded": "Não registrado",
+    "Mode not recorded": "Modo não registrado",
+    "No written feedback was recorded.": "Nenhum feedback escrito registrado.",
+    "Detailed topic assessments were not recorded for this historical report.": "Este relatório antigo não tem avaliações detalhadas registradas.",
+    "Private practice feedback": "Feedback privado de prática",
+    "Choose Save as PDF in the print dialog. On iPhone, use Share → Print to preview and save the report.": "Escolha Salvar como PDF na impressão. No iPhone, use Compartilhar → Imprimir para visualizar e salvar.",
+    "Scoring basis: assessed topic scores only. Unanswered topics are excluded.": "Somente temas avaliados são pontuados. Temas sem resposta são excluídos.",
+    "Assessed topic scores only; unanswered topics are excluded.": "Apenas temas avaliados; os sem resposta são excluídos.",
+    "Assessed - score not recorded": "Avaliado — pontuação não registrada",
+    "Focused practice": "Prática focada",
+    "Review this feedback with your tutor. Starting this lesson does not mark the issue as resolved.": "Revise este feedback com o tutor. Começar não marca o ponto como resolvido.",
+    "Return to regular lesson": "Voltar à lição",
+    "A student profile is needed to save notes or start a lesson.": "É necessário um perfil para salvar notas ou começar.",
+    "An answer, a useful point, or something to check later.": "Uma resposta, um ponto útil ou algo para conferir depois.",
+    "Requesting microphone…": "Solicitando microfone…",
+    "Listening — answer when you’re ready.": "Ouvindo — responda quando estiver pronto.",
+    "One minute remaining in this voice session.": "Resta um minuto.",
+    "Switch modules without saving these notes?": "Mudar sem salvar as notas?",
+    "Return to modules without saving your changes?": "Voltar sem salvar as alterações?",
+    "Switch students without saving these notes?": "Mudar de aluno sem salvar?"
+  },
+  "formats": {
+    "progress": "{0} de {1} módulos concluídos",
+    "module": "Módulo {0} de {1}",
+    "coverage": "{0} de {1} áreas avaliadas",
+    "score": "{0} pontos de {1} nas sete áreas, convertidos para pontuação de 0 a 100.",
+    "quality": "Qualidade dos temas respondidos: {0}/100. Média apenas das áreas avaliadas.",
+    "date": "Data da prática: {0}",
+    "mock": "Entrevista n.º {0}",
+    "adjusted": "Pontuação ajustada: {0}/100",
+    "reviewer": "Avaliador: {0}"
+  }
+}
