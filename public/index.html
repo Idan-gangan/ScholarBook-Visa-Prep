@@ -94,6 +94,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
 <link rel="stylesheet" href="/owner.css">
 <link rel="stylesheet" href="/student.css">
 <link rel="stylesheet" href="/home.css">
+<style>.language-choice{border:2px solid #3767ce;margin:20px 0;padding:20px;background:#f3f7ff}.language-choice h2{margin-top:0}.language-choice select{width:100%;min-height:44px}.language-choice .field{min-width:0}.language-choice p{overflow-wrap:anywhere}</style>
 </head>
 <body>
 <div id="welcome" class="welcome">
@@ -207,6 +208,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
       <div class="learning-welcome"><div><h1 id="learningGreeting">Welcome back</h1><p>Continue your preparation for your F-1 interview.</p></div><div class="course-status"><p id="courseProgress" role="status">Loading progress…</p><progress id="courseMeter" class="course-meter" max="6" value="0" aria-label="Modules completed"></progress></div></div>
       <div class="field learning-student-picker" id="learningStudentPicker"><label for="learn_athleteSelect">Student</label><select id="learn_athleteSelect" onchange="changeLearningStudent()"></select></div>
       <div class="card course-overview hidden"><img class="course-photo" src="/assets/atlas-study.webp" width="600" height="400" alt="" loading="lazy"><div class="course-feature-copy"><div class="course-feature-top"><span class="eyebrow">YOUR NEXT LESSON</span><span class="pill blue" id="featuredModuleNumber">Module 1 of 6</span></div><h2 id="featuredModuleTitle">Your study plans</h2><p id="featuredModuleSummary">Connect your country, school, and study choices.</p><button class="btn primary" id="continueLearningBtn" onclick="continueLearning()">Continue lesson <span aria-hidden="true">→</span></button></div></div>
+<div class="card language-choice" aria-labelledby="tutorLanguageTitle"><h2 id="tutorLanguageTitle">Learn in your language</h2><p>Choose the language your voice tutor will speak. You can practise your mock interview in a different language.</p><div class="field"><label for="tutorLanguage">Tutor language</label><select id="tutorLanguage" aria-describedby="tutorLanguageHelp"><option value="en">English</option><option value="fr">Français — French</option><option value="es">Español — Spanish</option><option value="pt">Português — Portuguese</option><option value="ar">العربية — Arabic</option><option value="sw">Kiswahili — Swahili</option></select></div><p id="tutorLanguageHelp" class="small muted">Applies to voice tutoring. Lesson reading and navigation remain in English. Choose before starting a session.</p></div>
       <div id="learningOverview"><h2 class="course-section-title">Choose a module</h2><p class="small muted">Completion tracks your learning, not visa approval or interview readiness.</p>
       <p id="learningVoiceUsage" class="small muted" role="status"></p>
       <div id="moduleCards" class="module-grid" aria-label="Learning modules"></div></div>
@@ -229,7 +231,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
         <p id="lessonVoiceUsage" class="small muted" role="status"></p>
         <p class="small muted">Voice lessons last up to 8 minutes. Daily practice attempts are unlimited. Reading and notes remain available.</p>
         <div class="lesson-actions"><button class="btn primary" id="learn_startBtn" onclick="startLearningTutor()">Start voice lesson</button><button class="btn danger" id="learn_stopBtn" onclick="stopVoice()" disabled>End lesson conversation</button></div>
-        <div id="learn_transcript" class="lesson-transcript" aria-label="Tutor conversation"></div>
+        <div id="learn_transcript" dir="auto" class="lesson-transcript" aria-label="Tutor conversation"></div>
         <p class="small muted">Your conversation is for learning, with no readiness score. Save the points you want to keep in your notes; the conversation itself is not saved.</p>
       </div>
       <details id="optionalNotes" class="card lesson-block">
@@ -276,6 +278,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
       <div class="page-heading"><span class="eyebrow">YOUR PRACTICE ROOM</span><h1>Live AI Mock Interview</h1><p class="muted">A focused conversation. A clearer next step.</p></div>
       <div class="notice">Answer one question at a time. Your interviewer will ask follow-up questions. You will get feedback after you end the interview.</div>
       <div class="field" id="mockStudentPicker"><label for="athleteSelect">Student</label><select id="athleteSelect"></select></div>
+<div class="card language-choice" aria-labelledby="mockLanguageTitle"><h2 id="mockLanguageTitle">Choose your practice language</h2><p>Speak with the interviewer in the language you choose.</p><div class="formgrid"><div class="field"><label for="mockLanguage">Interview language</label><select id="mockLanguage" aria-describedby="mockLanguageHelp"><option value="en">English</option><option value="fr">Français — French</option><option value="es">Español — Spanish</option><option value="pt">Português — Portuguese</option><option value="ar">العربية — Arabic</option><option value="sw">Kiswahili — Swahili</option></select></div><div class="field"><label for="feedbackLanguage">Written feedback language</label><select id="feedbackLanguage" aria-describedby="feedbackLanguageHelp"><option value="en">English</option><option value="fr">Français — French</option><option value="es">Español — Spanish</option><option value="pt">Português — Portuguese</option><option value="ar">العربية — Arabic</option><option value="sw">Kiswahili — Swahili</option></select></div></div><p id="feedbackLanguageHelp" class="small muted">For example: practise in English and receive written feedback in French. Report headings and navigation remain in English.</p><p id="mockLanguageHelp" class="small muted">Choose before starting. These are practice options, not a guarantee of the language available at your embassy interview.</p></div>
       <div class="field"><label for="interviewDifficulty">Interview mode</label><select id="interviewDifficulty"><option value="standard">Standard</option><option value="challenging">Challenging</option><option value="intensive">Intensive</option></select><p class="small muted">Standard: direct questions. Challenging: more follow-ups. Intensive: deeper questioning. All modes use simple language and the same scoring standard.</p></div>
       <div class="voiceBox">
         <div class="card">
@@ -293,7 +296,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
             <div class="interviewer-caption"><span id="interviewerActivity" role="status">Ready when you are</span><span class="interviewer-wave" aria-hidden="true"><i></i><i></i><i></i><i></i></span></div>
           </div>
           <p class="small muted">AI practice with a still portrait, not a real consular officer. Microphone only; no camera or video recording.</p>
-          <p class="muted">Answer naturally after each question. Pause when you finish; the interviewer will respond automatically.</p><div id="transcript" class="transcript"></div>
+          <p class="muted">Answer naturally after each question. Pause when you finish; the interviewer will respond automatically.</p><div id="transcript" dir="auto" class="transcript"></div>
         </div>
         <div class="card">
           <h3>After the interview</h3>
@@ -368,6 +371,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
 <script src="/country-picker.js"></script>
 <script src="/voice-consent.js"></script>
 <script src="/planning.js"></script>
+<script src="/practice-languages.js"></script>
 <script>
 let me=null, athletes=[], reports=[], pc=null, dc=null, stream=null, transcript=[];
 const $=id=>document.getElementById(id);
@@ -958,7 +962,7 @@ function voiceEvent(v,ev){
   }
   if((ev.type==="response.output_audio_transcript.done"||ev.type==="response.audio_transcript.done") && ev.transcript){
     addLine("assistant",ev.transcript);
-    if(v.mode==='mock'&&/thank you[.!]? this mock interview is complete[.!]? your feedback is ready to generate[.!]?/i.test(ev.transcript.replace(/\s+/g,' ').trim())){v.closing=true;voiceMic(v,false);voiceReady(v);}
+    if(v.mode==='mock'&&VisaAtlasLanguages.isClosing(ev.transcript,v.language||'en')){v.closing=true;voiceMic(v,false);voiceReady(v);}
   }
   if(ev.type==="input_audio_buffer.committed" && ev.item_id){
     v.seenItems??=new Set();
@@ -1000,7 +1004,8 @@ async function startVoice(mode="mock",consented=false){
   voiceScreen=mode;
   if(!voiceEl("athleteSelect").value){voiceEl("voiceStatus").textContent="Select a student first.";return}
   if(mode==='mock'&&typeof window!=='undefined'&&window.VisaAtlasProfile){const p=athletes.find(a=>a.id===voiceEl("athleteSelect").value);const missing=window.VisaAtlasProfile.missing(p);if(missing.length){voiceEl("voiceStatus").textContent='Complete My Profile first: '+missing.join(', ');return}}
-  const v={mode,difficulty:mode==='mock'?$('interviewDifficulty').value:'standard',athleteId:voiceEl("athleteSelect").value,busy:false,playing:false,waiting:false,pendingItem:null,connected:false};voice=v;
+  const v={mode,language:$(mode==='learn'?'tutorLanguage':'mockLanguage').value,feedbackLanguage:$('feedbackLanguage').value,difficulty:mode==='mock'?$('interviewDifficulty').value:'standard',athleteId:voiceEl("athleteSelect").value,busy:false,playing:false,waiting:false,pendingItem:null,connected:false};voice=v;
+  for(const id of ["tutorLanguage","mockLanguage","feedbackLanguage"])$(id).disabled=true;
   if(mode==="learn")learningTranscript=[];
   else {mockSessionId=null;mockSave=Promise.resolve();$('interviewDifficulty').disabled=true;interviewerState('connecting');transcript=[];mockStudentId=v.athleteId;$("evalStatus").textContent=""}
   voiceEl("transcript").replaceChildren();
@@ -1024,7 +1029,7 @@ async function startVoice(mode="mock",consented=false){
     await peer.setLocalDescription(offer);if(voice!==v)return;
     await voiceEnd;if(voice!==v)return;
     v.abort=new AbortController();
-    const r=await fetch("/api/realtime-session?athleteId="+encodeURIComponent(v.athleteId)+"&mode="+mode+(mode==="learn"?"&lesson="+encodeURIComponent(activeLessonId)+reportPracticeQuery():"&difficulty="+encodeURIComponent(v.difficulty)),{method:"POST",body:offer.sdp,headers:{"Content-Type":"application/sdp"},signal:v.abort.signal});
+    const r=await fetch("/api/realtime-session?athleteId="+encodeURIComponent(v.athleteId)+"&mode="+mode+"&language="+encodeURIComponent(v.language)+"&feedbackLanguage="+encodeURIComponent(v.feedbackLanguage)+(mode==="learn"?"&lesson="+encodeURIComponent(activeLessonId)+reportPracticeQuery():"&difficulty="+encodeURIComponent(v.difficulty)),{method:"POST",body:offer.sdp,headers:{"Content-Type":"application/sdp"},signal:v.abort.signal});
     const answer=await r.text();refreshVoiceUsage();
     v.serverToken=r.ok?r.headers.get('X-Voice-Token'):null;
     if(voice!==v){if(r.ok&&v.serverToken)endServerVoice(v.serverToken);return;}
@@ -1057,6 +1062,7 @@ function stopVoice(message=voiceScreen==="learn"?"Lesson conversation ended":"In
       mockSave=api('/api/mock-session/end',{method:'POST',body:JSON.stringify({mockSessionId,transcript})}).catch(()=>{if(version===sessionVersion&&me)$('evalStatus').textContent='Your conversation is still here. Use View my feedback to retry saving it.';});
     }
   }
+  for(const id of ["tutorLanguage","mockLanguage","feedbackLanguage"])$(id).disabled=false;
   pc=dc=stream=null;voiceEl("voiceStatus").textContent=message;
   voiceEl("startBtn").disabled=false;voiceEl("stopBtn").disabled=true;
   voiceEl("athleteSelect").disabled=false;

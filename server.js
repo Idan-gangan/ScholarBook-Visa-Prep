@@ -1,5 +1,6 @@
 
 const http = require("http");
+const practiceLanguages=require("./public/practice-languages");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
@@ -673,7 +674,7 @@ Use only information in the supplied profile and transcript. Do not reward inven
           "OpenAI-Safety-Identifier":sha(u.id).slice(0,32)
         },
         signal:evaluationSignal,
-        body:JSON.stringify({model:EVALUATION_MODEL,input:prompt,max_output_tokens:EVALUATION_POLICY.outputTokens,store:false})
+        body:JSON.stringify({model:EVALUATION_MODEL,input:prompt.replace("using plain English", "using the selected feedback language")+practiceLanguages.feedbackInstructions(mockSession.feedbackLanguage,mockSession.practiceLanguage),max_output_tokens:EVALUATION_POLICY.outputTokens,store:false})
       });
       const api=await r.json();
       if(!r.ok)return json(res,502,{error:"Report generation is temporarily unavailable. Please try again later."});
@@ -732,6 +733,7 @@ Use only information in the supplied profile and transcript. Do not reward inven
       const report={
         id:"rp_"+crypto.randomBytes(6).toString("hex"),
         athleteId:athlete.id,evaluationKey,mockSessionId:mockSession.id,
+        practiceLanguage:mockSession.practiceLanguage||"en",feedbackLanguage:mockSession.feedbackLanguage||"en",
         mockNumber:(current.reports.filter(x=>x.athleteId===athlete.id).length+1),
         createdAt:new Date().toISOString(),
         scores:safeScores,overall:result.overall,
@@ -814,6 +816,8 @@ Use only information in the supplied profile and transcript. Do not reward inven
       if(!canAccessStudent(u,athlete)) return json(res,403,{error:"You cannot start a session for this student."});
       const mode=url.searchParams.get("mode") || "mock";
       if(!["mock","learn"].includes(mode)) return json(res,400,{error:"Unknown session mode"});
+      const practiceLanguage=practiceLanguages.requireLanguage(url.searchParams.get('language')).code;
+      const feedbackLanguage=practiceLanguages.requireLanguage(url.searchParams.get('feedbackLanguage')).code;
       const difficulty=mode==='mock'?(url.searchParams.get('difficulty')||'standard'):'standard';
       if(!interviewDesign.MODES[difficulty])return json(res,400,{error:'Choose Standard, Challenging or Intensive.'});
       if(mode==='mock'){
@@ -870,6 +874,7 @@ Start with the opening guidance in INTERVIEW DESIGN below.`;
         const saved=await pool.query("SELECT data FROM learning_progress WHERE student_id=$1 AND lesson_id=$2",[athlete.id,url.searchParams.get("lesson")]);
         instructions=tutorInstructions(athlete,saved.rows[0]?.data || {},url.searchParams.get("lesson"))+practiceInstructions(practiceContext);
       }
+      instructions=practiceLanguages.voiceInstructions(instructions,practiceLanguage,mode);
       const fd=new FormData();
       fd.set("sdp",sdp);
       fd.set("session",JSON.stringify({
@@ -915,7 +920,7 @@ Start with the opening guidance in INTERVIEW DESIGN below.`;
           current.mockSessions??=[];
           // Retain unreported sessions for 30 days. Existing reports remain available.
           current.mockSessions=current.mockSessions.filter(x=>Date.parse(x.createdAt)>Date.now()-30*86400000);
-          current.mockSessions.push({id:mockSessionId,userId:u.id,athleteId:athlete.id,createdAt:new Date().toISOString(),difficulty,plan:interviewPlan,evaluationVersion:3,profile:interviewDesign.profileSnapshot(athlete)});
+          current.mockSessions.push({id:mockSessionId,userId:u.id,athleteId:athlete.id,createdAt:new Date().toISOString(),difficulty,practiceLanguage,feedbackLanguage,plan:interviewPlan,evaluationVersion:3,profile:interviewDesign.profileSnapshot(athlete)});
         },{userId:u.id,athleteId:athlete.id});
       }
       if(res.destroyed)return;

@@ -109,7 +109,7 @@ test('report practice opens the matched lesson and clears on module change',asyn
  assert.equal(f.run('activeLessonId'),'funding');assert.match(f.elements.get('practiceFocusText').textContent,/Clarify tuition coverage/);
  assert.equal(f.run('reportPracticeQuery()'),'&reportId=r1&focus=0');
  await f.run('startLearningTutor()');
- assert.ok(f.store.requests.some(request=>request.url.includes('mode=learn&lesson=funding&reportId=r1&focus=0')));
+ assert.ok(f.store.requests.some(request=>request.url.includes('mode=learn') && request.url.includes('&lesson=funding&reportId=r1&focus=0')));
  await f.run("selectLearningModule('study-purpose')");assert.equal(f.run('reportPracticeQuery()'),'');assert.equal(f.run('lessonPractice'),null);
 });
 test('report practice escapes feedback and rejects unavailable student targets',async()=>{
@@ -162,7 +162,7 @@ test('students land at home and saved notes/completion reload',async()=>{
 });
 test('tutor routes separately, preserves mock transcript, and navigation stops microphone',async()=>{
  const f=fixture();await f.run('boot()');f.run('show("learning");addLine("athlete","Mock answer","mock")');await f.run('startLearningTutor()');
- assert.match(f.store.requests.find(r=>r.url.includes('realtime-session')).url,/mode=learn&lesson=study-purpose/);
+ assert.match(f.store.requests.find(r=>r.url.includes('realtime-session')).url,/mode=learn&language=.*&lesson=study-purpose/);
  f.run('addLine("assistant","<img src=x>")');assert.equal(f.run('transcript.length'),1);assert.equal(f.run('learningTranscript.length'),1);
  assert.equal(f.elements.get('learn_transcript').children[0].children[1].textContent,'<img src=x>');
  f.run('show("interview")');assert.equal(f.store.tracks[0].stopped,true);assert.equal(f.run('voice'),null);
@@ -460,4 +460,13 @@ test('unverified sign-in shows only verification screen and loads no preparation
  await f.run('refreshVerification()');
  assert.equal(f.elements.get('verificationNotice').classList.contains('hidden'),true);
  assert.equal(f.elements.get('app').classList.contains('hidden'),false);
+});
+test('selected tutor language reaches server and language choices lock only during voice',async()=>{
+ const f=fixture();await f.run('boot()');await f.run("show('learning');selectLearningModule('study-purpose')");
+ f.elements.get('tutorLanguage').value='fr';f.elements.get('feedbackLanguage').value='ar';
+ await f.run("startVoice('learn')");
+ const request=f.store.requests.find(r=>r.url.includes('/api/realtime-session'));
+ assert.equal(new URL(request.url,'http://local').searchParams.get('language'),'fr');
+ assert.equal(f.elements.get('tutorLanguage').disabled,true);
+ f.run('stopVoice()');assert.equal(f.elements.get('tutorLanguage').disabled,false);
 });
