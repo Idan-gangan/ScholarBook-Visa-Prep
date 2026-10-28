@@ -13,7 +13,10 @@
  function voiceInstructions(prompt,code,mode){
   const language=requireLanguage(code);
   prompt=prompt.replace('Use simple English in EVERY mode.','Use simple '+language.name+' in EVERY mode.');
-  if(mode==='mock')prompt=prompt.split(languages[0].close).join(language.close);
+  if(mode==='mock'){
+   prompt=prompt.split(languages[0].close).join(language.close);
+   if(language.code!=='en')prompt=prompt.replace('Your FIRST spoken turn must be exactly:', 'Your FIRST spoken turn must be a natural '+language.name+' translation of the following introduction and audio check. Do not speak the English source text:');
+  }
   return prompt+'\nPRACTICE LANGUAGE: '+language.name+'. Speak in this language from the first greeting, including the introduction and audio check. Translate example questions naturally. Keep VisaAtlas and proper names unchanged. Understand answers in this language or English; never infer language from nationality. Use the same topics, difficulty and scoring standards. '+(mode==='mock'?'Use this exact closing in the selected language: "'+language.close+'". If asked for an explanation in another language, briefly translate the question without giving an answer or coaching. Then return to the selected interview language.':'Explain and give examples in the selected language; you may explain in another language when the student explicitly requests it.');
  }
  function feedbackInstructions(code,practiceCode){return '\nFEEDBACK LANGUAGE: '+requireLanguage(code).name+'. Write all narrative feedback, strengths, clarifications, summary and next actions in this language. Keep JSON keys, enum values, topic identifiers and lesson IDs exactly as specified. The interview practice language was '+requireLanguage(practiceCode).name+'. Assess clarity in that language; do not label this an English-proficiency assessment or penalize a student for using the selected language. Preserve all scoring rules.';}

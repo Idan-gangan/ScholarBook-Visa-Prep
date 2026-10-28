@@ -19,3 +19,19 @@ test('every mock retains interview rules with a localized closing and language',
 test('feedback language is independent and preserves machine identifiers',()=>{
  const prompt=languages.feedbackInstructions('fr','en');assert.match(prompt,/FEEDBACK LANGUAGE: French/);assert.match(prompt,/practice language was English/);assert.match(prompt,/Keep JSON keys/);
 });
+
+test('non-English mock introductions do not require the exact English greeting',()=>{
+ for(const lang of languages.languages){
+  for(const mode of ['standard','challenging','intensive']){
+   const prompt=languages.voiceInstructions(design.mockInstructions({},mode,[],'test'),lang.code,'mock');
+   if(lang.code==='en')assert.match(prompt,/Your FIRST spoken turn must be exactly:/);
+   else {
+    assert.ok(prompt.includes('Your FIRST spoken turn must be a natural '+lang.name+' translation'));
+    assert.doesNotMatch(prompt,/Your FIRST spoken turn must be exactly:/);
+    assert.match(prompt,/Do not speak the English source text/);
+   }
+   assert.match(prompt,/Then STOP and WAIT for the student's audio confirmation/);
+   assert.match(prompt,/Do not assume confirmation from silence/);
+  }
+ }
+});
