@@ -11,7 +11,7 @@ function fixture(){
  const document={getElementById:id=>{if(!elements.has(id)){if(id.startsWith('p_')||['educationHistory','educationHistoryTitle','interviewCities'].includes(id))elements.set(id,element());else throw new Error('Missing DOM element '+id);}return elements.get(id)},querySelector:selector=>{if(!elements.has(selector))elements.set(selector,element());return elements.get(selector)},querySelectorAll:selector=>selector==='.screen'?['learning','dashboard','interview','profile','reports','manager'].map(id=>elements.get(id)):[],createElement:()=>element(),createTextNode:text=>({textContent:text})};
  const student={id:'s1',userId:'u1',name:'Test Student',university:'Example University',major:'Biology',currentScore:0};
  const store={progress:{},moduleProgress:{},requests:[],tracks:[],failLoad:false,failPassword:false};
- const ctx=vm.createContext({document,console,AbortController,URL,Date,JSON,Set,setTimeout,clearTimeout,Option:function(text,value){return {text,value}},window:{VisaAtlasPlanning:require("../public/planning"),VisaAtlasCurriculum:require("../public/curriculum"),addEventListener(){}},location:{reload(){}},confirm:()=>true,navigator:{mediaDevices:{getUserMedia:async()=>{const track={enabled:true,stop(){this.stopped=true}};store.tracks.push(track);return {getTracks:()=>[track],getAudioTracks:()=>[track]}}}},RTCPeerConnection:class{addTrack(){}createDataChannel(){return {readyState:'open',addEventListener(){},send(){},close(){}}}async createOffer(){return {sdp:'offer'}}async setLocalDescription(){}async setRemoteDescription(){}close(){}},fetch:async(url,opt={})=>{
+ const ctx=vm.createContext({document,console,AbortController,URL,Date,JSON,Set,setTimeout,clearTimeout,Option:function(text,value){return {text,value}},window:{listeners:{},VisaAtlasPlanning:require("../public/planning"),VisaAtlasCurriculum:require("../public/curriculum"),addEventListener(name,callback){this.listeners[name]=callback}},location:{reload(){}},confirm:()=>true,navigator:{mediaDevices:{getUserMedia:async()=>{const track={enabled:true,stop(){this.stopped=true}};store.tracks.push(track);return {getTracks:()=>[track],getAudioTracks:()=>[track]}}}},RTCPeerConnection:class{addTrack(){}createDataChannel(){return {readyState:'open',addEventListener(){},send(){},close(){}}}async createOffer(){return {sdp:'offer'}}async setLocalDescription(){}async setRemoteDescription(){}close(){}},fetch:async(url,opt={})=>{
    store.requests.push({url,...opt});let data;const route=new URL(url,'http://local').pathname;
    if(route==='/api/guardian-request')data={ok:true,requestId:'a'.repeat(64),message:'Sent'};
    else if(route==='/api/delete-account'){if(store.failDelete)return {ok:false,json:async()=>({error:'Current password is incorrect.'})};data={ok:true};}
@@ -484,4 +484,39 @@ test('report evidence and written retry history render hostile text safely',asyn
  f.run(`reports=[{id:'r1',athleteId:'s1',scoreType:'partial',incomplete:true,overall:null,practiceTargets:[{focus:'Explain funding',lessonId:'funding',title:'Funding'}],evidence:[{label:'Funding',question:'<img src=x>',answer:'<script>bad</script>',feedback:'Explain funding'}],practiceAttempts:[{focus:0,key:'k',createdAt:'2026-10-28',answer:'<img src=x>',outcome:'improved',feedback:'<script>bad</script>',nextStep:'Check costs.'}]}];renderReports()`);
  const markup=f.elements.get('reportsList').innerHTML;
  assert.match(markup,/Try this answer again/);assert.match(markup,/Answers behind this feedback/);assert.match(markup,/Saved practice/);assert.match(markup,/&lt;script&gt;/);assert.doesNotMatch(markup,/<script>|<img src=x>/);
+});
+
+test('interrupted microphone releases lesson and allows a mock to start',async()=>{
+ const f=fixture();await f.run('boot()');await f.run("startVoice('learn')");
+ const first=f.store.tracks[0];
+ first.onmute();
+ await f.run('voiceEnd');
+ assert.equal(f.run('voice'),null);assert.equal(first.stopped,true);
+ assert.equal(f.elements.get('learn_startBtn').disabled,false);
+ assert.match(f.elements.get('learn_voiceStatus').textContent,/interrupted/);
+ assert.ok(f.store.requests.some(r=>r.url==='/api/voice/end'));
+ await f.run("startVoice('mock')");
+ assert.equal(f.run('voice.mode'),'mock');
+ first.onended();assert.equal(f.run('voice.mode'),'mock','old events must not stop a newer session');
+});
+test('backgrounding and page exit stop voice and restore start controls',async()=>{
+ for(const event of ['visibilitychange','pagehide']){
+  const f=fixture();await f.run('boot()');await f.run('startVoice()');
+  f.run("document.hidden=true;window.listeners['"+event+"']()");
+  assert.equal(f.run('voice'),null);assert.equal(f.store.tracks[0].stopped,true);
+  assert.equal(f.elements.get('startBtn').disabled,false);
+  await f.run('voiceEnd');
+ }
+});
+test('startup timeout restores controls and discards late microphone access',async()=>{
+ const f=fixture();await f.run('boot()');
+ let resolveMic;f.ctx.navigator.mediaDevices.getUserMedia=()=>new Promise(r=>resolveMic=r);
+ const timers=[];f.ctx.setTimeout=(fn,ms)=>{timers.push({fn,ms});return 1};
+ f.ctx.clearTimeout=()=>{};
+ const pending=f.run('startVoice()');
+ timers.find(t=>t.ms===30000).fn();
+ assert.equal(f.run('voice'),null);assert.equal(f.elements.get('startBtn').disabled,false);
+ let stopped=false;resolveMic({getTracks:()=>[{stop(){stopped=true}}]});await pending;
+ assert.equal(stopped,true);
+ assert.equal(f.store.requests.some(r=>r.url.startsWith('/api/realtime-session')),false);
 });

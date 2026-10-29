@@ -6,7 +6,7 @@ const code=html.slice(html.indexOf('// Voice lifecycle:'),html.indexOf('async fu
 function setup(){
  const els=new Map(),sent=[],lines=[],timers=new Map();let next=0;
  const track={enabled:false,stop(){this.stopped=true}};
- const ctx=vm.createContext({VisaAtlasLanguages:require("../public/practice-languages"),console,AbortController,JSON,confirm:()=>true,refreshVoiceUsage(){},navigator:{},RTCPeerConnection:function(){},setTimeout:fn=>{timers.set(++next,fn);return next},clearTimeout:id=>timers.delete(id),$:id=>{if(!els.has(id))els.set(id,{value:'athlete1',dataset:{},replaceChildren(){}});return els.get(id)},addLine:(role,text)=>lines.push({role,text}),api:async()=>({ok:true}),fetch(){}});
+ const ctx=vm.createContext({window:{addEventListener(){}},sessionVersion:0,me:{id:"u1"},VisaAtlasLanguages:require("../public/practice-languages"),console,AbortController,JSON,confirm:()=>true,refreshVoiceUsage(){},navigator:{},RTCPeerConnection:function(){},setTimeout:fn=>{timers.set(++next,fn);return next},clearTimeout:id=>timers.delete(id),$:id=>{if(!els.has(id))els.set(id,{value:'athlete1',dataset:{},replaceChildren(){}});return els.get(id)},addLine:(role,text)=>lines.push({role,text}),api:async()=>({ok:true}),fetch(){}});
  ctx.requestVoiceConsent=(mode,agree)=>agree();
  vm.runInContext('let pc=null,dc=null,stream=null,transcript=[];'+code,ctx);
  ctx.channel={readyState:'open',send:s=>sent.push(JSON.parse(s)),close(){}};ctx.mic={getAudioTracks:()=>[track],getTracks:()=>[track]};
@@ -77,9 +77,9 @@ test('session deadline stops media while preserving the captured transcript',asy
  s.ctx.RTCPeerConnection=class{addTrack(){}createDataChannel(){return {addEventListener(){},close(){}}}async createOffer(){return {sdp:'v=0'}}async setLocalDescription(){}async setRemoteDescription(){}close(){}};
  s.ctx.fetch=async()=>({ok:true,text:async()=> 'answer',headers:{get:()=> '480'}});
  await s.run('startVoice()');s.run('transcript.push({text:"keep this answer"})');
- assert.equal(s.timers.size,3);
+ assert.equal(s.timers.size,4);
  assert.equal(s.els.get('voiceClock').textContent,'08:00');
- const deadline=s.timers.get(s.run('voice.limitTimer'));deadline();
+ const deadline=s.timers.get(s.run('voice.limitTimer'));deadline();await s.run('voiceEnd');
  assert.equal(s.run('voice'),null);assert.equal(s.track.stopped,true);
  assert.equal(s.run('transcript[0].text'),'keep this answer');assert.equal(s.timers.size,0);
  assert.match(s.els.get('voiceStatus').textContent,/time limit reached/);
