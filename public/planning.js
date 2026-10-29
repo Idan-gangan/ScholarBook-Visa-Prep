@@ -5,7 +5,18 @@
   const today=Date.UTC(now.getFullYear(),now.getMonth(),now.getDate());
   return Math.round((Date.parse(value+'T00:00:00Z')-today)/86400000);
  }
- const api={validDate,daysUntil};
+ function practicePlan(reports){
+  const latest=reports.slice().sort((a,b)=>Date.parse(b.createdAt)-Date.parse(a.createdAt))[0];
+  if(!latest)return {task:null,topics:[]};
+  const topics=(latest.practiceTargets||[]).map((target,focus)=>{
+   const evidence=latest.evidence?.find(e=>e.feedback===target.focus);
+   const attempts=(latest.practiceAttempts||[]).filter(a=>a.focus===focus);
+   const last=method=>attempts.filter(a=>(a.method==='spoken-transcript-retry-v1')===method).slice(-1)[0];
+   return {reportId:latest.id,...target,index:focus,evidence,written:last(false),spoken:last(true)};
+  });
+  return {topics,task:topics.find(t=>t.evidence&&t.spoken?.outcome!=='improved')||null};
+ }
+ const api={validDate,daysUntil,practicePlan};
  if(typeof module==='object'&&module.exports)module.exports=api;
  else root.VisaAtlasPlanning=api;
 })(typeof window==='undefined'?globalThis:window);

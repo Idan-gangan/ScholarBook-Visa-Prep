@@ -12,3 +12,15 @@ test('countdown compares calendar dates without time-of-day rounding',()=>{
  assert.equal(daysUntil('2026-10-22',now),-1);
  assert.equal(daysUntil('',now),null);
 });
+test('daily task follows latest evidence and separates written from spoken content',()=>{
+ const {practicePlan}=require('../public/planning');
+ const r={id:'r',createdAt:'2026-10-29',practiceTargets:[{focus:'Explain costs',title:'Funding'}],evidence:[{feedback:'Explain costs',question:'Who pays?',answer:'Family.'}],practiceAttempts:[{focus:0,outcome:'improved',method:'written-retry-v1'}]};
+ assert.equal(practicePlan([r]).task.index,0);
+ assert.equal(practicePlan([r]).topics[0].spoken,undefined);
+ r.practiceAttempts.push({focus:0,outcome:'improved',method:'spoken-transcript-retry-v1'});
+ assert.equal(practicePlan([r]).task,null);
+ r.practiceAttempts.push({focus:0,outcome:'needs_work',method:'spoken-transcript-retry-v1'});
+ assert.equal(practicePlan([r]).task.index,0);
+ assert.equal(practicePlan([r,{id:'new',createdAt:'2026-10-30'}]).task,null);
+ assert.equal(practicePlan([{...r,evidence:[]}]).task,null);
+});

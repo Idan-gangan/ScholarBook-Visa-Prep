@@ -483,5 +483,5 @@ test('report evidence and written retry history render hostile text safely',asyn
  const f=fixture();await f.run('boot()');
  f.run(`reports=[{id:'r1',athleteId:'s1',scoreType:'partial',incomplete:true,overall:null,practiceTargets:[{focus:'Explain funding',lessonId:'funding',title:'Funding'}],evidence:[{label:'Funding',question:'<img src=x>',answer:'<script>bad</script>',feedback:'Explain funding'}],practiceAttempts:[{focus:0,key:'k',createdAt:'2026-10-28',answer:'<img src=x>',outcome:'improved',feedback:'<script>bad</script>',nextStep:'Check costs.'}]}];renderReports()`);
  const markup=f.elements.get('reportsList').innerHTML;
- assert.match(markup,/Try this answer again/);assert.match(markup,/Answers behind this feedback/);assert.match(markup,/Saved written practice/);assert.match(markup,/&lt;script&gt;/);assert.doesNotMatch(markup,/<script>|<img src=x>/);
+ assert.match(markup,/Try this answer again/);assert.match(markup,/Answers behind this feedback/);assert.match(markup,/Saved practice/);assert.match(markup,/&lt;script&gt;/);assert.doesNotMatch(markup,/<script>|<img src=x>/);
 });
