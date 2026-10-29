@@ -28,7 +28,7 @@ function createCostDiagnostics(pool,{log=console.warn}={}){
  async function voiceStart(userId,token,mode,sessionId){return safe(async()=>{if(!['learn','mock'].includes(mode))return;const key=hash(userId+':'+token);await pool.query(`INSERT INTO ai_cost_samples(sample_key,group_key,category,model,source) VALUES($1,$3,$2,'gpt-realtime-2.1','browser_diagnostic') ON CONFLICT DO NOTHING`,[key,mode,sessionId?hash(sessionId):key]);await cleanup()})}
  async function voiceEnd(userId,token,sample){return safe(async()=>{const s=voiceSample(sample);await pool.query(`UPDATE ai_cost_samples SET finished_at=NOW(),usage=$2::jsonb,elapsed_seconds=LEAST(480,GREATEST(0,EXTRACT(EPOCH FROM NOW()-created_at))),estimated_usd=$3 WHERE sample_key=$1 AND source='browser_diagnostic' AND finished_at IS NULL`,[hash(userId+':'+token),s?JSON.stringify(s):null,voiceEstimate(s)])})}
  async function report(sessionId,phase,model,response){return safe(async()=>{
-  if(!['report','review'].includes(phase))return;
+  if(!['report','review','practice'].includes(phase))return;
   const s=reportSample(response?.usage),key=hash(response?.id||crypto.randomUUID());
   await pool.query(`INSERT INTO ai_cost_samples(sample_key,group_key,category,model,source,usage,finished_at) VALUES($1,$2,$3,$4,'provider_response',$5::jsonb,NOW()) ON CONFLICT DO NOTHING`,[key,hash(sessionId),phase,String(response?.model||model).slice(0,100),s?JSON.stringify(s):null]);await cleanup();
  })}

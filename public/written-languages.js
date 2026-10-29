@@ -11,6 +11,7 @@
   const source=String(value??''),c=catalogs?.[language(code)];if(!c)return source;
   const s=source.trim();if(Object.hasOwn(c.strings,s))return source.replace(s,c.strings[s]);
   let m;
+  if((m=s.match(/^Saved written practice \((\d+)\)$/)))return text(code,'Saved written practice')+' ('+m[1]+')';
   if((m=s.match(/^(\d+) of (\d+) modules completed$/)))return format(code,'progress',m[1],m[2]);
   if((m=s.match(/^Module (\d+) of (\d+)$/)))return format(code,'module',m[1],m[2]);
   if((m=s.match(/^(?:MODULE|Module) (\d+)$/)))return text(code,'Module')+' '+m[1];

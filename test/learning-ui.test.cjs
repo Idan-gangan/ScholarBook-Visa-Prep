@@ -195,7 +195,7 @@ test('structured reports show actionable sections and escape every list item',as
  const f=fixture();await f.run('boot()');
  f.run(`reports=[{id:'r1',athleteId:'s1',formatVersion:2,overall:60,feedback:'A short summary',biggestWeakness:'Clarify funding',strengths:['<img src=x onerror=alert(1)>'],clarifications:['Explain the amount'],nextSteps:['Check your award','Explain the gap','Practise aloud']}];renderReports()`);
  const markup=f.elements.get('reportsList').innerHTML;
- for(const heading of ['What went well','Points to clarify','Your next steps','Practice readiness'])assert.ok(markup.includes(heading));
+ for(const heading of ['What went well','Points to clarify','Your next steps','Practice feedback'])assert.ok(markup.includes(heading));
  assert.match(markup,/<ol>/);assert.doesNotMatch(markup,/<img/);assert.match(markup,/&lt;img/);
  f.run('reports[0].strengths=[];renderReports()');assert.match(f.elements.get('reportsList').innerHTML,/not enough evidence/);
 });
@@ -324,19 +324,19 @@ test('partial report and dashboard label the score without a full readiness badg
  const f=fixture();await f.run('boot()');
  f.run(`reports=[{id:'r1',athleteId:'s1',formatVersion:3,overall:null,partialScore:75,scoreType:'partial',scoreExplanation:'Unanswered topics are excluded.',coverage:{assessed:6,required:7},notCovered:['Future plans'],feedback:'Useful answers.',strengths:[],clarifications:[],nextSteps:[],assessments:[{label:'School choice',status:'assessed',score:7,feedback:'Give a specific reason.'}]}];renderAll()`);
  const markup=f.elements.get('reportsList').innerHTML;
- assert.match(markup,/Partial practice score/);assert.match(markup,/75\/100/);assert.match(markup,/How your score was calculated/);
- assert.doesNotMatch(markup,/Almost Ready|High Concern/);assert.match(f.elements.get('dashCards').innerHTML,/75\/100<small[^>]*>\(partial\)/);
+ assert.match(markup,/Interview incomplete/);assert.doesNotMatch(markup,/75\/100/);assert.match(markup,/How your score was calculated/);
+ assert.doesNotMatch(markup,/Almost Ready|High Concern/);assert.match(f.elements.get('dashCards').innerHTML,/Incomplete/);
 });
-test('all-seven report leads with earned score and shows assessed-only quality in the breakdown',async()=>{
+test('historical incomplete report hides misleading overall score across report and dashboard',async()=>{
  const f=fixture();await f.run('boot()');
  f.run(`reports=[{id:'r1',athleteId:'s1',formatVersion:3,scoringMethod:'all-seven-v1',overall:14,partialScore:null,answeredTopicScore:50,earnedPoints:10,possiblePoints:70,scoreType:'partial',coverage:{assessed:2,required:7},notCovered:['Future plans'],feedback:'Useful answers.',strengths:[],clarifications:[],nextSteps:[],assessments:[{label:'Academic history',status:'assessed',score:6,feedback:'Clarify the training.'},{label:'Funding',status:'assessed',score:4,feedback:'Name the provider.'}]}];renderAll()`);
  const markup=f.elements.get('reportsList').innerHTML;
- assert.match(markup,/Overall preparation/);assert.match(markup,/14\/100/);
- assert.match(markup,/Interview incomplete · 2 of 7/);assert.match(markup,/10 \/ 70/);
+ assert.match(markup,/Practice feedback/);assert.doesNotMatch(markup,/14\/100/);
+ assert.match(markup,/Interview incomplete/);assert.doesNotMatch(markup,/10 \/ 70/);
  assert.match(markup,/Answered-topic quality: 50\/100/);
- assert.match(markup,/Not assessed — no points earned yet/);
- assert.doesNotMatch(markup,/High Concern|not counted against you|Partial practice score/);
- assert.match(f.elements.get('dashCards').innerHTML,/14\/100<small[^>]*>\(incomplete\)/);
+ assert.match(markup,/Not covered — not counted against you/);
+ assert.doesNotMatch(markup,/High Concern|Partial practice score/);
+ assert.match(f.elements.get('dashCards').innerHTML,/Incomplete/);
 });
 
 test('owner directory paginates and filters accounts, assignments and activity independently',async()=>{
@@ -478,4 +478,10 @@ test('Arabic conversation text is isolated from English speaker labels',()=>{
  const line=f.elements.get('transcript').children[0];
  assert.equal(line.children[1].dir,'auto');assert.equal(line.children[1].style.unicodeBidi,'plaintext');
  assert.equal(line.children[1].textContent,'لماذا اخترت الجامعة؟');
+});
+test('report evidence and written retry history render hostile text safely',async()=>{
+ const f=fixture();await f.run('boot()');
+ f.run(`reports=[{id:'r1',athleteId:'s1',scoreType:'partial',incomplete:true,overall:null,practiceTargets:[{focus:'Explain funding',lessonId:'funding',title:'Funding'}],evidence:[{label:'Funding',question:'<img src=x>',answer:'<script>bad</script>',feedback:'Explain funding'}],practiceAttempts:[{focus:0,key:'k',createdAt:'2026-10-28',answer:'<img src=x>',outcome:'improved',feedback:'<script>bad</script>',nextStep:'Check costs.'}]}];renderReports()`);
+ const markup=f.elements.get('reportsList').innerHTML;
+ assert.match(markup,/Try this answer again/);assert.match(markup,/Answers behind this feedback/);assert.match(markup,/Saved written practice/);assert.match(markup,/&lt;script&gt;/);assert.doesNotMatch(markup,/<script>|<img src=x>/);
 });
