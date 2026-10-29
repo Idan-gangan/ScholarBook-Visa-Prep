@@ -27,3 +27,5 @@
  #dashboard>.page-heading h1{font-size:27px}
  .practice-history .history-heading h2{font-size:22px}
 }
+
+.practice-task{margin:12px 0}.written-retry,.retry-history{margin-top:16px}.written-retry summary,.retry-history summary{cursor:pointer;font-weight:700;padding:12px 0}.written-retry textarea{display:block;width:100%;box-sizing:border-box;margin:8px 0;padding:12px;font:inherit;border:1px solid #a4b7cf;border-radius:10px;resize:vertical}.report-card blockquote{margin:12px 0;padding:12px 16px;border-inline-start:3px solid #83a5d1;background:#f1f5fa;overflow-wrap:anywhere;white-space:pre-wrap}.retry-history section{border-top:1px solid #dce4ee;padding-top:12px}.retry-status{overflow-wrap:anywhere}

@@ -74,7 +74,7 @@ function harness(user={id:'u1',role:'athlete'},env={}){
      return pool.query(sql,args);
    },release(){if(unlock)unlock();}};
  };
- const context=vm.createContext({require:id=>id==='./public/practice-languages'?require('../public/practice-languages'):id==='./operations'?require('../operations'):id==='./privacy-export'?require('../privacy-export'):id==='./age-eligibility'?require('../age-eligibility'):id==='./account-deletion'?require('../account-deletion'):id==='./report-pdf'?require('../report-pdf'):id==='./public/planning'?require('../public/planning'):id==='./interview-design'?require('../interview-design'):id==='./public/profile-requirements'?require('../public/profile-requirements'):id==='./interview-posts.json'?require('../interview-posts.json'):id==='./email-verification'?require('../email-verification'):id==='./profile-options'?require('../profile-options'):id==='./owner-access'?require('../owner-access'):id==='./report-practice'?require('../report-practice'):id==='http'?{createServer:fn=>{handler=fn;return {}}}:id==='pg'?{Pool:function(){return pool}}:id==='fs'?{...fs,readFileSync:(file,...args)=>file===path.resolve(__dirname,'../data/db.json')?'{}':fs.readFileSync(file,...args)}:id==='./evaluation-limits'?require('../evaluation-limits'):id==='./voice-limits'?require('../voice-limits'):id==='./learning'?learning:id==='./passwords'?passwords:id==='./password-recovery'?require('../password-recovery'):require(id),__dirname:path.resolve(__dirname,'..'),process:{env:{OPENAI_API_KEY:'test-only',...env}},console:{log:(...args)=>logs.push(args.join(' ')),warn:(...args)=>logs.push(args.join(' ')),error:(...args)=>logs.push(args.join(' '))},Buffer,URL,FormData,AbortSignal,fetch:async(url,options)=>{if(url.endsWith('/hangup'))return {ok:true,status:200};if(url.endsWith('/responses')){calls.push({url,request:JSON.parse(options.body)});return {ok:true,json:async()=>({output_text:JSON.stringify(JSON.parse(options.body).input.includes('VISAATLAS_EVIDENCE_REPORT_V3')?{summary:'Only limited answers were captured.',strengths:[],assessments:require('../interview-design').TOPICS.map(([topic])=>({topic,status:'not_covered'}))}:{scores:{},overall:45,readiness:'High Concern',biggestWeakness:'Test',feedback:'Test feedback',nextStep:'Practice'})})};}calls.push({url,session:JSON.parse(options.body.get('session'))});return {ok:true,status:200,headers:{get:()=>'/v1/realtime/calls/rtc_test'},text:async()=> 'test-sdp-answer'}}});
+ const context=vm.createContext({require:id=>id==='./report-improvement'?require('../report-improvement'):id==='./public/practice-languages'?require('../public/practice-languages'):id==='./operations'?require('../operations'):id==='./privacy-export'?require('../privacy-export'):id==='./age-eligibility'?require('../age-eligibility'):id==='./account-deletion'?require('../account-deletion'):id==='./report-pdf'?require('../report-pdf'):id==='./public/planning'?require('../public/planning'):id==='./interview-design'?require('../interview-design'):id==='./public/profile-requirements'?require('../public/profile-requirements'):id==='./interview-posts.json'?require('../interview-posts.json'):id==='./email-verification'?require('../email-verification'):id==='./profile-options'?require('../profile-options'):id==='./owner-access'?require('../owner-access'):id==='./report-practice'?require('../report-practice'):id==='http'?{createServer:fn=>{handler=fn;return {}}}:id==='pg'?{Pool:function(){return pool}}:id==='fs'?{...fs,readFileSync:(file,...args)=>file===path.resolve(__dirname,'../data/db.json')?'{}':fs.readFileSync(file,...args)}:id==='./evaluation-limits'?require('../evaluation-limits'):id==='./voice-limits'?require('../voice-limits'):id==='./learning'?learning:id==='./passwords'?passwords:id==='./password-recovery'?require('../password-recovery'):require(id),__dirname:path.resolve(__dirname,'..'),process:{env:{OPENAI_API_KEY:'test-only',...env}},console:{log:(...args)=>logs.push(args.join(' ')),warn:(...args)=>logs.push(args.join(' ')),error:(...args)=>logs.push(args.join(' '))},Buffer,URL,FormData,AbortSignal,fetch:async(url,options)=>{if(url.endsWith('/hangup'))return {ok:true,status:200};if(url.endsWith('/responses')){calls.push({url,request:JSON.parse(options.body)});return {ok:true,json:async()=>({output_text:JSON.stringify(JSON.parse(options.body).input.includes('VISAATLAS_EVIDENCE_REPORT_V3')?{summary:'Only limited answers were captured.',strengths:[],assessments:require('../interview-design').TOPICS.map(([topic])=>({topic,status:'not_covered'}))}:{scores:{},overall:45,readiness:'High Concern',biggestWeakness:'Test',feedback:'Test feedback',nextStep:'Practice'})})};}calls.push({url,session:JSON.parse(options.body.get('session'))});return {ok:true,status:200,headers:{get:()=>'/v1/realtime/calls/rtc_test'},text:async()=> 'test-sdp-answer'}}});
  let source=fs.readFileSync(path.join(__dirname,'../server.js'),'utf8');source=source.slice(0,source.indexOf('initDb().then('));vm.runInContext(source,context);vm.runInContext(`sessions.set('test-token',{userId:${JSON.stringify(user.id)},version:0,expires:Date.now()+60000})`,context);
  async function request(method,url,body,authenticated=true){
    // Existing evaluation fixtures represent distinct server-issued mock sessions.
@@ -517,7 +517,7 @@ test('topic review filters unrelated evidence before saving and failures do not 
   const response=await h.request('POST','/api/evaluate',{athleteId:'s1',mockSessionId:start.headers['X-Mock-Session-Id'],transcript});
   assert.equal(h.run('reviewCalls'),2,JSON.stringify([response,h.logs]));
   if(reviewFails){assert.equal(response.status,502);assert.equal(h.db.reports.length,0);}
-  else {assert.equal(response.status,200);assert.equal(response.body.overall,69);assert.equal(response.body.answeredTopicScore,80);assert.equal(response.body.coverage.assessed,6);assert.equal(h.db.reports[0].scores.circumstances,undefined);}
+  else {assert.equal(response.status,200);assert.equal(response.body.overall,null);assert.equal(response.body.answeredTopicScore,80);assert.equal(response.body.coverage.assessed,6);assert.equal(h.db.reports[0].scores.circumstances,undefined);}
  }
 });
 test('failed reports can retry without consuming the successful report allowance',async()=>{
@@ -750,4 +750,45 @@ test('Arabic print exports preserve text and escaping behind the same report acc
   const other=harness({id:'u2',role:'athlete'});other.db.reports.push(report);
   assert.equal((await other.request('GET','/api/reports/arabic1/'+suffix)).status,404);
  }
+});
+
+function seedRetry(h){
+ h.db.mockSessions=[{id:'mock-retry',userId:'u1',athleteId:'s1',transcript:[{role:'assistant',text:'Who pays tuition?'},{role:'athlete',text:'My family.'}]}];
+ h.db.reports.push({id:'retry-report',athleteId:'s1',mockSessionId:'mock-retry',feedbackLanguage:'fr',practiceLanguage:'fr',scoreType:'partial',overall:9,clarifications:['Explain your funding.'],practiceLessons:['funding'],assessments:[{topic:'funding',label:'Funding',status:'assessed',questionTurn:0,answerTurn:1,feedback:'Explain your funding.',action:'State who pays tuition.'}]});
+ h.run(`fetch=async(url,options)=>{globalThis.practiceCalls=(globalThis.practiceCalls||0)+1;globalThis.practicePrompt=JSON.parse(options.body).input;return {ok:true,json:async()=>({output_text:JSON.stringify({outcome:'improved',feedback:'You identified tuition coverage.',nextStep:'Clarify accommodation.'})})}}`);
+ return {reportId:'retry-report',focus:0,answer:'My father will pay my tuition from his savings.'};
+}
+test('written retries persist once, preserve original report, include evidence and selected language',async()=>{
+ const h=harness(),body=seedRetry(h);
+ const r=await h.request('POST','/api/practice-answer',body);assert.equal(r.status,200,JSON.stringify(r));
+ assert.equal(r.body.outcome,'improved');assert.equal(h.db.reports[0].overall,9);
+ assert.match(h.run('practicePrompt'),/FEEDBACK LANGUAGE: French/);
+ assert.equal((await h.request('POST','/api/practice-answer',body)).status,200);
+ assert.equal(h.db.reports[0].practiceAttempts.length,1);assert.equal(h.run('practiceCalls'),1);
+ const reports=await h.request('GET','/api/reports');assert.equal(reports.body[0].overall,null);assert.equal(reports.body[0].evidence[0].answer,'My family.');
+});
+test('written retry rejects other students, missing evidence, invalid answers and paused AI without spending',async()=>{
+ for(const mode of ['other','missing','invalid','paused']){
+  const h=harness(undefined,mode==='paused'?{AI_ENABLED:'false'}:{}),body=seedRetry(h);
+  if(mode==='other')h.db.reports[0].athleteId='s2';
+  if(mode==='missing')h.db.mockSessions=[];
+  if(mode==='invalid')body.answer='';
+  const r=await h.request('POST','/api/practice-answer',body);assert.ok([400,404,503].includes(r.status),JSON.stringify(r));assert.equal(h.run('globalThis.practiceCalls'),undefined);
+ }
+});
+test('malformed provider retry feedback saves nothing and releases admission for a later attempt',async()=>{
+ const h=harness(),body=seedRetry(h);
+ h.run(`fetch=async()=>({ok:true,json:async()=>({output_text:'{"outcome":"approved"}'})})`);
+ assert.equal((await h.request('POST','/api/practice-answer',body)).status,502);assert.equal(h.db.reports[0].practiceAttempts,undefined);
+ h.run(`fetch=async()=>({ok:true,json:async()=>({output_text:JSON.stringify({outcome:'needs_work',feedback:'Clarify the amount.',nextStep:'Check your funding details.'})})})`);
+ assert.equal((await h.request('POST','/api/practice-answer',body)).status,200);
+});
+test('written retries cannot run concurrently and saved retries are bounded per focus',async()=>{
+ const h=harness(),body=seedRetry(h);
+ h.run(`fetch=async()=>{await new Promise(resolve=>globalThis.finishPractice=resolve);return {ok:true,json:async()=>({output_text:JSON.stringify({outcome:'unclear',feedback:'Not enough evidence.',nextStep:'Explain the costs.'})})}}`);
+ const first=h.request('POST','/api/practice-answer',body);while(!h.run('globalThis.finishPractice'))await new Promise(resolve=>setImmediate(resolve));
+ assert.equal((await h.request('POST','/api/practice-answer',{...body,answer:'Another different written answer about tuition.'})).status,429);
+ h.run('finishPractice()');assert.equal((await first).status,200);
+ h.db.reports[0].practiceAttempts=Array.from({length:10},(_,i)=>({focus:0,key:String(i)}));
+ assert.equal((await h.request('POST','/api/practice-answer',body)).status,409);
 });

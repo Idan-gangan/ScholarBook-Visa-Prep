@@ -261,7 +261,7 @@ const server=http.createServer(async (req,res)=>{
       try{await pool.query({text:'SELECT 1',query_timeout:3000});return json(res,200,{ok:true});}
       catch{return json(res,503,{ok:false});}
     }
-    if(process.env.AI_ENABLED==='false' && req.method==='POST' && ['/api/realtime-session','/api/evaluate'].includes(url.pathname))return json(res,503,{error:'AI practice is temporarily paused. Your saved work remains available. Please try again later.'});
+    if(process.env.AI_ENABLED==='false' && req.method==='POST' && ['/api/realtime-session','/api/evaluate','/api/practice-answer'].includes(url.pathname))return json(res,503,{error:'AI practice is temporarily paused. Your saved work remains available. Please try again later.'});
     if(req.method==='POST' && url.pathname==='/api/export-account'){
       const u=await requireUser(req,res);if(!u)return;
       if(u.role!=='athlete')return json(res,403,{error:'Contact support for staff data requests.'});
@@ -540,7 +540,8 @@ const server=http.createServer(async (req,res)=>{
     if(req.method==='GET' && pdfMatch){
       const u=await requireUser(req,res);if(!u)return;
       const db=await loadDb({collections:['reports','athletes']});
-      const report=db.reports.find(r=>r.id===decodeURIComponent(pdfMatch[1]));
+      const storedReport=db.reports.find(r=>r.id===decodeURIComponent(pdfMatch[1]));
+      const report=storedReport&&require('./report-improvement').present(storedReport);
       const student=report&&db.athletes.find(a=>a.id===report.athleteId);
       if(!report||!student||!canAccessStudent(u,student))return json(res,404,{error:'Report not found.'});
       if(pdfMatch[2]==='print' || report.feedbackLanguage==='ar'){
@@ -564,7 +565,54 @@ const server=http.createServer(async (req,res)=>{
         const allowed=new Set(db.athletes.filter(a=>canAccessStudent(u,a)).map(a=>a.id));
         reports=db.reports.filter(r=>allowed.has(r.athleteId));
       }
-      return json(res,200,reports.map(report=>({...report,practiceTargets:practiceTargets(report)})));
+      const evidenceDb=await loadDb(u.role==='athlete'?{userId:u.id}:{collections:['mockSessions']});
+      return json(res,200,reports.map(report=>require('./report-improvement').present(report,evidenceDb.mockSessions||[])));
+    }
+
+    if(req.method==='POST' && url.pathname==='/api/practice-answer'){
+      const u=await requireUser(req,res);if(!u)return;
+      if(u.role!=='athlete')return json(res,403,{error:'Written retries are for your own student account.'});
+      if(!OPENAI_API_KEY)return json(res,503,{error:'Practice feedback is temporarily unavailable.'});
+      const improvement=require('./report-improvement');
+      let input;try{input=improvement.answerInput(JSON.parse((await readBody(req,12000)).toString()));}
+      catch(error){if(error.status===413)throw error;return json(res,400,{error:error.message});}
+      const scope={userId:u.id};
+      const db=await loadDb(scope),report=db.reports.find(r=>r.id===input.reportId);
+      const student=report&&db.athletes.find(a=>a.id===report.athleteId);
+      if(!report||!canAccessStudent(u,student))return json(res,404,{error:'Practice report not found.'});
+      const target=improvement.targetFor(report,db.mockSessions||[],input.focus);
+      if(!target)return json(res,400,{error:'The original answer is unavailable. Please start a new mock interview.'});
+      const previous=report.practiceAttempts?.find(a=>a.key===input.key);
+      if(previous)return json(res,200,previous);
+      if(!allowAuth('practice:'+u.id))return json(res,429,{error:'Please wait before trying another answer.'});
+      const lease=await mutateDb(async(current,client)=>{
+        if(!current.users.some(x=>x.id===u.id&&!x.accessSuspended)||!canAccessStudent(u,current.athletes.find(a=>a.id===student.id)))throw stateError(403,'Account unavailable.');
+        return evaluationLimits.reserve(u.id,client);
+      },scope);
+      if(!lease)return json(res,429,{error:'Feedback is already processing. Please wait for it to finish.'});
+      try{
+        const current=(await loadDb(scope)).reports.find(r=>r.id===input.reportId);
+        const cached=current?.practiceAttempts?.find(a=>a.key===input.key);if(cached)return json(res,200,cached);
+        if(!current||current.practiceAttempts?.filter(a=>a.focus===input.focus).length>=10)return json(res,409,{error:'You have saved ten retries for this question. Take a new mock to check your progress.'});
+        const response=await fetch('https://api.openai.com/v1/responses',{
+          method:'POST',headers:{Authorization:`Bearer ${OPENAI_API_KEY}`,'Content-Type':'application/json','OpenAI-Safety-Identifier':sha(u.id).slice(0,32)},signal:AbortSignal.timeout(45000),
+          body:JSON.stringify({model:EVALUATION_MODEL,input:improvement.prompt(target,input.answer)+practiceLanguages.feedbackInstructions(report.feedbackLanguage||'en',report.practiceLanguage||'en'),max_output_tokens:1200,store:false})
+        });
+        const result=await response.json();await operations.costs.report(report.mockSessionId||report.id,'practice',EVALUATION_MODEL,result);
+        let feedback;try{if(!response.ok||result.status==='incomplete')throw Error();feedback=improvement.normalize(JSON.parse(outputText(result).trim().replace(/^```json\s*/, '').replace(/```$/, '').trim()));}
+        catch{return json(res,502,{error:'Practice feedback could not be completed. Your answer has not been saved; try again.'});}
+        const attempt=await mutateDb(async(current,client)=>{
+          const saved=current.reports.find(r=>r.id===input.reportId);
+          if(!saved||!current.users.some(x=>x.id===u.id&&!x.accessSuspended)||!canAccessStudent(u,current.athletes.find(a=>a.id===saved.athleteId)))throw stateError(403,'Account or report unavailable.');
+          saved.answerEvidence??=improvement.present(saved,current.mockSessions||[]).evidence;
+          saved.practiceAttempts??=[];
+          const prior=saved.practiceAttempts.find(a=>a.key===input.key);if(prior)return prior;
+          const attempt={key:input.key,focus:input.focus,answer:input.answer,...feedback,createdAt:new Date().toISOString(),method:'written-retry-v1'};
+          await evaluationLimits.complete(u.id,lease,client);saved.practiceAttempts.push(attempt);return attempt;
+        },scope);
+        return json(res,200,attempt);
+      }catch(error){if(error.name==='TimeoutError'||error.name==='AbortError')return json(res,504,{error:'Practice feedback timed out. Please try again.'});throw error;}
+      finally{try{await evaluationLimits.release(u.id,lease);}catch{console.error('[practice] LEASE_RELEASE_FAILED');}}
     }
 
     if(req.method==="POST" && url.pathname==="/api/human-review"){
@@ -749,6 +797,7 @@ Use only information in the supplied profile and transcript. Do not reward inven
         practiceLessons:Array.isArray(result.practiceLessons)?result.practiceLessons.slice(0,3).map(id=>LESSONS.some(lesson=>lesson.id===id)?id:'interview-practice'):[],
         ...(structured?{formatVersion:2,strengths:result.strengths,clarifications:result.clarifications,nextSteps:result.nextSteps}:{}),
         ...(evidenceReport||{}),
+        answerEvidence:evidenceReport?require('./report-improvement').present({...evidenceReport,mockSessionId:mockSession.id,athleteId:athlete.id},[mockSession]).evidence:[],
         humanReview:null
       };
       await evaluationLimits.complete(u.id,lease,client);

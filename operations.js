@@ -1,5 +1,5 @@
 const ROUTES=new Map([
- ['/api/register-athlete','registration'],['/api/verify-email','email_verification'],['/api/resend-verification','verification_send'],['/api/guardian-request','guardian_email'],['/api/guardian-permission','guardian_permission'],['/api/forgot-password','password_recovery'],['/api/realtime-session','voice_start'],['/api/evaluate','report_generation'],['/api/delete-account','account_deletion'],['/api/export-account','data_export']
+ ['/api/register-athlete','registration'],['/api/verify-email','email_verification'],['/api/resend-verification','verification_send'],['/api/guardian-request','guardian_email'],['/api/guardian-permission','guardian_permission'],['/api/forgot-password','password_recovery'],['/api/realtime-session','voice_start'],['/api/evaluate','report_generation'],['/api/practice-answer','practice_feedback'],['/api/delete-account','account_deletion'],['/api/export-account','data_export']
 ]);
 function createOperations(pool,{log=console.warn,now=Date.now}={}){
  const costs=require('./cost-diagnostics').createCostDiagnostics(pool,{log});
