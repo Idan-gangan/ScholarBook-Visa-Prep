@@ -961,6 +961,11 @@ function addLine(role,text,mode=voiceScreen){
 // Voice lifecycle: the client alone requests responses. Keep input muted until
 // both response generation and WebRTC output playback have finished.
 let voice=null, voiceScreen="mock", learningTranscript=[], mockStudentId=null;
+function interruptVoice(v){
+ if(voice===v)stopVoice('Voice was interrupted. When you return, tap Start to begin a new session.');
+}
+window.addEventListener('pagehide',()=>{if(voice)interruptVoice(voice)});
+window.addEventListener('visibilitychange',()=>{if(document.hidden&&voice)interruptVoice(voice)});
 function voiceEl(id){return $(voiceScreen==="learn"?"learn_"+id:id)}
 function voiceSend(v,type,details={}){if(voice===v && dc?.readyState==="open")dc.send(JSON.stringify({type,...details}))}
 function voiceMic(v,on){if(voice===v){stream?.getAudioTracks().forEach(t=>t.enabled=on);const meter=$(v.mode==='learn'?'learn_voiceStatus':'voiceStatus');if(meter?.dataset)meter.dataset.listening=String(on)}}
@@ -1066,17 +1071,22 @@ async function startVoice(mode="mock",consented=false){
   voiceEl("startBtn").disabled=true;voiceEl("stopBtn").disabled=false;
   voiceEl("athleteSelect").disabled=true;
   voiceEl("voiceStatus").textContent="Requesting microphone…";
+  v.startupTimer=setTimeout(()=>{if(voice===v&&!v.connected)stopVoice('Voice could not connect in time. Check microphone permission and your connection, then tap Start again.');},30000);
   try{
     const mic=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:false}});
     if(voice!==v){mic.getTracks().forEach(t=>t.stop());return}
     stream=mic;voiceMic(v,false);
+    for(const track of mic.getAudioTracks()){
+      track.onended=()=>interruptVoice(v);
+      track.onmute=()=>interruptVoice(v);
+    }
     pc=new RTCPeerConnection();const peer=pc;
     v.audio=document.createElement("audio");v.audio.autoplay=true;
     peer.ontrack=e=>{if(voice===v)v.audio.srcObject=e.streams[0]};
     peer.onconnectionstatechange=()=>{if(voice===v && ["failed","disconnected"].includes(peer.connectionState))stopVoice("Connection lost — restart the interview.")};
     peer.addTrack(stream.getAudioTracks()[0],stream);
     dc=peer.createDataChannel("oai-events");
-    dc.addEventListener("open",()=>{if(voice===v){v.connected=true;voiceRespond(v)}});
+    dc.addEventListener("open",()=>{if(voice===v){v.connected=true;clearTimeout(v.startupTimer);voiceRespond(v)}});
     dc.addEventListener("close",()=>{if(voice===v)stopVoice("Connection closed — restart the interview.")});
     dc.addEventListener("message",e=>{if(voice===v){try{voiceEvent(v,JSON.parse(e.data))}catch{stopVoice("Interview stopped: invalid voice event. Please restart.")}}});
     const offer=await peer.createOffer();if(voice!==v)return;
@@ -1101,13 +1111,15 @@ async function startVoice(mode="mock",consented=false){
 }
 let voiceEnd=Promise.resolve();
 function endServerVoice(token,costSample){
- voiceEnd=api('/api/voice/end',{method:'POST',body:JSON.stringify({token,...(costSample?{costSample}:{})}),keepalive:true}).catch(()=>{
-   if(me)voiceEl('voiceStatus').textContent='Voice stopped on this device. Server cleanup is pending; please wait before restarting.';
- });
+ const controller=new AbortController(),version=sessionVersion;
+ const timeout=setTimeout(()=>controller.abort(),10000);
+ voiceEnd=api('/api/voice/end',{method:'POST',body:JSON.stringify({token,...(costSample?{costSample}:{})}),keepalive:true,signal:controller.signal}).catch(()=>{
+   if(me&&version===sessionVersion&&!voice)voiceEl('voiceStatus').textContent='Voice stopped on this device. If restarting is blocked, wait a moment and try again.';
+ }).finally(()=>clearTimeout(timeout));
  return voiceEnd;
 }
 function stopVoice(message=voiceScreen==="learn"?"Lesson conversation ended":"Interview ended"){
-  const v=voice;voice=null;clearTimeout(v?.inputTimer);clearTimeout(v?.limitTimer);clearTimeout(v?.warningTimer);clearTimeout(v?.clockTimer);const status=voiceEl("voiceStatus");if(status?.dataset)status.dataset.listening="false";if(v?.serverToken)endServerVoice(v.serverToken,v.costCounter?.sample());
+  const v=voice;voice=null;v?.abort?.abort();clearTimeout(v?.startupTimer);clearTimeout(v?.inputTimer);clearTimeout(v?.limitTimer);clearTimeout(v?.warningTimer);clearTimeout(v?.clockTimer);const status=voiceEl("voiceStatus");if(status?.dataset)status.dataset.listening="false";if(v?.serverToken)endServerVoice(v.serverToken,v.costCounter?.sample());
   if(stream)stream.getTracks().forEach(t=>t.stop());if(dc)dc.close();if(pc)pc.close();
   if(v?.audio){v.audio.pause();v.audio.srcObject=null}
   if(v?.mode==='mock'){
