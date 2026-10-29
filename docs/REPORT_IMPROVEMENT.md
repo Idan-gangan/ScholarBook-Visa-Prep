@@ -49,3 +49,25 @@ No checkout, paid allowance, automatic renewal, model switch or pricing change i
 part of this release. Full spoken reassessment and automatic daily plans are later
 work. The new written comparison is deliberately labeled rather than presented as
 an improvement in the original mock score.
+
+## Personal practice plan and spoken retries
+
+The home screen chooses the first unresolved, evidence-backed focus from the latest
+report. A clearer written answer does not complete spoken practice. Tasks are
+persistent priorities, not a daily streak or promise of mastery. New mock reports
+replace the current priorities. Original, latest written and latest spoken answers
+are shown separately, with feedback and no new numeric score.
+
+Spoken retry opens the existing tutor with the original question. Students start
+microphone access explicitly, end the session, select their answer transcript and
+confirm it before requesting comparison. Regular tutoring is unchanged. The server
+issues a report/user/focus-bound session reference, valid for 24 hours, and retains
+at most ten recent references per report. Saved comparisons share the existing ten
+attempt limit per question. The browser supplies the transcript: these checks do
+not authenticate audio or prevent a modified client from submitting text. UI and
+feedback assess transcript content only, never pronunciation, fluency or delivery.
+Reports are included in existing account export/deletion. No audio is saved here.
+
+Release validation: 232 automated tests pass. Real microphone testing on supported
+mobile/desktop browsers and representative language review remain release checks;
+provider-mocked UI tests do not prove voice or translation quality.

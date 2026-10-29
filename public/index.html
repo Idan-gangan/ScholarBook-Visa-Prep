@@ -215,7 +215,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
       <div id="moduleCards" class="module-grid" aria-label="Learning modules"></div></div>
       <div id="lessonDetails" class="hidden">
       <button class="btn secondary" onclick="closeLearningModule()">← Back to all modules</button>
-      <div id="practiceFocus" class="card hidden"><h3>Focused practice</h3><p id="practiceFocusText"></p><p class="muted small">Review this feedback with your tutor. Starting this lesson does not mark the issue as resolved.</p><button class="btn secondary" onclick="clearReportPractice()">Return to regular lesson</button></div><div id="activeLesson" class="lesson-heading lesson-block"><div><p class="small muted" id="moduleNumber">MODULE 1</p><h2 id="moduleTitle">Your study plans</h2><p id="moduleSummary"></p></div><span id="lessonBadge" class="pill blue">Not completed</span></div>
+      <div id="practiceFocus" class="card hidden"><h3>Focused practice</h3><p id="practiceFocusText"></p><div id="spokenRetryReview"></div><p class="muted small">Review this feedback with your tutor. Starting this lesson does not mark the issue as resolved.</p><button class="btn secondary" onclick="clearReportPractice()">Return to regular lesson</button></div><div id="activeLesson" class="lesson-heading lesson-block"><div><p class="small muted" id="moduleNumber">MODULE 1</p><h2 id="moduleTitle">Your study plans</h2><p id="moduleSummary"></p></div><span id="lessonBadge" class="pill blue">Not completed</span></div>
       <div class="card lesson-content lesson-block">
           <h2>1. Learn</h2>
           <h3>Understand the question</h3>
@@ -233,7 +233,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
         <p class="small muted">Voice lessons last up to 8 minutes. Daily practice attempts are unlimited. Reading and notes remain available.</p>
         <div class="lesson-actions"><button class="btn primary" id="learn_startBtn" onclick="startLearningTutor()">Start voice lesson</button><button class="btn danger" id="learn_stopBtn" onclick="stopVoice()" disabled>End lesson conversation</button></div>
         <div id="learn_transcript" dir="auto" class="lesson-transcript" aria-label="Tutor conversation"></div>
-        <p class="small muted">Your conversation is for learning, with no readiness score. Save the points you want to keep in your notes; the conversation itself is not saved.</p>
+        <p class="small muted">Your conversation is for learning, with no readiness score. Save the points you want to keep in your notes; the regular lesson conversation itself is not saved. In a spoken retry, you can choose to save an answer transcript and comparison with your report.</p>
       </div>
       <details id="optionalNotes" class="card lesson-block">
         <summary style="cursor:pointer;font-weight:700">My notes — optional</summary>
@@ -264,7 +264,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
  <h2 id="guideTitle" tabindex="-1"></h2><p id="guideText"></p>
  <div class="planner-actions"><button class="btn secondary" id="guideBack" onclick="moveGuide(-1)">Back</button><button class="btn primary" id="guideNext" onclick="moveGuide(1)">Next</button><button class="btn secondary" onclick="finishGuide()">Skip walkthrough</button></div>
  <p id="guideMessage" class="small" role="status"></p></section>
- <div id="studentHome" class="hidden"></div>
+ <div id="studentHome" class="hidden"></div><section id="dailyPractice" class="card hidden"></section>
  <section id="studentPlanner" class="card hidden" aria-labelledby="plannerTitle">
  <div class="history-heading"><div><span class="eyebrow">YOUR PREPARATION PLAN</span><h2 id="plannerTitle">Prepare at your pace</h2></div><button class="btn secondary" onclick="openGuide()">Show me around</button></div>
  <p id="interviewCountdown" class="countdown" aria-live="polite"></p>
@@ -384,7 +384,7 @@ const sessionMessage='Your session ended. Please sign in again. Saved work is st
 function returnToSignIn(message=sessionMessage){
  sessionVersion++;
  if(voice)stopVoice('Session ended. Please sign in again.');
- me=null;athletes=[];reports=[];transcript=[];learningTranscript=[];mockStudentId=null;mockSessionId=null;
+ $('dailyPractice').classList.add('hidden');$('dailyPractice').replaceChildren();me=null;athletes=[];reports=[];transcript=[];learningTranscript=[];mockStudentId=null;mockSessionId=null;
  lessonOpen=false;$('lessonDetails').classList.add('hidden');lessonPractice=null;renderPracticeFocus();courseSaved={};activeLessonId="study-purpose";$("moduleCards").replaceChildren();$("courseProgress").textContent="";lessonVersion++;lessonStudentId=null;lessonDirty=false;lessonCompleted=false;
  clearPasswordForm();$('exportPassword').value='';$('exportStatus').textContent='';$('operationsTable').replaceChildren();$('costDiagnostics').replaceChildren();$('operationsStatus').textContent='';
  $('deleteAccountDialog').close();clearDeleteAccountForm();
@@ -823,7 +823,16 @@ function renderStudentHome(){
  const cta={profile:'Complete my profile',learning:loaded?'Continue preparing':'Open my learning',interview:'Start mock practice',reports:'Review my feedback'};
  $('studentHome').innerHTML=`<div class="student-hero"><div><span class="eyebrow">YOUR F-1 PREPARATION</span><p class="home-greeting">Welcome back, ${escapeHtml(String(me.name||'Student').trim().split(/\s+/)[0])}</p><h2>${titles[next]}</h2><p>${descriptions[next]}</p><button class="btn primary" data-home-next="${next}">${cta[next]} →</button></div><div class="home-course"><span class="eyebrow">LEARNING PROGRESS</span><strong>${loaded?done+' / '+curriculum.length:'—'}</strong><span>${loaded?'modules completed':courseLoadState==='error'?'Progress unavailable · open Learning to retry':'Loading saved progress…'}</span><progress max="${curriculum.length}" value="${loaded?done:0}" aria-label="Learning modules completed"></progress><small>Learn at your own pace. Revisit any lesson.</small></div></div><nav class="preparation-path" aria-label="Your preparation journey">${[['profile','Complete profile',complete?'Details saved':'Your first step'],['learning','Learn',loaded?done+' of '+curriculum.length+' modules':'Your learning modules'],['interview','Practise',history.length?'Keep building confidence':'Try a mock interview'],['reports','Review feedback',history.length?history.length+' saved reports':'Your next steps']].map(([id,title,note],i)=>`<button class="path-step ${id===next?'current':''}" data-home-next="${id}"${id===next?' aria-current="step"':''}><span>${i+1}</span><div><strong>${title}</strong><small>${escapeHtml(note)}</small></div></button>`).join('')}</nav>`;
  $('studentHome').querySelectorAll('[data-home-next]').forEach(button=>button.addEventListener('click',()=>studentNext(button.dataset.homeNext)));
- renderStudentHistory(history);renderPlanner(own,complete,loaded,done,history);
+ renderStudentHistory(history);renderPlanner(own,complete,loaded,done,history);renderDailyPractice(history,complete);
+}
+function renderDailyPractice(history,complete){
+ const box=$('dailyPractice');if(!box||!window.VisaAtlasPlanning?.practicePlan)return;
+ box.classList.toggle('hidden',me?.role!=='athlete');
+ const plan=window.VisaAtlasPlanning.practicePlan(history),task=plan.task;
+ const status=a=>!a?'Not tried':a.outcome==='improved'?'Clearer on this point':a.outcome==='needs_work'?'Needs more detail':'Needs review';
+ box.innerHTML='<h2>Your practice for today</h2>'+(!complete?'<p>Complete your profile before your next mock.</p><button class="btn primary" onclick="studentNext(\'profile\')">Complete profile</button>':task?`<h3>${escapeHtml(task.evidence.label||task.title)}</h3><p>${escapeHtml(task.focus)}</p><blockquote dir="auto">${escapeHtml(task.evidence.question)}</blockquote><button class="btn primary" id="dailySpoken">Practise this question aloud</button><p class="small">Answer in your own words, review the transcript, then save a comparison. Your task stays here until the answer is clearer.</p>`:'<p>'+ (history.length?'Take a new mock to check your next areas for practice.':'Start a mock interview to get a personal practice task.')+'</p><button class="btn primary" onclick="studentNext(\'interview\')">Start a mock interview</button>')+
+ (plan.topics.length?'<h3>Progress on your latest feedback</h3><p class="small">Written and spoken-transcript content are tracked separately. These are not mastery or visa-readiness ratings.</p>'+plan.topics.map(t=>`<div class="card"><strong>${escapeHtml(t.evidence?.label||t.title)}</strong><p>Written: ${status(t.written)} · Spoken content: ${status(t.spoken)}</p>${!t.evidence?'<p>Original answer unavailable — take a new mock.</p>':''}${t.evidence&&(t.spoken||t.written)?`<details><summary>Compare your answers</summary><p>Original answer</p><blockquote dir="auto" data-no-translate>${escapeHtml(t.evidence.answer)}</blockquote>${[['Latest written answer',t.written],['Latest spoken transcript',t.spoken]].filter(([,a])=>a).map(([label,a])=>`<p>${label}</p><blockquote dir="auto" data-no-translate>${escapeHtml(a.answer)}</blockquote><p dir="auto" data-no-translate>${escapeHtml(a.feedback)}</p>`).join('')}</details>`:''}</div>`).join(''):'');
+ if(task&&complete)$('dailySpoken').onclick=()=>openReportPractice(task.reportId,task.index,true);
 }
 function studentNext(next){
  if(!['profile','learning','interview','reports'].includes(next))return;
@@ -865,15 +874,15 @@ function reportSections(r){
 }
 function retryResult(attempt){
  const label={improved:'Clearer on this point',needs_work:'Keep working on this point',unclear:'Not enough evidence to compare'}[attempt.outcome]||'Practice feedback';
- return `<div class="notice"><strong>${escapeHtml(label)}</strong><p dir="auto" data-no-translate>${escapeHtml(attempt.feedback)}</p><p dir="auto" data-no-translate>${escapeHtml(attempt.nextStep)}</p><small>Written practice only. Your original mock score is unchanged.</small></div>`;
+ return `<div class="notice"><strong>${escapeHtml(label)}</strong><p dir="auto" data-no-translate>${escapeHtml(attempt.feedback)}</p><p dir="auto" data-no-translate>${escapeHtml(attempt.nextStep)}</p><small>${attempt.method==='spoken-transcript-retry-v1'?'Spoken transcript: content feedback only, not pronunciation or fluency.':'Written practice only.'} Your original mock score is unchanged.</small></div>`;
 }
 function retryHistory(attempts){
- return attempts.length?`<details class="retry-history"><summary>Saved written practice (${attempts.length})</summary>${attempts.map(a=>`<section><p class="small">${escapeHtml(new Date(a.createdAt).toLocaleString())}</p><blockquote dir="auto" data-no-translate>${escapeHtml(a.answer)}</blockquote>${retryResult(a)}</section>`).join('')}</details>`:'';
+ return attempts.length?`<details class="retry-history"><summary>Saved practice (${attempts.length})</summary>${attempts.map(a=>`<section><p class="small">${a.method==='spoken-transcript-retry-v1'?'Spoken transcript':'Written answer'} · ${escapeHtml(new Date(a.createdAt).toLocaleString())}</p><blockquote dir="auto" data-no-translate>${escapeHtml(a.answer)}</blockquote>${retryResult(a)}</section>`).join('')}</details>`:'';
 }
 function reportPractice(r){
  return (r.practiceTargets||[]).length?'<section class="report-section"><h4>What to work on next</h4>'+r.practiceTargets.map((target,index)=>{
   const evidence=r.evidence?.find(e=>e.feedback===target.focus),attempts=(r.practiceAttempts||[]).filter(a=>a.focus===index);
-  return `<div class="card practice-task"><p dir="auto">${escapeHtml(target.focus)}</p><button class="btn secondary" data-practice-report="${escapeHtml(r.id)}" data-focus="${index}">Practise this · ${escapeHtml(target.title)}</button>${evidence&&me.role==='athlete'?`<details class="written-retry"><summary>Try this answer again</summary><p>Write a new answer to the same question. We will compare this specific point with your original answer.</p><blockquote dir="auto" data-no-translate>${escapeHtml(evidence.question)}</blockquote><form data-retry-report="${escapeHtml(r.id)}" data-focus="${index}"><label>Your new answer<textarea name="answer" rows="4" minlength="10" maxlength="2000" required dir="auto"></textarea></label><p class="small muted">Your answer and feedback will be saved with this report. Up to ten written retries per question.</p><button class="btn primary" type="submit" ${attempts.length>=10?'disabled':''}>Compare my answer</button><p role="status" aria-live="polite" class="retry-status"></p><div class="retry-result"></div></form></details>`:''}${retryHistory(attempts)}</div>`;
+  return `<div class="card practice-task"><p dir="auto">${escapeHtml(target.focus)}</p><button class="btn secondary" data-practice-report="${escapeHtml(r.id)}" data-focus="${index}">Practise this · ${escapeHtml(target.title)}</button>${evidence&&me.role==='athlete'?`<details class="written-retry"><summary>Try this answer again</summary><p>Write a new answer to the same question. We will compare this specific point with your original answer.</p><blockquote dir="auto" data-no-translate>${escapeHtml(evidence.question)}</blockquote><form data-retry-report="${escapeHtml(r.id)}" data-focus="${index}"><label>Your new answer<textarea name="answer" rows="4" minlength="10" maxlength="2000" required dir="auto"></textarea></label><p class="small muted">Your answer and feedback will be saved with this report. Up to ten saved retries per question.</p><button class="btn primary" type="submit" ${attempts.length>=10?'disabled':''}>Compare my answer</button><p role="status" aria-live="polite" class="retry-status"></p><div class="retry-result"></div></form></details>`:''}${evidence&&me.role==='athlete'?`<button class="btn secondary" data-spoken-report="${escapeHtml(r.id)}" data-focus="${index}">Retry this question aloud</button>`:''}${retryHistory(attempts)}</div>`;
  }).join('')+'</section>':'';
 }
 async function submitWrittenRetry(event){
@@ -884,7 +893,7 @@ async function submitWrittenRetry(event){
   const attempt=await api('/api/practice-answer',{method:'POST',body:JSON.stringify({reportId,focus,answer})});
   if(me?.id!==accountId||!form.isConnected)return;
   const report=reports.find(r=>r.id===reportId);if(report){report.practiceAttempts??=[];if(!report.practiceAttempts.some(a=>a.key===attempt.key))report.practiceAttempts.push(attempt);}
-  output.innerHTML=retryResult(attempt);status.textContent='Saved with your report.';
+  output.innerHTML=retryResult(attempt);status.textContent='Saved with your report.';renderStudentHome();
   const task=form.closest('.practice-task'),history=task.querySelector('.retry-history'),historyMarkup=retryHistory((report?.practiceAttempts||[]).filter(a=>a.focus===focus));
   if(history)history.outerHTML=historyMarkup;else task.insertAdjacentHTML('beforeend',historyMarkup);
   window.VisaAtlasWritten?.translateDOM(task.querySelector('.retry-history'),report?.feedbackLanguage||'en');
@@ -900,13 +909,13 @@ function reportScoreHeader(r){
  if(r.incomplete||r.scoreType==='partial'||r.scoreType==='insufficient')return '<h3>Interview incomplete</h3><p>No overall score yet</p>'+(Number.isFinite(r.answeredTopicScore)?'<p class="small">Answered-topic quality: '+escapeHtml(r.answeredTopicScore)+'/100. This average covers assessed areas only.</p>':'');
  return Number.isFinite(r.overall)?`<span class="kpi">${escapeHtml(r.overall)}/100</span> ${pill(r.overall)}`:'<p>Not enough information to score</p>';
 }
-async function openReportPractice(reportId,index){
+async function openReportPractice(reportId,index,spokenRetry=false){
  if(lessonSaving || lessonLoading)return;
  const report=reports.find(item=>item.id===reportId), target=report?.practiceTargets?.[index];
  if(!target || !curriculum.some(item=>item.id===target.lessonId) || !athletes.some(item=>item.id===report.athleteId))return;
  if(lessonDirty && !confirm('Open report practice without saving these notes?'))return;
  if(voice)stopVoice();
- lessonPractice={reportId,index,studentId:report.athleteId,...target};
+ lessonPractice={reportId,index,studentId:report.athleteId,...target,spokenRetry};
  $('learn_athleteSelect').value=report.athleteId;activeLessonId=target.lessonId;lessonOpen=true;show('learning');await loadLesson();
  $('activeLesson').scrollIntoView?.({behavior:'smooth',block:'start'});
 }
@@ -914,9 +923,10 @@ function clearReportPractice(){if(voice?.mode==='learn')stopVoice();lessonPracti
 function renderPracticeFocus(){
  let box=$('practiceFocus');
  box.classList.toggle('hidden',!lessonPractice);
- $('practiceFocusText').textContent=lessonPractice?'From your mock report: '+lessonPractice.focus:'';
+ $('practiceFocusText').textContent=lessonPractice?(lessonPractice.spokenRetry?'Spoken retry: start the voice lesson below. Your tutor will ask the original question. After ending, review and save your answer here. ':'From your mock report: ')+lessonPractice.focus:'';
+ $('spokenRetryReview').replaceChildren();
 }
-function reportPracticeQuery(){return lessonPractice && lessonPractice.studentId===lessonStudentId && lessonPractice.lessonId===activeLessonId?'&reportId='+encodeURIComponent(lessonPractice.reportId)+'&focus='+lessonPractice.index:''}
+function reportPracticeQuery(){return lessonPractice && lessonPractice.studentId===lessonStudentId && lessonPractice.lessonId===activeLessonId?'&reportId='+encodeURIComponent(lessonPractice.reportId)+'&focus='+lessonPractice.index+(lessonPractice.spokenRetry?'&spokenRetry=1':''):''}
 function reportScoreDetails(report){
  const items=(report.assessments||[]).filter(a=>a.status==='assessed'&&Number.isFinite(a.score));
  if(!items.length)return '';
@@ -929,6 +939,7 @@ function renderReports(){
    const reviewBtn=(["owner","coach","supervisor"].includes(me.role))?`<button class="btn secondary" data-report-id="${escapeHtml(r.id)}" data-report-score="${escapeHtml(r.overall)}">Add human review</button>`:"";
    return `<article class="card report-card" data-feedback-language="${escapeHtml(r.feedbackLanguage||'en')}" style="margin-bottom:16px"><div class="report-header"><div><h3><span data-no-translate>${escapeHtml(a.name||"Student")}</span> · <span>Mock #${escapeHtml(r.mockNumber)}</span></h3><div class="muted small">${new Date(r.createdAt).toLocaleString()}</div></div><div class="report-score"><div class="muted small">${r.formatVersion===3?escapeHtml(({standard:"Standard",challenging:"Challenging",intensive:"Intensive"})[r.difficulty]||"Standard")+" · ":""}Practice feedback</div>${reportScoreHeader(r)}</div></div><p class="muted small">Feedback on this practice interview, not a prediction of visa approval.</p>${r.scoreExplanation?`<p class="notice">${escapeHtml(r.scoreExplanation)}</p>`:""}${reportCoverageSummary(r)}${reportSections(r)}${reportEvidence(r)}${reportScoreDetails(r)}${r.formatVersion===3?`<section class="report-section"><h4>Interview coverage</h4><p>${escapeHtml(r.coverage?.assessed)} of ${escapeHtml(r.coverage?.required)} relevant areas assessed.</p><h4>${'Not covered — not counted against you'}</h4>${r.notCovered?.length?`<ul>${r.notCovered.map(x=>`<li>${escapeHtml(x)}</li>`).join("")}</ul>`:"<p>All relevant main areas were covered.</p>"}</section>`:""}${reportPractice(r)}<p>${r.feedbackLanguage==='ar'?`<a class="btn secondary" href="/api/reports/${encodeURIComponent(r.id)}/print" target="_blank" rel="noopener">Print / save report as PDF</a><span class="small muted"> Opens a print-ready report. Choose Save as PDF in your browser.</span>`:`<a class="btn secondary" href="/api/reports/${encodeURIComponent(r.id)}/pdf" download>Download report (PDF)</a>`}</p>${reviewBtn}${h}</article>`
  }).join("")||'<div class="card empty-state"><span class="eyebrow">YOUR FEEDBACK STARTS HERE</span><h2>No reports yet</h2><p>Answer questions in a mock interview, end the conversation, then choose View my feedback.</p><button class="btn primary" onclick="show(\'interview\')">Go to mock interview</button></div>';
+ $("reportsList").querySelectorAll('[data-spoken-report]').forEach(button=>button.addEventListener('click',()=>openReportPractice(button.dataset.spokenReport,Number(button.dataset.focus),true)));
  $("reportsList").querySelectorAll('[data-retry-report]').forEach(form=>form.addEventListener('submit',submitWrittenRetry));
  $("reportsList").querySelectorAll('[data-feedback-language]').forEach(card=>window.VisaAtlasWritten?.translateDOM(card,card.dataset.feedbackLanguage));
  $("reportsList").querySelectorAll('[data-report-id]').forEach(button=>button.addEventListener('click',()=>humanReview(button.dataset.reportId,button.dataset.reportScore)));
@@ -1050,7 +1061,7 @@ async function startVoice(mode="mock",consented=false){
   if(mode==='mock'&&typeof window!=='undefined'&&window.VisaAtlasProfile){const p=athletes.find(a=>a.id===voiceEl("athleteSelect").value);const missing=window.VisaAtlasProfile.missing(p);if(missing.length){voiceEl("voiceStatus").textContent='Complete My Profile first: '+missing.join(', ');return}}
   const v={costCounter:typeof VisaAtlasVoiceCost==='undefined'?null:VisaAtlasVoiceCost.create(),mode,language:$(mode==='learn'?'tutorLanguage':'mockLanguage').value,feedbackLanguage:$('feedbackLanguage').value,difficulty:mode==='mock'?$('interviewDifficulty').value:'standard',athleteId:voiceEl("athleteSelect").value,busy:false,playing:false,waiting:false,pendingItem:null,connected:false};voice=v;
   for(const id of ["tutorLanguage","mockLanguage","feedbackLanguage"])$(id).disabled=true;
-  if(mode==="learn")learningTranscript=[];
+  if(mode==="learn"){learningTranscript=[];v.retryContext=lessonPractice?.spokenRetry?{...lessonPractice}:null;$('spokenRetryReview').replaceChildren();}
   else {mockSessionId=null;mockSave=Promise.resolve();$('interviewDifficulty').disabled=true;interviewerState('connecting');transcript=[];mockStudentId=v.athleteId;$("evalStatus").textContent=""}
   voiceEl("transcript").replaceChildren();
   voiceEl("startBtn").disabled=true;voiceEl("stopBtn").disabled=false;
@@ -1079,6 +1090,7 @@ async function startVoice(mode="mock",consented=false){
     if(voice!==v){if(r.ok&&v.serverToken)endServerVoice(v.serverToken);return;}
     if(!r.ok){let message=answer;try{message=JSON.parse(answer).error||answer}catch{}if(r.status===401 && message==="Unauthorized"){returnToSignIn();return}throw new Error(message)}
     if(mode==='mock')mockSessionId=r.headers.get('X-Mock-Session-Id');
+    v.practiceSessionId=r.headers.get('X-Practice-Session-Id');
     const seconds=Number(r.headers.get('X-Voice-Limit-Seconds'));
     if(!Number.isFinite(seconds)||seconds<=0)throw new Error('Voice session limit is missing. Please refresh and try again.');
     v.deadline=Date.now()+seconds*1000;tickVoiceClock(v);
@@ -1106,10 +1118,24 @@ function stopVoice(message=voiceScreen==="learn"?"Lesson conversation ended":"In
       mockSave=api('/api/mock-session/end',{method:'POST',body:JSON.stringify({mockSessionId,transcript})}).catch(()=>{if(version===sessionVersion&&me)$('evalStatus').textContent='Your conversation is still here. Use View my feedback to retry saving it.';});
     }
   }
+  if(v?.mode==='learn'&&v.retryContext&&v.practiceSessionId)reviewSpokenRetry(v,learningTranscript);
   for(const id of ["tutorLanguage","mockLanguage","feedbackLanguage"])$(id).disabled=false;
   pc=dc=stream=null;voiceEl("voiceStatus").textContent=message;
   voiceEl("startBtn").disabled=false;voiceEl("stopBtn").disabled=true;
   voiceEl("athleteSelect").disabled=false;
+}
+function reviewSpokenRetry(v,lines){
+ const answers=lines.filter(l=>l.role==='athlete'&&l.text?.trim().length>=10),box=$('spokenRetryReview');
+ if(!answers.length){box.textContent='No answer long enough to compare was captured. Try the question again.';return;}
+ const context=v.retryContext,account=me?.id;
+ box.innerHTML='<h4>Review your spoken answer</h4><p>Select the answer to the original question. Only save it if the transcript matches what you said. A mistranscription needs a fresh attempt.</p><label>Answer transcript<select id="spokenAnswerChoice">'+answers.map((a,i)=>`<option value="${i}">${escapeHtml(a.text.slice(0,90))}</option>`).join('')+'</select></label><blockquote id="spokenAnswerText" dir="auto" data-no-translate></blockquote><button class="btn primary" id="saveSpokenAnswer">Confirm transcript and compare</button><p id="spokenSaveStatus" role="status"></p>';
+ const select=$('spokenAnswerChoice');const preview=()=>{$('spokenAnswerText').textContent=answers[Number(select.value)]?.text||''};select.onchange=preview;preview();
+ $('saveSpokenAnswer').onclick=async()=>{
+  const button=$('saveSpokenAnswer'),status=$('spokenSaveStatus');if(button.disabled)return;button.disabled=true;select.disabled=true;status.textContent='Comparing your spoken answer…';
+  try{await api('/api/practice-answer',{method:'POST',body:JSON.stringify({reportId:context.reportId,focus:context.index,answer:answers[Number(select.value)].text,sourceSessionId:v.practiceSessionId})});
+   if(me?.id!==account)return;reports=await api('/api/reports');if(me?.id!==account)return;renderReports();renderStudentHome();status.textContent='Saved. Open Reports to see your original answer, this transcript and feedback.';
+  }catch(e){if(me?.id===account){status.textContent=e.message;button.disabled=false;select.disabled=false;}}
+ };
 }
 let reportGenerating=false;
 async function generateReport(){

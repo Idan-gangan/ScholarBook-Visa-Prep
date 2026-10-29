@@ -792,3 +792,19 @@ test('written retries cannot run concurrently and saved retries are bounded per 
  h.db.reports[0].practiceAttempts=Array.from({length:10},(_,i)=>({focus:0,key:String(i)}));
  assert.equal((await h.request('POST','/api/practice-answer',body)).status,409);
 });
+test('spoken comparison requires a matching recent issued session and preserves source type',async()=>{
+ const h=harness(),body=seedRetry(h);
+ for(const session of [undefined,{id:'voice1',userId:'other',focus:0,createdAt:new Date().toISOString()},{id:'voice1',userId:'u1',focus:1,createdAt:new Date().toISOString()},{id:'voice1',userId:'u1',focus:0,createdAt:'2020-01-01'}]){
+  h.db.reports[0].voicePracticeSessions=session?[session]:[];
+  assert.equal((await h.request('POST','/api/practice-answer',{...body,sourceSessionId:'voice1'})).status,400);
+ }
+ assert.equal(h.run('globalThis.practiceCalls'),undefined);
+ h.db.reports[0].voicePracticeSessions=[{id:'voice1',userId:'u1',focus:0,createdAt:new Date().toISOString()}];
+ const a=await h.request('POST','/api/practice-answer',{...body,sourceSessionId:'voice1'});
+ assert.equal(a.status,200);assert.equal(a.body.method,'spoken-transcript-retry-v1');
+ assert.match(h.run('practicePrompt'),/student-confirmed transcript/);
+ assert.equal((await h.request('POST','/api/practice-answer',{...body,sourceSessionId:'voice1'})).status,200);
+ assert.equal(h.db.reports[0].practiceAttempts.length,1);
+ assert.equal((await h.request('POST','/api/practice-answer',body)).body.method,'written-retry-v1');
+ assert.equal(h.db.reports[0].practiceAttempts.length,2);
+});
