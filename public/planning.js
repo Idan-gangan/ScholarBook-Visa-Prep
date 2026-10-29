@@ -14,7 +14,7 @@
    const last=method=>attempts.filter(a=>(a.method==='spoken-transcript-retry-v1')===method).slice(-1)[0];
    return {reportId:latest.id,...target,index:focus,evidence,written:last(false),spoken:last(true)};
   });
-  return {topics,task:topics.find(t=>t.evidence&&t.spoken?.outcome!=='improved')||null};
+  return {topics,task:topics.find(t=>t.lessonId)||null};
  }
  const api={validDate,daysUntil,practicePlan};
  if(typeof module==='object'&&module.exports)module.exports=api;

@@ -12,15 +12,24 @@ test('countdown compares calendar dates without time-of-day rounding',()=>{
  assert.equal(daysUntil('2026-10-22',now),-1);
  assert.equal(daysUntil('',now),null);
 });
-test('daily task follows latest evidence and separates written from spoken content',()=>{
+test('daily learning recommendation follows latest report without requiring a saved retry',()=>{
  const {practicePlan}=require('../public/planning');
- const r={id:'r',createdAt:'2026-10-29',practiceTargets:[{focus:'Explain costs',title:'Funding'}],evidence:[{feedback:'Explain costs',question:'Who pays?',answer:'Family.'}],practiceAttempts:[{focus:0,outcome:'improved',method:'written-retry-v1'}]};
+ const r={id:'r',createdAt:'2026-10-29',practiceTargets:[{focus:'Explain costs',title:'Funding',lessonId:'funding'}],evidence:[{feedback:'Explain costs',question:'Who pays?',answer:'Family.'}],practiceAttempts:[{focus:0,outcome:'improved',method:'written-retry-v1'}]};
  assert.equal(practicePlan([r]).task.index,0);
  assert.equal(practicePlan([r]).topics[0].spoken,undefined);
  r.practiceAttempts.push({focus:0,outcome:'improved',method:'spoken-transcript-retry-v1'});
- assert.equal(practicePlan([r]).task,null);
+ assert.equal(practicePlan([r]).task.index,0);
  r.practiceAttempts.push({focus:0,outcome:'needs_work',method:'spoken-transcript-retry-v1'});
  assert.equal(practicePlan([r]).task.index,0);
  assert.equal(practicePlan([r,{id:'new',createdAt:'2026-10-30'}]).task,null);
- assert.equal(practicePlan([{...r,evidence:[]}]).task,null);
+ assert.equal(practicePlan([{...r,evidence:[]}]).task.index,0);
+});
+
+test('focused tutoring teaches before asking for another answer',()=>{
+ const {practiceInstructions}=require('../report-practice');
+ const prompt=practiceInstructions({focus:'Explain your timeline'});
+ assert.match(prompt,/Teach this point first/);
+ assert.match(prompt,/Do not open by repeating the interview question/);
+ assert.match(prompt,/Invite optional practice only after teaching/);
+ assert.equal(practiceInstructions(null),'');
 });
