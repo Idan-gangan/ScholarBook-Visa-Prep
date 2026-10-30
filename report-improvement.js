@@ -13,7 +13,8 @@ function present(report,sessions=[]){
   return [{topic:a.topic,label:a.label,question:q.text,answer:answer.text,feedback:a.feedback,action:a.action}];
  });
  const view={...report,incomplete,evidence,practiceTargets:practiceTargets(report)};
- if(incomplete){view.overall=null;view.partialScore=null;view.readiness='Interview incomplete';view.scoreExplanation='Interview incomplete. No overall score is shown. Feedback covers only the answers assessed; unasked topics are not wrong answers.';}
+ if(incomplete){view.overall=null;view.partialScore=null;view.readiness='Practice feedback';view.scoreExplanation='This practice score is based only on assessed answers. Areas not assessed in this session are excluded from the score.';}
+ view.practiceScore=incomplete?(Number.isFinite(report.answeredTopicScore)?report.answeredTopicScore:null):(Number.isFinite(report.overall)?report.overall:null);
  return view;
 }
 function targetFor(report,sessions,index){
