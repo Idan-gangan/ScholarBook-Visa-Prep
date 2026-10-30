@@ -737,14 +737,14 @@ function readiness(score){if(!Number.isFinite(score))return "Not assessed";retur
 function pill(score){if(!Number.isFinite(score))return '<span class="pill blue">Not assessed</span>';const c=score>=85?"green":score>=70?"amber":"red";return `<span class="pill ${c}">${readiness(score)}</span>`}
 function preparationStatus(report){
  if(!report)return 'Start your first practice';
- if(report.incomplete||report.scoreType==='partial'||report.scoreType==='insufficient')return 'Interview incomplete — keep practising';
- if(Number.isFinite(report.partialScore))return 'Partial interview — keep practising';
+ if(report.incomplete||report.scoreType==='partial'||report.scoreType==='insufficient')return 'Practice feedback available';
+ if(Number.isFinite(report.partialScore))return 'Practice feedback available';
  if(!Number.isFinite(report.overall))return 'More answers needed';
  return report.overall>=85?'Strong preparation':report.overall>=70?'Building confidence':report.overall>=55?'Keep practising':'Focus on the basics';
 }
 function reportCoverageSummary(report){
  if(!Number.isFinite(report.coverage?.assessed)||!Number.isFinite(report.coverage?.required))return '';
- return `<div class="coverage-summary"><strong>${escapeHtml(report.coverage.assessed)} / ${escapeHtml(report.coverage.required)} areas assessed</strong><span>${report.scoreType==='partial'?'Partial interview · keep practising the remaining areas':'Interview coverage'}</span></div>`;
+ return `<div class="coverage-summary"><strong>${escapeHtml(report.coverage.assessed)} / ${escapeHtml(report.coverage.required)} areas assessed</strong><span>${report.scoreType==='partial'?'Some areas were not assessed in this session':'Interview coverage'}</span></div>`;
 }
 function ownStudentReports(){
  const own=athletes.find(a=>a.userId===me?.id);
@@ -839,19 +839,19 @@ function studentNext(next){
  if(next==='learning'&&courseLoadState==='ready')continueLearning();
 }
 function renderStudentHistory(history){
- const safeScore=r=>r.incomplete||r.scoreType==='partial'||r.scoreType==='insufficient'?'Incomplete':Number.isFinite(r.overall)?r.overall+'/100':Number.isFinite(r.partialScore)?r.partialScore+'/100':'Not scored';
+ const safeScore=r=>r.incomplete||r.scoreType==='partial'||r.scoreType==='insufficient'?(Number.isFinite(r.practiceScore)?r.practiceScore+'/100 (assessed areas)':'Not scored'):Number.isFinite(r.overall)?r.overall+'/100':Number.isFinite(r.partialScore)?r.partialScore+'/100':'Not scored';
  const type=r=>{
   const assessed=r.coverage?.assessed, required=r.coverage?.required??7;
   if(Number.isInteger(assessed)&&Number.isInteger(required)&&required>0&&assessed>=0&&assessed<=required)return assessed===0?'Not assessed':assessed===required?'Full':'Partial';
   return 'Coverage not recorded';
  };
- $('studentHistory').innerHTML=`<section class="card practice-history"><div class="history-heading"><div><span class="eyebrow">YOUR PRACTICE HISTORY</span><h2>Recent practice</h2></div><button class="btn secondary" onclick="show('reports')">View all reports →</button></div><p class="small muted">Latest three attempts. Compare scores from the same mode, coverage and scoring method.</p>${history.length?'<div class="history-scroll"><table><thead><tr><th>Attempt</th><th>Mode</th><th>Coverage</th><th>Score</th><th>Scoring basis</th></tr></thead><tbody>'+history.slice(0,3).map(r=>`<tr><td>Mock #${escapeHtml(r.mockNumber)}<small>${escapeHtml(new Date(r.createdAt).toLocaleDateString())}</small></td><td>${escapeHtml(({standard:'Standard',challenging:'Challenging',intensive:'Intensive'})[r.difficulty]||'Not recorded')}</td><td><span class="pill ${type(r)==='Full'?'green':'amber'}">${type(r)}</span>${Number.isFinite(r.coverage?.assessed)?`<small>${escapeHtml(r.coverage.assessed)} / ${escapeHtml(r.coverage.required||7)} areas</small>`:''}</td><td><strong>${safeScore(r)}</strong></td><td>${r.incomplete?'Incomplete':r.scoringMethod==='all-seven-v1'||r.scoringMethod==='coverage-separated-v2'?'All seven areas':'Assessed areas only'}</td></tr>`).join('')+'</tbody></table></div>':'<div class="history-empty"><h3>Your first attempt is a starting point</h3><p>Saved interview reports will appear here. Begin with a lesson or try a mock when you feel ready.</p></div>'}</section>`;
+ $('studentHistory').innerHTML=`<section class="card practice-history"><div class="history-heading"><div><span class="eyebrow">YOUR PRACTICE HISTORY</span><h2>Recent practice</h2></div><button class="btn secondary" onclick="show('reports')">View all reports →</button></div><p class="small muted">Latest three attempts. Compare scores from the same mode, coverage and scoring method.</p>${history.length?'<div class="history-scroll"><table><thead><tr><th>Attempt</th><th>Mode</th><th>Coverage</th><th>Score</th><th>Scoring basis</th></tr></thead><tbody>'+history.slice(0,3).map(r=>`<tr><td>Mock #${escapeHtml(r.mockNumber)}<small>${escapeHtml(new Date(r.createdAt).toLocaleDateString())}</small></td><td>${escapeHtml(({standard:'Standard',challenging:'Challenging',intensive:'Intensive'})[r.difficulty]||'Not recorded')}</td><td><span class="pill ${type(r)==='Full'?'green':'amber'}">${type(r)}</span>${Number.isFinite(r.coverage?.assessed)?`<small>${escapeHtml(r.coverage.assessed)} / ${escapeHtml(r.coverage.required||7)} areas</small>`:''}</td><td><strong>${safeScore(r)}</strong></td><td>${r.incomplete?'Assessed areas only':r.scoringMethod==='all-seven-v1'||r.scoringMethod==='coverage-separated-v2'?'All seven areas':'Assessed areas only'}</td></tr>`).join('')+'</tbody></table></div>':'<div class="history-empty"><h3>Your first attempt is a starting point</h3><p>Saved interview reports will appear here. Begin with a lesson or try a mock when you feel ready.</p></div>'}</section>`;
 }
 
 function renderAll(){
  const latest=a=>reports.filter(r=>r.athleteId===a.id).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt))[0];
  const student=me?.role==='athlete', own=athletes.find(a=>a.userId===me.id), report=own?latest(own):null;
- const score=r=>r?.incomplete||r?.scoreType==='partial'||r?.scoreType==='insufficient'?'Incomplete':Number.isFinite(r?.overall)?r.overall+'/100'+(r.scoringMethod==='all-seven-v1'&&r.scoreType==='partial'?' (incomplete)':''):Number.isFinite(r?.partialScore)?r.partialScore+'/100 (partial)':r?'Not scored':'No attempts yet';
+ const score=r=>r?.incomplete||r?.scoreType==='partial'||r?.scoreType==='insufficient'?(Number.isFinite(r?.practiceScore)?r.practiceScore+'/100 (assessed areas)':'Not scored'):Number.isFinite(r?.overall)?r.overall+'/100'+(r.scoringMethod==='all-seven-v1'&&r.scoreType==='partial'?' (incomplete)':''):Number.isFinite(r?.partialScore)?r.partialScore+'/100 (partial)':r?'Not scored':'No attempts yet';
  $('dashboardTitle').textContent=student?'Your progress':'Student progress';
  const scored=athletes.map(latest).filter(r=>Number.isFinite(r?.overall));
  const cards=student?[
@@ -905,7 +905,7 @@ function reportEvidence(r){
  return '<details class="report-section"><summary>Answers behind this feedback</summary><p>These are transcribed answers from the original interview. If a transcript is inaccurate, treat the feedback cautiously and practise the question again.</p>'+r.evidence.map(e=>`<section><h4>${escapeHtml(e.label)}</h4><p><strong>Question</strong></p><blockquote dir="auto" data-no-translate>${escapeHtml(e.question)}</blockquote><p><strong>Your answer</strong></p><blockquote dir="auto" data-no-translate>${escapeHtml(e.answer)}</blockquote><p dir="auto" data-no-translate>${escapeHtml(e.feedback)}</p></section>`).join('')+'</details>';
 }
 function reportScoreHeader(r){
- if(r.incomplete||r.scoreType==='partial'||r.scoreType==='insufficient')return '<h3>Interview incomplete</h3><p>No overall score yet</p>'+(Number.isFinite(r.answeredTopicScore)?'<p class="small">Answered-topic quality: '+escapeHtml(r.answeredTopicScore)+'/100. This average covers assessed areas only.</p>':'');
+ if(r.incomplete||r.scoreType==='partial'||r.scoreType==='insufficient')return Number.isFinite(r.practiceScore)?'<span class="kpi">'+escapeHtml(r.practiceScore)+'/100</span><p>Practice score</p><p class="small">Based on the areas assessed in this session.</p>':'<h3>Practice feedback</h3><p>More answer evidence is needed for a score.</p>';
  return Number.isFinite(r.overall)?`<span class="kpi">${escapeHtml(r.overall)}/100</span> ${pill(r.overall)}`:'<p>Not enough information to score</p>';
 }
 async function openReportPractice(reportId,index,spokenRetry=false){

@@ -5,7 +5,7 @@ const sessions=[{id:'m1',athleteId:'s1',transcript:[{role:'assistant',text:'Who 
 test('historical incomplete reports never expose overall score; originals remain intact',()=>{
  const before=structuredClone(report),view=m.present(report,sessions);
  assert.equal(view.overall,null);assert.equal(view.answeredTopicScore,30);assert.equal(view.incomplete,true);assert.deepEqual(report,before);
- assert.match(view.scoreExplanation,/No overall score/);
+ assert.equal(view.practiceScore,30);assert.match(view.scoreExplanation,/only on assessed answers/);
  assert.equal(m.present({...report,scoreType:'complete',coverage:{assessed:7,required:7},overall:80}).overall,80);
 });
 test('evidence binds to matching student, session and actual role-checked turn indices',()=>{
@@ -26,13 +26,19 @@ test('retry validation bounds content and rejects forged feedback and malformed 
  assert.deepEqual(m.normalize({outcome:'unclear',feedback:' Cannot compare. ',nextStep:'Clarify the costs.',overall:100}),{outcome:'unclear',feedback:'Cannot compare.',nextStep:'Clarify the costs.'});
  assert.match(m.prompt(m.targetFor(report,sessions,0),a.answer),/Do not assess pronunciation/);
 });
-test('print export labels incomplete report without an overall numeric headline',()=>{
+test('print export shows assessed practice score without penalizing unasked areas',()=>{
  const html=require('../report-pdf').createReportHtml(report,{name:'Test'});
- assert.ok(html.includes('class="score">Interview incomplete'));
+ assert.ok(html.includes('class="score">30/100'));assert.ok(!html.includes('Interview incomplete'));
  assert.ok(!html.includes('>9/100<'));
  assert.ok(html.includes('30/100'));
 });
 test('new report evidence remains available after source mock retention expires',()=>{
  const saved={...report,answerEvidence:m.present(report,sessions).evidence};
  assert.equal(m.targetFor(saved,[],0).answer,'My family.');
+});
+
+test('practice score uses assessed score and never invents a score for missing evidence',()=>{
+ assert.equal(m.present({...report,answeredTopicScore:68,coverage:{assessed:5,required:7}}).practiceScore,68);
+ assert.equal(m.present({...report,answeredTopicScore:null}).practiceScore,null);
+ assert.equal(m.present({...report,scoreType:'complete',coverage:{assessed:7,required:7},overall:80}).practiceScore,80);
 });
