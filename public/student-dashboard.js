@@ -31,7 +31,9 @@
      x.coverage.assessed===y.coverage.assessed&&x.coverage.required===y.coverage.required&&
      x.coverage.full===y.coverage.full&&
      (a.difficulty||'standard')===(b.difficulty||'standard')&&
-     (a.scoringMethod||'unknown')===(b.scoringMethod||'unknown');
+     typeof a.scoringMethod==='string'&&a.scoringMethod.length>0&&a.scoringMethod===b.scoringMethod&&
+     typeof a.difficulty==='string'&&a.difficulty.length>0&&a.difficulty===b.difficulty&&
+     a.scoreType===b.scoreType;
  }
  function comparison(history){
    const latest=history?.[0];if(!latest)return null;
@@ -39,26 +41,30 @@
    if(!prior)return null;
    return {delta:scoreMeta(latest).value-scoreMeta(prior).value,previous:scoreMeta(prior).value,previousId:prior.id};
  }
- function dailyTasks({profileComplete=false,courseLoaded=false,modulesDone=0,modulesTotal=6,history=[],daysUntil=null,learningCompletedToday=false,now=new Date()}={}){
+ function dailyTasks({profileComplete=false,profileMissing=[],courseLoaded=false,modulesDone=0,modulesTotal=6,history=[],daysUntil=null,learningCompletedToday=false,now=new Date()}={}){
    const today=dateKey(now),latest=history[0],tasks=[];
    const push=(task)=>{if(!tasks.some(existing=>existing.id===task.id))tasks.push(task);};
-   if(!profileComplete)push({id:'profile',title:'Complete your study profile',description:'Add your school, funding and study plans so practice can be tailored to your situation.',action:'profile',done:false});
+   if(!profileComplete){
+     const pending=Array.isArray(profileMissing)?profileMissing.filter(v=>typeof v==='string'&&v.trim()):[];
+     const missingNote=pending.length?'Still needed: '+pending.slice(0,2).join(' · ')+(pending.length>2?' · +'+(pending.length-2)+' more':'')+'.':'Add your school, funding and study plans so practice can be tailored to your situation.';
+     push({id:'profile',title:'Complete your study profile',description:missingNote,action:'profile',actionLabel:'Complete profile',done:false});
+   }
    const mockToday=history.some(r=>reportDate(r)===today);
-   const mock={id:'mock',title:'Practise a mock interview',description:daysUntil!==null&&daysUntil<=7&&daysUntil>=0?'Your interview is approaching. Practise clear, accurate answers across the required areas.':'Use a mock to check which topics need more practice.',action:'interview',done:mockToday};
+   const mock={id:'mock',title:'Practise a mock interview',description:daysUntil!==null&&daysUntil<=7&&daysUntil>=0?'Your interview is approaching. Practise clear, accurate answers across the required areas.':'Use a mock to check which topics need more practice.',action:'interview',actionLabel:'Start a mock',doneLabel:'Mock report saved today',done:mockToday};
    const focus=latest?.practiceTargets?.find((target)=>target&&typeof target.focus==='string'&&target.focus.trim()&&target.lessonId);
    // A saved report retry is useful even while the student finishes their profile.
    if(focus){
      const index=latest.practiceTargets.indexOf(focus);
      const attempted=latest.practiceAttempts?.some(a=>a.focus===index&&dateKey(a.createdAt)===today);
-     push({id:'focus',title:focus.title||'Strengthen a weak area',description:focus.focus,action:'focus',reportId:latest.id,focusIndex:index,done:!!attempted});
+     push({id:'focus',title:focus.title||'Strengthen a weak area',description:focus.focus,action:'focus',actionLabel:'Practise this answer',doneLabel:'Answer retry saved today',reportId:latest.id,focusIndex:index,done:!!attempted});
    }
    if(daysUntil!==null&&daysUntil>=0&&daysUntil<=7&&profileComplete)push(mock);
-   if(courseLoaded&&modulesDone<modulesTotal)push({id:'learning',title:'Continue your next learning module',description:modulesDone+' of '+modulesTotal+' modules completed. Learn the topic and practise in your own words.',action:'learning',done:!!learningCompletedToday});
-   else if(!courseLoaded)push({id:'learning',title:'Open your learning path',description:'Load your saved modules and pick up where you left off.',action:'learning',done:false});
+   if(courseLoaded&&modulesDone<modulesTotal)push({id:'learning',title:'Continue your next learning module',description:modulesDone+' of '+modulesTotal+' modules completed. Learn the topic and practise in your own words.',action:'learning',actionLabel:'Continue lesson',doneLabel:'Lesson completed today',done:!!learningCompletedToday});
+   else if(!courseLoaded)push({id:'learning',title:'Open your learning path',description:'Load your saved modules and pick up where you left off.',action:'learning',actionLabel:'Open learning',done:false});
    if(profileComplete&&!(daysUntil!==null&&daysUntil>=0&&daysUntil<=7))push(mock);
    // Opening a report is not stored as completed work. Never count this informational
    // suggestion in the denominator when there is no measurable retry target.
-   if(latest&&!focus)push({id:'reports',title:'Review your latest feedback',description:'Read your corrections and choose one answer to improve. This review is suggested, not counted as completed practice.',action:'reports',done:false,trackable:false});
+   if(latest&&!focus)push({id:'reports',title:'Review your latest feedback',description:'Read your corrections and choose one answer to improve. This review is suggested, not counted as completed practice.',action:'reports',actionLabel:'Review feedback',done:false,trackable:false});
    return tasks.slice(0,3);
  }
  const api={coverage,scoreMeta,comparable,comparison,dailyTasks,dateKey};
