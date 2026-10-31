@@ -10,15 +10,15 @@
   window.renderOwnerAttention=function(data){
     const target=document.getElementById('ownerAttention');
     if(!target || !data)return;
-    const students=data.students||[];
-    const users=data.users||[];
+    const students=Array.isArray(data.students)?data.students:[];
+    const users=Array.isArray(data.users)?data.users:[];
     const unassigned=students.filter(s=>!(s.staffIds||[]).length).length;
-    const suspended=users.filter(u=>u.accessSuspended).length;
-    const pending=[];
-    if(unassigned)pending.push('<div class="owner-attention-item"><span class="owner-attention-dot"></span><div><strong>'+number(unassigned)+' unassigned student'+(unassigned===1?'':'s')+'</strong><small>Assign a coach or manager to support them.</small></div><button type="button" class="btn secondary" onclick="setOwnerTab(\'assignments\')">Review</button></div>');
-    if(suspended)pending.push('<div class="owner-attention-item"><span class="owner-attention-dot"></span><div><strong>'+number(suspended)+' paused account'+(suspended===1?'':'s')+'</strong><small>Review access status in the account directory.</small></div><button type="button" class="btn secondary" onclick="setOwnerTab(\'accounts\')">Review</button></div>');
-    if(!pending.length)pending.push('<div class="owner-attention-item"><span class="owner-attention-ok" aria-hidden="true">✓</span><div><strong>No assignment or access alerts</strong><small>All student profiles have staff assigned and no accounts are currently paused.</small></div></div>');
-    target.innerHTML='<div class="owner-insight-title"><div><span class="owner-eyebrow">ACTION CENTER</span><h2>Needs your attention</h2></div><span class="owner-count">'+(unassigned+suspended)+' flagged</span></div>'+pending.join('');
+    const suspended=users.filter(u=>u.accessSuspended===true).length;
+    const urgent=suspended
+      ?'<div class="owner-attention-item owner-attention-urgent"><span class="owner-attention-dot"></span><div><strong>'+number(suspended)+' paused account'+(suspended===1?'':'s')+'</strong><small>Check access status and any confirmed support requests.</small></div><button type="button" class="btn secondary" onclick="setOwnerTab(\'accounts\')">Review accounts</button></div>'
+      :'<div class="owner-attention-item"><span class="owner-attention-ok" aria-hidden="true">✓</span><div><strong>No urgent account alerts</strong><small>No account access is currently marked as paused.</small></div></div>';
+    const coverage='<div class="owner-coverage"><div><span class="owner-eyebrow">OPTIONAL TEAM COVERAGE</span><strong>'+number(unassigned)+' student'+(unassigned===1?'':'s')+' without assigned staff</strong><small>These students are not necessarily in trouble. As Owner, you can still manage every student. Assign staff only when you want to delegate support.</small></div><button type="button" class="btn secondary" onclick="setOwnerTab(\'assignments\')">Manage assignments</button></div>';
+    target.innerHTML='<div class="owner-insight-title"><div><span class="owner-eyebrow">ACCOUNT HEALTH</span><h2>Needs your attention</h2></div><span class="owner-count">'+number(suspended)+' urgent alert'+(suspended===1?'':'s')+'</span></div>'+urgent+coverage;
   };
   window.renderOwnerInsights=function(data){
     const target=document.getElementById('ownerInsights');
