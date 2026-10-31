@@ -575,21 +575,84 @@ test('AI report generation failure leaves an accessible retry without losing int
  assert.equal(evaluations,2);
  assert.match(f.elements.get('mockAfterHelp').textContent,/Your report is saved/);
 });
-test('manual end provides feedback option without automatically requesting a paid evaluation',async()=>{
+test('manual End Interview stops the microphone, saves answers, and automatically generates one partial report',async()=>{
  const f=fixture();await f.run('boot()');await f.run('startVoice("mock")');
- f.run('mockSessionId="mock-3";transcript=[{role:"assistant",text:"What will you study?"},{role:"athlete",text:"Cybersecurity."}];');
+ f.run('mockSessionId="mock-3";transcript=[{role:"assistant",text:"What will you study?"},{role:"athlete",text:"Cybersecurity because I want to learn network security."}];');
  const realFetch=f.ctx.fetch,events=[];
  f.ctx.fetch=async(url,opt={})=>{
    const route=new URL(url,'http://local').pathname;
-   if(route==='/api/mock-session/end')return {ok:true,status:200,json:async()=>({ok:true})};
-   if(route==='/api/evaluate')events.push(route);
+   if(['/api/mock-session/end','/api/save-transcript','/api/evaluate'].includes(route)){
+     events.push(route);
+     return {ok:true,status:200,json:async()=>route==='/api/evaluate'?{id:'report-3',mockSessionId:'mock-3',overall:null,scoreType:'partial',coverage:{assessed:1,required:7}}:{ok:true}};
+   }
+   if(route==='/api/reports')return {ok:true,status:200,json:async()=>[{id:'report-3',athleteId:'s1',mockSessionId:'mock-3',overall:null,scoreType:'partial',coverage:{assessed:1,required:7},createdAt:'2026-10-31T12:00:00Z'}]};
    return realFetch(url,opt);
  };
- f.run('stopVoice("Student ended interview early.")');await f.run('mockSave');
- assert.equal(f.elements.get('feedbackBtn').disabled,false);
- assert.match(f.elements.get('mockAfterHelp').textContent,/some topics were not covered/);
+ f.run('endInterviewAndGenerate()');await f.run('automaticReport');
+ assert.equal(f.run('voice'),null);
+ assert.equal(f.store.tracks.at(-1).stopped,true);
  assert.equal(f.elements.get('mockTranscriptDisclosure').open,false);
- assert.equal(events.length,0);
+ assert.equal(f.elements.get('feedbackBtn').disabled,false);
+ assert.equal(f.elements.get('feedbackBtn').textContent,'Open saved feedback');
+ assert.match(f.elements.get('mockAfterHelp').textContent,/Your report is saved/);
+ assert.deepEqual(events,['/api/mock-session/end','/api/save-transcript','/api/evaluate']);
+ f.run('endInterviewAndGenerate()');
+ assert.equal(events.filter(route=>route==='/api/evaluate').length,1,'a second click must not generate another report');
+});
+test('manual early end with no recorded answers stops voice but never produces an empty report',async()=>{
+ const f=fixture();await f.run('boot()');await f.run('startVoice("mock")');
+ f.run('mockSessionId="mock-empty";transcript=[{role:"assistant",text:"Can you hear me clearly?"}]');
+ const realFetch=f.ctx.fetch,attempts=[];
+ f.ctx.fetch=async(url,opt={})=>{
+   const route=new URL(url,'http://local').pathname;
+   if(['/api/mock-session/end','/api/save-transcript','/api/evaluate'].includes(route))attempts.push(route);
+   return realFetch(url,opt);
+ };
+ f.run('endInterviewAndGenerate()');await f.run('automaticReport');
+ assert.equal(f.run('voice'),null);
+ assert.equal(f.store.tracks.at(-1).stopped,true);
+ assert.equal(f.elements.get('feedbackBtn').disabled,true);
+ assert.equal(attempts.length,0);
+ assert.match(f.elements.get('evalStatus').textContent,/No student answers were recorded/);
+});
+test('manual early end recovers from evaluation failure using Retry feedback without restarting',async()=>{
+ const f=fixture();await f.run('boot()');await f.run('startVoice("mock")');
+ f.run('mockSessionId="mock-retry";transcript=[{role:"assistant",text:"Why this course?"},{role:"athlete",text:"I want to learn cybersecurity."}]');
+ const realFetch=f.ctx.fetch;let evaluations=0;
+ f.ctx.fetch=async(url,opt={})=>{
+   const route=new URL(url,'http://local').pathname;
+   if(['/api/mock-session/end','/api/save-transcript'].includes(route))return {ok:true,status:200,json:async()=>({ok:true})};
+   if(route==='/api/evaluate'){
+     evaluations++;
+     return evaluations===1
+       ?{ok:false,status:502,json:async()=>({error:'Report generation temporarily unavailable.'})}
+       :{ok:true,status:200,json:async()=>({id:'report-retry',mockSessionId:'mock-retry',overall:null,scoreType:'partial'})};
+   }
+   if(route==='/api/reports')return {ok:true,status:200,json:async()=>[{id:'report-retry',athleteId:'s1',mockSessionId:'mock-retry',overall:null,scoreType:'partial',createdAt:'2026-10-31T12:00:00Z'}]};
+   return realFetch(url,opt);
+ };
+ f.run('endInterviewAndGenerate()');await f.run('automaticReport');
+ assert.equal(evaluations,1);
+ assert.equal(f.elements.get('feedbackBtn').textContent,'Retry feedback');
+ assert.equal(f.elements.get('feedbackBtn').disabled,false);
+ assert.equal(f.run('voice'),null);
+ await f.run('openMockFeedback()');
+ assert.equal(evaluations,2);
+ assert.equal(f.elements.get('feedbackBtn').textContent,'Open saved feedback');
+});
+test('errors and involuntary voice interruption do not auto-charge for mock feedback',async()=>{
+ const f=fixture();await f.run('boot()');await f.run('startVoice("mock")');
+ f.run('mockSessionId="mock-interrupted";transcript=[{role:"assistant",text:"Why this program?"},{role:"athlete",text:"I want a degree in cybersecurity."}]');
+ const realFetch=f.ctx.fetch,attempts=[];
+ f.ctx.fetch=async(url,opt={})=>{
+   const route=new URL(url,'http://local').pathname;
+   if(route==='/api/mock-session/end')return {ok:true,status:200,json:async()=>({ok:true})};
+   if(route==='/api/evaluate')attempts.push(route);
+   return realFetch(url,opt);
+ };
+ f.run('interruptVoice(voice)');await f.run('mockSave');
+ assert.equal(f.run('voice'),null);
+ assert.equal(attempts.length,0);
 });
 test('interview feedback presentation uses one live region, retry control and collapsible transcript',()=>{
  const f=fixture();
@@ -597,6 +660,7 @@ test('interview feedback presentation uses one live region, retry control and co
  assert.match(html,/id="mockAfterHelp"[^>]*role="status"/);
  assert.match(html,/id="feedbackBtn" onclick="openMockFeedback\(\)" disabled/);
  assert.match(html,/After the interview/);
- assert.match(html,/generates feedback automatically/);
+ assert.match(html,/automatically generates feedback from the answers captured/);
+ assert.match(html,/id="stopBtn" onclick="endInterviewAndGenerate\(\)"/);
  assert.equal(f.elements.get('feedbackBtn').disabled,false,'fixture starts without native HTML boolean attribute interpretation');
 });

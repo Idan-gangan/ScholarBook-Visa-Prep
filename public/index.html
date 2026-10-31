@@ -289,7 +289,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
     </section>
     <section id="interview" class="screen">
       <div class="page-heading"><span class="eyebrow">YOUR PRACTICE ROOM</span><h1>Live AI Mock Interview</h1><p class="muted">A focused conversation. A clearer next step.</p></div>
-      <div class="notice">Answer one question at a time and respond to follow-ups. The AI ends the interview when finished and prepares your feedback automatically. If you stop early, you can still request feedback from recorded answers.</div>
+      <div class="notice">Answer one question at a time and respond to follow-ups. When the AI finishes—or you select End Interview yourself—VisaAtlas automatically prepares feedback from your recorded answers.</div>
       <div class="field" id="mockStudentPicker"><label for="athleteSelect">Student</label><select id="athleteSelect"></select></div>
 <div class="card language-choice" aria-labelledby="mockLanguageTitle"><h2 id="mockLanguageTitle">Choose your practice language</h2><p>Speak with the interviewer in the language you choose.</p><div class="formgrid"><div class="field"><label for="mockLanguage">Interview language</label><select id="mockLanguage" aria-describedby="mockLanguageHelp"><option value="en">English</option><option value="fr">Français — French</option><option value="es">Español — Spanish</option><option value="pt">Português — Portuguese</option><option value="ar">العربية — Arabic</option><option value="sw">Kiswahili — Swahili</option></select></div><div class="field"><label for="feedbackLanguage">Written feedback language</label><select id="feedbackLanguage" aria-describedby="feedbackLanguageHelp"><option value="en">English</option><option value="fr">Français — French</option><option value="es">Español — Spanish</option><option value="pt">Português — Portuguese</option><option value="ar">العربية — Arabic</option><option value="sw">Kiswahili — Swahili</option></select></div></div><p id="feedbackLanguageHelp" class="small muted">For example: practise in English and receive written feedback in French. Report headings and standard scoring messages use the feedback language. Navigation remains in English.</p><p id="mockLanguageHelp" class="small muted">Choose before starting. These are practice options, not a guarantee of the language available at your embassy interview.</p></div>
       <div class="field"><label for="interviewDifficulty">Interview mode</label><select id="interviewDifficulty"><option value="standard">Standard</option><option value="challenging">Challenging</option><option value="intensive">Intensive</option></select><p class="small muted">Standard: direct questions. Challenging: more follow-ups. Intensive: deeper questioning. All modes use simple language and the same scoring standard.</p></div>
@@ -301,7 +301,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
           <div id="voiceLimitNotice" class="small muted" role="status" aria-live="polite"></div>
           <div class="interview-controls">
             <button class="btn primary" id="startBtn" onclick="startVoice()">Start voice interview <span aria-hidden="true">→</span></button>
-            <button class="btn danger" id="stopBtn" onclick="stopVoice()" disabled>End Interview</button>
+            <button class="btn danger" id="stopBtn" onclick="endInterviewAndGenerate()" disabled>End Interview</button>
           </div>
           <h2 style="margin-bottom:4px">AI mock interviewer</h2>
           <div id="interviewerStage" class="interviewer-stage" data-state="idle">
@@ -314,7 +314,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
         </div>
         <div class="card">
           <h3>After the interview</h3>
-          <p id="mockAfterHelp" class="muted" role="status" aria-live="polite">When the AI finishes your interview, VisaAtlas generates feedback automatically. If you end early, you can still generate feedback from the captured answers.</p>
+          <p id="mockAfterHelp" class="muted" role="status" aria-live="polite">Whether the AI finishes or you end your interview early, VisaAtlas automatically generates feedback from the answers captured. At least one recorded answer is needed.</p>
           <button class="btn primary" style="width:100%" id="feedbackBtn" onclick="openMockFeedback()" disabled>View my feedback</button>
           <p class="muted small">One saved report per mock interview. Partial sessions receive feedback on assessed answers only. If generation fails, you can retry.</p>
 <p id="reportUsage" class="small muted" role="status"></p>
@@ -1123,7 +1123,7 @@ async function startVoice(mode="mock",consented=false){
   else {
     mockSessionId=null;mockSave=Promise.resolve();$('interviewDifficulty').disabled=true;interviewerState('connecting');transcript=[];mockStudentId=v.athleteId;$("evalStatus").textContent="";
     $('mockInterviewInstructions').hidden=false;$('mockTranscriptDisclosure').open=true;
-    $('mockAfterHelp').textContent='The interview is in progress. When the AI finishes, your feedback will be generated automatically.';
+    $('mockAfterHelp').textContent='The interview is in progress. When the AI finishes or you end early, your feedback will be generated automatically from recorded answers.';
     $('feedbackBtn').disabled=true;$('feedbackBtn').textContent='View my feedback';
   }
   voiceEl("transcript").replaceChildren();
@@ -1176,6 +1176,19 @@ function endServerVoice(token,costSample){
    if(me&&version===sessionVersion&&!voice)voiceEl('voiceStatus').textContent='Voice stopped on this device. If restarting is blocked, wait a moment and try again.';
  }).finally(()=>clearTimeout(timeout));
  return voiceEnd;
+}
+// A student's deliberate End Interview click follows the same single-report
+// handoff as the AI's natural closing. Interruptions and tutor sessions do not.
+function endInterviewAndGenerate(){
+  if(!voice || voice.mode!=='mock')return;
+  stopVoice('Interview ended by you — preparing your feedback.');
+  if(!mockSessionId || !transcript.some(line=>line.role==='athlete')){
+    $('evalStatus').textContent='No student answers were recorded, so no feedback report can be generated. Start a new mock interview to try again.';
+    return;
+  }
+  $('mockAfterHelp').textContent='You ended your interview early. Preparing feedback automatically from the answers recorded so far…';
+  $('mockAfterHelp')?.scrollIntoView?.({behavior:'smooth',block:'center'});
+  automaticReport=generateReport();
 }
 function stopVoice(message=voiceScreen==="learn"?"Lesson conversation ended":"Interview ended"){
   const v=voice;voice=null;v?.abort?.abort();clearTimeout(v?.startupTimer);clearTimeout(v?.inputTimer);clearTimeout(v?.limitTimer);clearTimeout(v?.warningTimer);clearTimeout(v?.clockTimer);const status=voiceEl("voiceStatus");if(status?.dataset)status.dataset.listening="false";if(v?.serverToken)endServerVoice(v.serverToken,v.costCounter?.sample());
