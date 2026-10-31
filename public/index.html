@@ -550,6 +550,7 @@ function navIcon(id){
 }
 function show(id,el){
  if(id==='owner' && me?.role!=='owner')return;
+ if(id!=='profile' && $('profile').classList.contains('on') && window.VisaAtlasStudentProfile?.hasUnsaved() && !confirm('You have unsaved profile changes. Leave without saving?'))return;
  if(id!=='owner')$('ownerPassword').value='';
  if(me && ['learning','interview'].includes(id))refreshVoiceUsage();
  if(id!=='account'){clearPasswordForm();$('passwordMessage').textContent='';}
