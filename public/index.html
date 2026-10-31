@@ -94,8 +94,10 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
 <link rel="stylesheet" href="/profile.css">
 <link rel="stylesheet" href="/owner.css">
 <link rel="stylesheet" href="/owner-command-center.css">
+<link rel="stylesheet" href="/owner-student-analytics.css">
 <link rel="stylesheet" href="/owner-mobile-diagnostics.css">
 <script src="/owner-command-center.js"></script>
+<script src="/owner-student-analytics.js"></script>
 <script src="/owner-mobile-diagnostics.js"></script>
 <link rel="stylesheet" href="/student.css">
 <link rel="stylesheet" href="/home.css">
@@ -328,7 +330,20 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
       <div id="ownerStats" class="owner-stats" aria-label="Owner workspace totals"></div>
        <div id="ownerAttention" class="owner-attention" aria-live="polite"></div>
        <div id="ownerInsights" class="owner-insights" aria-live="polite"></div>
-      <div class="owner-shortcuts"><button class="btn secondary" type="button" onclick="setOwnerTab('accounts')">Manage accounts</button><button class="btn secondary" type="button" onclick="setOwnerTab('assignments')">Staff assignments</button><button class="btn secondary" type="button" onclick="show('manager')">Student progress</button><button class="btn secondary" type="button" onclick="show('reports')">Readiness reports</button><a class="btn secondary" href="/review-moderation.html">Student reviews</a><span>Owner-only workspace · Existing session limits apply</span></div>
+      <div class="owner-shortcuts"><button class="btn secondary" type="button" onclick="openOwnerStudentAnalytics()">Student analytics</button><button class="btn secondary" type="button" onclick="setOwnerTab('accounts')">Manage accounts</button><button class="btn secondary" type="button" onclick="setOwnerTab('assignments')">Staff assignments</button><button class="btn secondary" type="button" onclick="show('manager')">Student progress</button><button class="btn secondary" type="button" onclick="show('reports')">Readiness reports</button><a class="btn secondary" href="/review-moderation.html">Student reviews</a><span>Owner-only workspace · Existing session limits apply</span></div>
+      <section class="owner-analytics" id="ownerStudentAnalytics" aria-labelledby="ownerStudentAnalyticsTitle">
+        <div class="owner-analytics-heading"><div><span class="owner-eyebrow">STUDENT SUCCESS & USAGE</span><h2 id="ownerStudentAnalyticsTitle">Student analytics</h2><p>See saved practice activity, comparable mock-score improvements, follow-up opportunities and the AI usage we can actually measure.</p></div><button class="btn secondary" type="button" onclick="loadOwnerStudentAnalytics()">Refresh analytics</button></div>
+        <p id="ownerStudentAnalyticsStatus" role="status" aria-live="polite">Student analytics loads from saved records.</p>
+        <div id="ownerStudentAnalyticsSummary" class="owner-analytics-kpis" aria-label="Student analytics overview"></div>
+        <div class="owner-analytics-controls">
+          <label for="ownerStudentAnalyticsSearch">Search students<input id="ownerStudentAnalyticsSearch" type="search" placeholder="Name or email" oninput="ownerStudentAnalyticsFilterChanged()"></label>
+          <label for="ownerStudentAnalyticsFilter">Show<select id="ownerStudentAnalyticsFilter" onchange="ownerStudentAnalyticsFilterChanged()"><option value="all">All students</option><option value="active">Recent activity · 7 days</option><option value="follow-up">Follow-up suggested · 14+ days</option><option value="improving">Improving mock scores</option><option value="no-score">No comparable full score</option><option value="unpriced">Unpriced voice activity</option></select></label>
+          <label for="ownerStudentAnalyticsSort">Order<select id="ownerStudentAnalyticsSort" onchange="ownerStudentAnalyticsFilterChanged()"><option value="recent">Most recent activity</option><option value="activity">Least recent activity</option><option value="score">Most improved</option><option value="name">Student name</option></select></label>
+        </div>
+        <div id="ownerStudentAnalyticsList" aria-live="polite"></div>
+        <div class="owner-analytics-pager"><span id="ownerStudentAnalyticsRange" role="status"></span><div><button id="ownerStudentAnalyticsPrev" class="btn secondary" type="button" onclick="ownerStudentAnalyticsPage(-1)">Previous</button><button id="ownerStudentAnalyticsNext" class="btn secondary" type="button" onclick="ownerStudentAnalyticsPage(1)">Next</button></div></div>
+        <p id="ownerStudentAnalyticsNotes" class="owner-analytics-footnote"></p>
+      </section>
       <div class="owner-workspace">
         <nav class="owner-tabs" aria-label="Owner dashboard sections"><button type="button" data-owner-tab="accounts" aria-pressed="true" onclick="setOwnerTab('accounts')">Accounts</button><button type="button" data-owner-tab="assignments" aria-pressed="false" onclick="setOwnerTab('assignments')">Staff assignments</button><button type="button" data-owner-tab="activity" aria-pressed="false" onclick="setOwnerTab('activity')">Activity log</button></nav>
         <div class="owner-panel-heading"><div><h2 id="ownerPanelTitle">Account directory</h2><p id="ownerPanelHelp" class="muted">Find accounts and manage their roles.</p></div><span class="owner-badge">Owner access</span></div>
@@ -576,6 +591,7 @@ function clearOwnerView(){
  if($('ownerEdit').open)$('ownerEdit').close();
  for(const id of ['ownerStats','ownerAccounts','ownerAudit','ownerAssignments','ownerEditFields','ownerAttention','ownerInsights'])$(id).replaceChildren();
  window.clearOwnerMobileDiagnostics?.();
+ window.clearOwnerStudentAnalytics?.();
  $('ownerStatus').textContent='';$('ownerRange').textContent='';
 }
 async function loadOwner(){
@@ -592,6 +608,7 @@ async function loadOwner(){
   window.renderOwnerAttention?.(data);
   renderOwnerDirectory();$('ownerStatus').textContent='';
   void loadOperations();
+  void window.loadOwnerStudentAnalytics?.();
  }catch(error){$('ownerStatus').textContent=error.message;}
 }
 function setOwnerTab(tab){

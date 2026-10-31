@@ -1,0 +1,47 @@
+/* Owner-only Student Analytics. */
+#owner .owner-analytics{margin:20px 0;background:#fff;border:1px solid #dfe7f1;border-radius:19px;padding:23px;box-shadow:0 4px 20px #132d4b08}
+#owner .owner-analytics-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:15px;flex-wrap:wrap;margin-bottom:15px}
+#owner .owner-analytics-heading h2{font-size:23px;margin:7px 0 5px}
+#owner .owner-analytics-heading p{font-size:12px;color:#647891;line-height:1.6;margin:0;max-width:630px}
+#owner .owner-analytics-heading button{min-height:40px}
+#owner .owner-analytics-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+#owner .owner-analytics-kpi{padding:16px 13px;background:#f5f8fd;border-radius:13px;border:1px solid #e4ecf6;min-width:0}
+#owner .owner-analytics-kpi span{font-size:11px;color:#596e85;display:block;font-weight:700}
+#owner .owner-analytics-kpi strong{display:block;color:#173b74;font-size:27px;margin:8px 0}
+#owner .owner-analytics-kpi small{display:block;color:#73849a;font-size:10px;line-height:1.5}
+#owner .owner-analytics-controls{display:grid;grid-template-columns:2fr 1fr 1fr;gap:13px;margin:23px 0 12px}
+#owner .owner-analytics-controls label{display:block;font-size:11px;font-weight:700;color:#5c7089}
+#owner .owner-analytics-controls input,#owner .owner-analytics-controls select{margin-top:6px;border:1px solid #d4dfec;border-radius:10px;background:#fff;color:#173451;padding:11px;min-height:42px;width:100%;font-size:13px}
+#owner .owner-analytics-student{border:1px solid #e0e8f3;border-radius:14px;margin:13px 0;padding:18px;background:#fff}
+#owner .owner-analytics-person{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;margin-bottom:15px}
+#owner .owner-analytics-person h3{font-size:16px;margin:0 0 5px;color:#16365d}
+#owner .owner-analytics-person p{font-size:11px;color:#6a7b90;margin:0;overflow-wrap:anywhere}
+#owner .owner-analytics-state{font-size:10px;font-weight:800;color:#45617b;background:#edf1f7;border-radius:40px;padding:7px 10px}
+#owner .owner-analytics-state.recent{background:#eaf6ed;color:#1a7451}
+#owner .owner-analytics-state.followup{background:#fff2e0;color:#956120}
+#owner .owner-analytics-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+#owner .owner-analytics-metric{background:#f7f9fc;border:1px solid #edf1f5;border-radius:10px;padding:12px;min-width:0}
+#owner .owner-analytics-metric span{display:block;font-size:10px;color:#728197;line-height:1.5}
+#owner .owner-analytics-metric strong{display:block;font-size:14px;color:#1d395a;margin-top:6px;overflow-wrap:anywhere}
+#owner .owner-analytics-extra{font-size:11px;color:#64768c;margin-top:12px;line-height:1.7}
+#owner .owner-analytics-extra summary{cursor:pointer;color:#2c58a0;font-weight:700}
+#owner .owner-analytics-extra p{margin:10px 0}
+#owner .owner-analytics-pager{display:flex;justify-content:space-between;align-items:center;gap:13px;flex-wrap:wrap;margin-top:15px;font-size:11px;color:#61758d}
+#owner .owner-analytics-pager>div{display:flex;gap:8px}
+#owner .owner-analytics-pager button{min-height:36px}
+#owner .owner-analytics-footnote{font-size:11px;line-height:1.7;color:#728398;margin-top:17px}
+#owner .owner-analytics-empty{background:#f5f8fc;padding:22px;border-radius:12px;font-size:12px;color:#667b92}
+#owner #ownerStudentAnalyticsStatus{font-size:11px;color:#6b7b8f;margin:8px 0}
+@media(max-width:1000px){#owner .owner-analytics-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}#owner .owner-analytics-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){
+ #owner .owner-analytics{padding:16px;margin:16px 0}
+ #owner .owner-analytics-heading h2{font-size:20px}
+ #owner .owner-analytics-heading .btn{width:100%}
+ #owner .owner-analytics-controls{grid-template-columns:1fr;gap:10px}
+ #owner .owner-analytics-controls input,#owner .owner-analytics-controls select{font-size:16px}
+ #owner .owner-analytics-kpi{padding:13px 10px}
+ #owner .owner-analytics-kpi strong{font-size:23px}
+ #owner .owner-analytics-student{padding:13px}
+ #owner .owner-analytics-metric{padding:11px 9px}
+ #owner .owner-analytics-metric strong{font-size:13px}
+}

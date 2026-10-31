@@ -15,6 +15,13 @@ async function deleteStudentAccount(db,client,userId,verifiedCredential){
  if(active.rows.length)throw fail(409,'End any voice session and wait for report generation to finish, then try again.');
  const studentIds=db.athletes.filter(a=>a.userId===userId).map(a=>a.id);
  const belongs=record=>record.userId===userId||studentIds.includes(record.athleteId);
+ // Remove attributable pseudonymous cost rows in the same deletion transaction.
+ // Earlier tutor records without a student key remain unlinkable anonymous aggregates.
+ const {studentKey,groupKey}=require('./owner-student-analytics');
+ const groupKeys=new Set();
+ for(const session of db.mockSessions||[])if(belongs(session)&&typeof session.id==='string')groupKeys.add(groupKey(session.id));
+ for(const report of db.reports||[])if(belongs(report)&&typeof (report.mockSessionId||report.id)==='string')groupKeys.add(groupKey(report.mockSessionId||report.id));
+ await client.query('DELETE FROM ai_cost_samples WHERE student_key=ANY($1::text[]) OR (student_key IS NULL AND group_key=ANY($2::text[]))',[studentIds.map(studentKey),[...groupKeys]]);
  for(const key of ['reports','transcripts','mockSessions'])if(Array.isArray(db[key]))db[key]=db[key].filter(r=>!belongs(r));
  db.athletes=db.athletes.filter(a=>a.userId!==userId);
  for(const student of db.athletes)if(Array.isArray(student.staffIds))student.staffIds=student.staffIds.filter(id=>id!==userId);
