@@ -1,0 +1,103 @@
+/* Student-only dashboard v2. Existing owner/staff pages remain unchanged. */
+#studentMenuToggle,.student-bottom-nav,.student-menu-backdrop{display:none}
+#app.student-mode .student-hero{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(215px,.7fr);gap:24px;padding:30px;border-radius:22px;margin-bottom:18px;background:#122f4e}
+#app.student-mode .student-hero h2{margin:8px 0 12px;max-width:620px;font-size:clamp(27px,3vw,38px);line-height:1.12}
+#app.student-mode .student-hero .home-greeting{margin:12px 0 4px;font-size:15px;font-weight:600}
+#app.student-mode .student-hero .student-hero-copy{font-size:14px;line-height:1.6;color:#d7e4f0;max-width:540px}
+#app.student-mode .student-hero .student-date-line{display:inline-flex;align-items:center;padding:8px 12px;background:#ffffff13;border:1px solid #ffffff25;border-radius:9px;color:#e7f3ff;margin-top:8px;font-size:13px;font-weight:650}
+#app.student-mode .home-course{gap:10px}
+#app.student-mode .home-course strong{font-size:40px}
+#app.student-mode .home-course small{display:block;line-height:1.5;font-size:11px}
+#app.student-mode .student-hero .btn{min-height:45px}
+#app.student-mode .student-hero .primary{max-width:270px}
+#app.student-mode #dailyPractice{padding:26px 28px;margin-bottom:24px;border-radius:20px}
+#app.student-mode .daily-plan-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+#app.student-mode .daily-plan-head h2{font-size:23px;margin:6px 0}
+#app.student-mode .daily-plan-head p{font-size:13px;color:#5b7086;margin:4px 0 0}
+#app.student-mode .daily-task-list{display:grid;gap:10px;margin-top:18px}
+#app.student-mode .daily-task{display:grid;grid-template-columns:32px minmax(0,1fr) auto;align-items:center;gap:14px;padding:16px;border:1px solid #dfe8f1;border-radius:14px;background:#f9fbfe}
+#app.student-mode .daily-task.is-done{background:#f0f9f5;border-color:#c5e7d5}
+#app.student-mode .daily-task-icon{display:grid;place-items:center;width:30px;height:30px;background:#e4edfa;color:#1752a8;border-radius:50%;font-weight:700}
+#app.student-mode .daily-task.is-done .daily-task-icon{background:#d9f2e5;color:#186a47}
+#app.student-mode .daily-task h3{font-size:15px;letter-spacing:-.015em;margin:0 0 4px}
+#app.student-mode .daily-task p{font-size:13px;line-height:1.55;margin:0;color:#52657a}
+#app.student-mode .daily-task .btn{font-size:12px;min-height:42px;padding:9px 14px}
+#app.student-mode .daily-complete{font-size:12px;color:#186a47;font-weight:700}
+#app.student-mode .dashboard-section-intro{margin-top:28px}
+#app.student-mode #dashCards .card{box-shadow:none;border-radius:16px;min-width:0}
+#app.student-mode #dashCards .kpi{font-size:clamp(24px,3vw,32px);margin-top:14px;line-height:1.2}
+#app.student-mode #dashCards .muted{font-size:12px;font-weight:650}
+#app.student-mode #dashCards .score-qualifier{font-size:12px}
+#app.student-mode .student-action-grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:18px;margin:22px 0}
+#app.student-mode .student-action-card{padding:26px;border-radius:20px}
+#app.student-mode .student-action-primary{background:#122f4e;color:white}
+#app.student-mode .student-action-primary p{color:#d8e6f3}
+#app.student-mode .student-action-card h2{font-size:24px;margin:12px 0}
+#app.student-mode .student-action-card p{font-size:14px;line-height:1.65}
+#app.student-mode .student-action-card .small{font-size:12px}
+#app.student-mode .student-action-primary .btn{background:white;color:#173a67}
+#app.student-mode .student-action-card .btn{margin-top:12px;min-height:44px}
+#app.student-mode .student-action-card .eyebrow{color:inherit;opacity:.75}
+#app.student-mode .student-feedback-list{margin:10px 0;padding-left:19px}
+#app.student-mode .student-feedback-list li{margin:7px 0;font-size:13px;line-height:1.5}
+#app.student-mode .practice-history{margin:22px 0 24px}
+#app.student-mode .history-card-list{display:grid;gap:10px;margin-top:18px}
+#app.student-mode .history-card{border:1px solid #e0e8f1;border-radius:14px;background:#fbfcff;overflow:hidden}
+#app.student-mode .history-card summary{display:flex;align-items:center;justify-content:space-between;gap:14px;cursor:pointer;padding:16px;list-style:none}
+#app.student-mode .history-card summary::-webkit-details-marker{display:none}
+#app.student-mode .history-card summary:after{content:'⌄';color:#59708b;font-size:18px;margin-left:6px}
+#app.student-mode .history-card[open] summary:after{content:'⌃'}
+#app.student-mode .history-card .history-card-main{min-width:0}
+#app.student-mode .history-card .history-card-main strong{display:block;font-size:15px}
+#app.student-mode .history-card .history-card-main small{color:#61748a;display:block;margin-top:5px}
+#app.student-mode .history-card .history-score{display:grid;gap:3px;text-align:right;min-width:0}
+#app.student-mode .history-card .history-score strong{font-size:16px}
+#app.student-mode .history-card .history-score small{font-size:11px;color:#667b90}
+#app.student-mode .history-details{padding:4px 16px 16px;border-top:1px solid #e6ecf3;color:#435870;font-size:13px}
+#app.student-mode .history-details p{margin:10px 0;line-height:1.6}
+#app.student-mode #studentPlanner{margin:24px 0}
+@media(max-width:1000px){
+ #app.student-mode .student-hero{grid-template-columns:1fr}
+ #app.student-mode .home-course{border-left:0;border-top:1px solid #ffffff30;padding:18px 0 0}
+ #app.student-mode .student-action-grid{grid-template-columns:1fr}
+}
+@media(max-width:900px){
+ #app.student-mode{padding-bottom:calc(65px + env(safe-area-inset-bottom))}
+ #app.student-mode .top{height:68px;min-height:68px;flex-wrap:nowrap;z-index:21;padding:10px 16px}
+ #app.student-mode .top .brand{font-size:20px}
+ #app.student-mode .top .account-summary{display:none}
+ #studentMenuToggle{display:inline-flex;align-items:center;gap:7px;justify-content:center;background:#f3f6fa;color:#1c436c;border:1px solid #d2deeb;border-radius:10px;padding:10px 12px;min-height:44px;font-size:13px;font-weight:700;cursor:pointer}
+ #app.student-mode #nav.side{display:none}
+ #app.student-mode.student-menu-open #nav.side{display:grid;position:fixed;top:var(--student-nav-top,68px);left:12px;right:12px;bottom:auto;max-height:calc(100dvh - 155px);overflow-y:auto;grid-template-columns:repeat(2,minmax(0,1fr));padding:14px;gap:8px;z-index:20;min-height:0;width:auto;background:#122b45;border:0;border-radius:16px;box-shadow:0 20px 48px #081a3880}
+ #app.student-mode.student-menu-open #nav .nav{margin:0;min-width:0;width:100%;min-height:48px;white-space:normal}
+ #app.student-mode .student-menu-backdrop{display:none}
+ #app.student-mode.student-menu-open .student-menu-backdrop{display:block;position:fixed;inset:0;background:#06162a80;z-index:19;border:0;padding:0}
+ #app.student-mode .student-bottom-nav{display:grid;position:fixed;left:0;right:0;bottom:0;grid-template-columns:repeat(5,minmax(0,1fr));gap:0;min-height:62px;padding:7px 6px calc(7px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid #dce5f0;box-shadow:0 -5px 24px #102b4512;z-index:18}
+ #app.student-mode .student-bottom-nav button{display:flex;flex-direction:column;align-items:center;gap:3px;justify-content:center;border:0;background:transparent;color:#66768b;font:600 10px/1.25 inherit;padding:5px 0;min-width:0;border-radius:9px;cursor:pointer}
+ #app.student-mode .student-bottom-nav button.on{background:#edf3ff;color:#0b4ec5}
+ #app.student-mode .student-bottom-nav .nav-icon{width:22px;height:22px}
+ #app.student-mode .student-bottom-nav .nav-icon svg{width:21px;height:21px}
+ #app.student-mode .student-bottom-nav button:focus-visible{outline:3px solid #2f72da;outline-offset:-3px}
+ #app.student-mode .main{padding:20px 16px;min-width:0}
+ #app.student-mode .student-hero{padding:24px;grid-template-columns:1fr;gap:16px;border-radius:18px}
+ #app.student-mode .student-hero h2{font-size:27px}
+ #app.student-mode .home-course{display:flex;flex-direction:column;gap:8px}
+ #app.student-mode .home-course strong{font-size:29px}
+ #app.student-mode .home-course .eyebrow{grid-column:auto;grid-row:auto}
+ #app.student-mode .home-course progress{width:100%}
+ #app.student-mode #dailyPractice{padding:20px}
+ #app.student-mode .daily-task{grid-template-columns:30px 1fr;align-items:start;gap:10px;padding:13px}
+ #app.student-mode .daily-task .btn,.daily-complete{grid-column:2;justify-self:start;margin-top:6px}
+ #app.student-mode #dashCards{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #app.student-mode .student-action-card{padding:22px}
+ #app.student-mode #studentPlanner{padding:18px}
+ #app.student-mode .history-heading{align-items:flex-start}
+ #app.student-mode .history-card summary{padding:13px}
+}
+@media(max-width:380px){
+ #app.student-mode .top .brand{font-size:18px}
+ #app.student-mode #dashCards{gap:8px}
+ #app.student-mode #dashCards .card{padding:12px}
+ #app.student-mode #dashCards .kpi{font-size:23px}
+}
+@media(prefers-reduced-motion:reduce){#app.student-mode *,#app.student-mode *::before,#app.student-mode *::after{scroll-behavior:auto!important;transition:none!important}}
