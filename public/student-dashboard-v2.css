@@ -101,3 +101,23 @@
  #app.student-mode #dashCards .kpi{font-size:23px}
 }
 @media(prefers-reduced-motion:reduce){#app.student-mode *,#app.student-mode *::before,#app.student-mode *::after{scroll-behavior:auto!important;transition:none!important}}
+
+
+/* Clearer student guidance: compact feedback and honest daily evidence totals. */
+#app.student-mode .daily-task-optional{display:block;font-size:11px;color:#6a788d;line-height:1.45;margin-top:8px}
+#app.student-mode .student-feedback-detail{border-top:1px solid #e4eaf3;padding-top:13px;margin-top:13px}
+#app.student-mode .student-feedback-detail summary{color:#1d4d8c;font-size:13px;font-weight:700;cursor:pointer;line-height:1.5}
+#app.student-mode .student-feedback-detail summary:focus-visible{outline:2px solid #174fc4;outline-offset:3px}
+#app.student-mode .student-feedback-detail .student-feedback-list{margin-top:9px}
+#app.student-mode #dashCards .card:first-child .score-qualifier{display:block;line-height:1.45;max-width:28ch}
+#app.student-mode .daily-task[aria-label]{overflow-wrap:anywhere}
+@media(max-width:900px){
+ #app.student-mode .student-hero{padding:20px 22px;margin-bottom:16px}
+ #app.student-mode .student-hero h2{font-size:26px;line-height:1.15}
+ #app.student-mode .student-hero .home-greeting{margin-top:6px}
+ #app.student-mode #dailyPractice{padding:18px 20px}
+ #app.student-mode .daily-task-list{gap:9px;margin-top:14px}
+ #app.student-mode .daily-task{padding:13px 12px}
+ #app.student-mode .student-action-card{padding:20px}
+ #app.student-mode #dashCards .score-qualifier{font-size:11px}
+}
