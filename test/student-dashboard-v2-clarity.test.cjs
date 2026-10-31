@@ -42,7 +42,7 @@ test('daily counter excludes suggested reading and distinguishes completed saved
  const markup=f.element('dailyPractice').innerHTML;
  assert.match(markup,/0 \/ 2 saved activities/);
  assert.match(markup,/Suggested reading · not counted in today’s progress/);
- assert.match(markup,/Only saved profile, lesson, mock report or targeted-answer activity/);
+ assert.match(markup,/Completion uses saved evidence/);
  assert.doesNotMatch(markup,/0 \/ 3 done/);
 });
 test('an independently saved retry counts as progress even when profile is unfinished',()=>{
@@ -52,7 +52,7 @@ test('an independently saved retry counts as progress even when profile is unfin
  f.window.__dashboardTest.renderToday([report],false,true,1,31);
  const markup=f.element('dailyPractice').innerHTML;
  assert.match(markup,/1 \/ 3 saved activities/);
- assert.match(markup,/Saved today/);
+ assert.match(markup,/Answer retry saved today/);
  assert.doesNotMatch(markup,/Suggested reading · not counted/);
 });
 test('history explains that partially assessed answers are not a full visa interview assessment',()=>{
@@ -62,5 +62,45 @@ test('history explains that partially assessed answers are not a full visa inter
  assert.match(markup,/Assessed answers only/);
  assert.match(markup,/not a full interview-readiness score/);
  assert.match(markup,/6 \/ 7 assessed areas/);
+ assert.match(markup,/student-history-disclosure/);
+ assert.match(markup,/Review recent mock attempts/);
  assert.match(markup,/62\/100/);
+});
+
+test('daily actions have specific labels and identify exact missing profile fields',()=>{
+ const f=fixture([{id:'r1',createdAt:'2026-10-27',practiceTargets:[{title:'Study plans',focus:'Choose a topic',lessonId:'study-purpose'}]}]);
+ f.window.VisaAtlasProfile={missing:()=>['Program','Phone number','Future plans']};
+ f.window.__dashboardTest.renderToday(f.globals.reports,false,true,1,31);
+ const html=f.element('dailyPractice').innerHTML;
+ assert.match(html,/Complete profile →/);
+ assert.match(html,/Practise this answer →/);
+ assert.match(html,/Continue lesson →/);
+ assert.match(html,/Still needed: Program · Phone number · \+1 more/);
+ assert.doesNotMatch(html,/>Start →</);
+});
+test('a verified comparable 60 to 62 change is shown with matching coverage and model metadata',()=>{
+ const earlier={id:'older',athleteId:'s1',createdAt:'2026-10-22',scoreType:'partial',incomplete:true,practiceScore:60,coverage:{assessed:6,required:7},difficulty:'standard',scoringMethod:'coverage-separated-v2'};
+ const newest={...earlier,id:'newer',practiceScore:62,createdAt:'2026-10-26'};
+ const f=fixture([earlier,newest]);
+ f.window.__dashboardTest.refreshOverview();
+ const html=f.element('dashCards').innerHTML;
+ assert.match(html,/student-score-trend/);
+ assert.match(html,/60 → 62 \(\+2 points\)/);
+ assert.match(html,/same mode, coverage and scoring method/);
+});
+test('progress score comparison is omitted when modes, coverage or methods differ',()=>{
+ const old={id:'older',athleteId:'s1',createdAt:'2026-10-22',scoreType:'partial',incomplete:true,practiceScore:60,coverage:{assessed:6,required:7},difficulty:'challenging',scoringMethod:'old-model'};
+ const newest={...old,id:'newer',practiceScore:62,createdAt:'2026-10-26',difficulty:'standard',scoringMethod:'coverage-separated-v2'};
+ const f=fixture([newest,old]);
+ f.window.__dashboardTest.refreshOverview();
+ assert.doesNotMatch(f.element('dashCards').innerHTML,/student-score-trend/);
+ assert.match(f.element('dashCards').innerHTML,/not full readiness/);
+});
+test('date editor and checklist remain accessible behind a collapsed planning section',()=>{
+ const html=fs.readFileSync(path.join(__dirname,'../public/index.html'),'utf8');
+ assert.match(html,/<details id="studentPlannerTools" class="student-planner-tools">/);
+ assert.match(html,/Manage interview date and checklist/);
+ assert.match(html,/id="interviewCountdown"/);
+ assert.match(html,/id="plannedInterviewDate"/);
+ assert.match(html,/id="checklistDetails"/);
 });
