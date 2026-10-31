@@ -46,7 +46,8 @@
    const mockToday=history.some(r=>reportDate(r)===today);
    const mock={id:'mock',title:'Practise a mock interview',description:daysUntil!==null&&daysUntil<=7&&daysUntil>=0?'Your interview is approaching. Practise clear, accurate answers across the required areas.':'Use a mock to check which topics need more practice.',action:'interview',done:mockToday};
    const focus=latest?.practiceTargets?.find((target)=>target&&typeof target.focus==='string'&&target.focus.trim()&&target.lessonId);
-   if(focus&&profileComplete){
+   // A saved report retry is useful even while the student finishes their profile.
+   if(focus){
      const index=latest.practiceTargets.indexOf(focus);
      const attempted=latest.practiceAttempts?.some(a=>a.focus===index&&dateKey(a.createdAt)===today);
      push({id:'focus',title:focus.title||'Strengthen a weak area',description:focus.focus,action:'focus',reportId:latest.id,focusIndex:index,done:!!attempted});
@@ -55,7 +56,9 @@
    if(courseLoaded&&modulesDone<modulesTotal)push({id:'learning',title:'Continue your next learning module',description:modulesDone+' of '+modulesTotal+' modules completed. Learn the topic and practise in your own words.',action:'learning',done:!!learningCompletedToday});
    else if(!courseLoaded)push({id:'learning',title:'Open your learning path',description:'Load your saved modules and pick up where you left off.',action:'learning',done:false});
    if(profileComplete&&!(daysUntil!==null&&daysUntil>=0&&daysUntil<=7))push(mock);
-   if(latest)push({id:'reports',title:'Turn your feedback into action',description:'Review corrections and practise a question that needs improvement.',action:'reports',done:false});
+   // Opening a report is not stored as completed work. Never count this informational
+   // suggestion in the denominator when there is no measurable retry target.
+   if(latest&&!focus)push({id:'reports',title:'Review your latest feedback',description:'Read your corrections and choose one answer to improve. This review is suggested, not counted as completed practice.',action:'reports',done:false,trackable:false});
    return tasks.slice(0,3);
  }
  const api={coverage,scoreMeta,comparable,comparison,dailyTasks,dateKey};
