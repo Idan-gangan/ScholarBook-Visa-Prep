@@ -8,6 +8,9 @@ function setup(){
  const track={enabled:false,stop(){this.stopped=true}};
  const ctx=vm.createContext({window:{addEventListener(){}},sessionVersion:0,me:{id:"u1"},VisaAtlasLanguages:require("../public/practice-languages"),console,AbortController,JSON,confirm:()=>true,refreshVoiceUsage(){},navigator:{},RTCPeerConnection:function(){},setTimeout:fn=>{timers.set(++next,fn);return next},clearTimeout:id=>timers.delete(id),$:id=>{if(!els.has(id))els.set(id,{value:'athlete1',dataset:{},replaceChildren(){}});return els.get(id)},addLine:(role,text)=>lines.push({role,text}),api:async()=>({ok:true}),fetch(){}});
  ctx.requestVoiceConsent=(mode,agree)=>agree();
+ // The voice-only test harness excludes report generation, so stub the handoff.
+ ctx.generatedReports=0;
+ ctx.generateReport=()=>{ctx.generatedReports++;return Promise.resolve();};
  vm.runInContext('let pc=null,dc=null,stream=null,transcript=[];'+code,ctx);
  ctx.channel={readyState:'open',send:s=>sent.push(JSON.parse(s)),close(){}};ctx.mic={getAudioTracks:()=>[track],getTracks:()=>[track]};
  vm.runInContext('voice={connected:true,busy:false,playing:false,waiting:false,pendingItem:null};dc=channel;stream=mic',ctx);
@@ -106,6 +109,7 @@ test('mock closing waits until both response generation and playback finish, the
   const done={type:'response.done',response:{output:[{content:[{type:'audio'}]}]}},stopped={type:'output_audio_buffer.stopped'};
   s.event(order==='audio-first'?stopped:done);assert.notEqual(s.run('voice'),null);
   s.event(order==='audio-first'?done:stopped);assert.equal(s.run('voice'),null);assert.equal(s.track.stopped,true);
+  assert.equal(s.ctx.generatedReports,1,'automatic feedback starts once after the final playback event');
  }
 });
 test('tutor transcript cannot trigger the mock closing behaviour',()=>{

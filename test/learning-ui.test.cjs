@@ -520,3 +520,83 @@ test('startup timeout restores controls and discards late microphone access',asy
  assert.equal(stopped,true);
  assert.equal(f.store.requests.some(r=>r.url.startsWith('/api/realtime-session')),false);
 });
+
+
+test('AI natural closing stops the microphone and generates one saved report without a student click',async()=>{
+ const f=fixture();await f.run('boot()');await f.run('startVoice("mock")');
+ f.run('mockSessionId="mock-1";transcript=[{role:"assistant",text:"Why your school?"},{role:"athlete",text:"I chose the school for a confirmed scholarship and cybersecurity coursework."}];voice.connected=true;voice.closing=true;voice.busy=false;voice.playing=false;voice.waiting=false;');
+ const realFetch=f.ctx.fetch,events=[];
+ f.ctx.fetch=async(url,opt={})=>{
+   const route=new URL(url,'http://local').pathname;
+   if(['/api/mock-session/end','/api/save-transcript','/api/evaluate'].includes(route)){
+     events.push(route);
+     return {ok:true,status:200,json:async()=>route==='/api/evaluate'?{id:'report-1',mockSessionId:'mock-1',overall:null,scoreType:'partial'}:{ok:true}};
+   }
+   if(route==='/api/reports')return {ok:true,status:200,json:async()=>[{id:'report-1',athleteId:'s1',mockSessionId:'mock-1',overall:null,scoreType:'partial',createdAt:'2026-10-31T12:00:00Z'}]};
+   return realFetch(url,opt);
+ };
+ f.run('voiceReady(voice)');
+ await f.run('automaticReport');
+ assert.equal(f.run('voice'),null);
+ assert.equal(f.elements.get('interviewerActivity').textContent,'Interview ended');
+ assert.equal(f.elements.get('mockTranscriptDisclosure').open,false);
+ assert.equal(f.elements.get('feedbackBtn').disabled,false);
+ assert.equal(f.elements.get('feedbackBtn').textContent,'Open saved feedback');
+ assert.match(f.elements.get('mockAfterHelp').textContent,/Your report is saved/);
+ assert.equal(events.filter(x=>x==='/api/evaluate').length,1);
+ assert.ok(events.indexOf('/api/mock-session/end')<events.indexOf('/api/evaluate'),'mock transcript saved before evaluation');
+ f.run('openMockFeedback()');
+ assert.equal(events.filter(x=>x==='/api/evaluate').length,1,'viewing a saved report does not regenerate it');
+});
+test('AI report generation failure leaves an accessible retry without losing interview answers',async()=>{
+ const f=fixture();await f.run('boot()');await f.run('startVoice("mock")');
+ f.run('mockSessionId="mock-2";transcript=[{role:"assistant",text:"What is your major?"},{role:"athlete",text:"Cybersecurity, because I want to protect networks."}];voice.connected=true;voice.closing=true;voice.busy=false;voice.playing=false;voice.waiting=false;');
+ const realFetch=f.ctx.fetch;let evaluations=0;
+ f.ctx.fetch=async(url,opt={})=>{
+   const route=new URL(url,'http://local').pathname;
+   if(['/api/mock-session/end','/api/save-transcript'].includes(route))return {ok:true,status:200,json:async()=>({ok:true})};
+   if(route==='/api/evaluate'){
+     evaluations++;
+     return evaluations===1
+       ?{ok:false,status:502,json:async()=>({error:'Report generation temporarily unavailable.'})}
+       :{ok:true,status:200,json:async()=>({id:'report-2',mockSessionId:'mock-2',overall:null,scoreType:'partial'})};
+   }
+   if(route==='/api/reports')return {ok:true,status:200,json:async()=>[{id:'report-2',athleteId:'s1',mockSessionId:'mock-2',overall:null,scoreType:'partial',createdAt:'2026-10-31T12:00:00Z'}]};
+   return realFetch(url,opt);
+ };
+ f.run('voiceReady(voice)');await f.run('automaticReport');
+ assert.equal(evaluations,1);
+ assert.equal(f.elements.get('feedbackBtn').disabled,false);
+ assert.equal(f.elements.get('feedbackBtn').textContent,'Retry feedback');
+ assert.match(f.elements.get('mockAfterHelp').textContent,/recorded answers are still available/);
+ assert.match(f.elements.get('evalStatus').textContent,/could not be generated/i);
+ assert.equal(f.run("transcript.some(x=>x.role==='athlete')"),true);
+ await f.run('openMockFeedback()');
+ assert.equal(evaluations,2);
+ assert.match(f.elements.get('mockAfterHelp').textContent,/Your report is saved/);
+});
+test('manual end provides feedback option without automatically requesting a paid evaluation',async()=>{
+ const f=fixture();await f.run('boot()');await f.run('startVoice("mock")');
+ f.run('mockSessionId="mock-3";transcript=[{role:"assistant",text:"What will you study?"},{role:"athlete",text:"Cybersecurity."}];');
+ const realFetch=f.ctx.fetch,events=[];
+ f.ctx.fetch=async(url,opt={})=>{
+   const route=new URL(url,'http://local').pathname;
+   if(route==='/api/mock-session/end')return {ok:true,status:200,json:async()=>({ok:true})};
+   if(route==='/api/evaluate')events.push(route);
+   return realFetch(url,opt);
+ };
+ f.run('stopVoice("Student ended interview early.")');await f.run('mockSave');
+ assert.equal(f.elements.get('feedbackBtn').disabled,false);
+ assert.match(f.elements.get('mockAfterHelp').textContent,/some topics were not covered/);
+ assert.equal(f.elements.get('mockTranscriptDisclosure').open,false);
+ assert.equal(events.length,0);
+});
+test('interview feedback presentation uses one live region, retry control and collapsible transcript',()=>{
+ const f=fixture();
+ assert.match(html,/id="mockTranscriptDisclosure"/);
+ assert.match(html,/id="mockAfterHelp"[^>]*role="status"/);
+ assert.match(html,/id="feedbackBtn" onclick="openMockFeedback\(\)" disabled/);
+ assert.match(html,/After the interview/);
+ assert.match(html,/generates feedback automatically/);
+ assert.equal(f.elements.get('feedbackBtn').disabled,false,'fixture starts without native HTML boolean attribute interpretation');
+});
