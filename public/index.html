@@ -275,11 +275,14 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
  <p id="guideMessage" class="small" role="status"></p></section>
  <div id="studentHome" class="hidden"></div><section id="dailyPractice" class="card hidden"></section>
  <section id="studentPlanner" class="card hidden" aria-labelledby="plannerTitle">
- <div class="history-heading"><div><span class="eyebrow">YOUR PREPARATION PLAN</span><h2 id="plannerTitle">Prepare at your pace</h2></div><button class="btn secondary" onclick="openGuide()">Show me around</button></div>
+ <div class="history-heading"><div><span class="eyebrow">YOUR PREPARATION TOOLS</span><h2 id="plannerTitle">Plan your next steps</h2></div><button class="btn secondary" type="button" onclick="openGuide()">Show me around</button></div>
+ <details id="studentPlannerTools" class="student-planner-tools">
+ <summary>Manage interview date and checklist</summary>
  <p id="interviewCountdown" class="countdown" aria-live="polite"></p>
  <details id="interviewDateEditor" class="planner-disclosure" open><summary>Set or change interview date</summary><form onsubmit="event.preventDefault();saveInterviewDate()" class="planner-actions"><div class="field"><label for="plannedInterviewDate">Interview date — optional</label><input id="plannedInterviewDate" type="date" min="2000-01-01" max="2099-12-31"><small>Use the date on your appointment confirmation. Leave blank if not booked.</small></div><button id="saveInterviewDateButton" class="btn secondary" type="submit">Save date</button></form>
  </details><p id="plannerMessage" class="small" role="status"></p><details id="checklistDetails" class="planner-disclosure"><summary>My preparation checklist</summary><div id="preparationChecklist" class="preparation-checklist"></div>
- <p class="small muted">This checklist tracks practice activity, not visa approval or interview readiness.</p></details></section><div class="page-heading"><span class="eyebrow">PREPARATION AT A GLANCE</span><h1 id="dashboardTitle">Your progress</h1><p class="muted">See how your practice is going and what to work on next.</p></div>
+ <p class="small muted">This checklist tracks practice activity, not visa approval or interview readiness.</p></details>
+ </details></section><div class="page-heading"><span class="eyebrow">PREPARATION AT A GLANCE</span><h1 id="dashboardTitle">Your progress</h1><p class="muted">See how your practice is going and what to work on next.</p></div>
       <div id="dashCards" class="grid g4"></div>
       <div id="athleteTable" style="margin-top:20px"></div><div id="studentHistory"></div>
       <p class="muted small">Practice scores describe your preparation, not your chances of visa approval.</p>
