@@ -63,7 +63,7 @@
  }
  function renderToday(history,complete,loaded,done,days){
    const area=elem('dailyPractice');area.classList.remove('hidden');
-   const tasks=model().dailyTasks({profileComplete:complete,courseLoaded:loaded,modulesDone:done,modulesTotal:curriculum.length,history,daysUntil:days});
+   const tasks=model().dailyTasks({profileComplete:complete,courseLoaded:loaded,modulesDone:done,modulesTotal:curriculum.length,history,daysUntil:days,learningCompletedToday:curriculum.some(m=>courseSaved[m.id]?.completed&&model().dateKey(courseSaved[m.id]?.updatedAt)===model().dateKey())});
    area.innerHTML='<div class="daily-plan-head"><div><span class="eyebrow">YOUR PERSONAL PLAN</span><h2>Your practice for today</h2><p>Based on your profile, completed modules and saved mock feedback.</p></div><span class="pill blue">'+tasks.filter(t=>t.done).length+' / '+tasks.length+' done</span></div><div class="daily-task-list">'+tasks.map((t,i)=>'<article class="daily-task '+(t.done?'is-done':'')+'"><span class="daily-task-icon" aria-hidden="true">'+(t.done?'✓':i+1)+'</span><div><h3>'+safe(t.title)+'</h3><p>'+safe(t.description)+'</p></div>'+(t.done?'<span class="daily-complete">Completed today</span>':'<button type="button" class="btn secondary" data-task="'+i+'">Start →</button>')+'</article>').join('')+'</div><p class="small muted">Completed activities are based on saved evidence, not a manually checked box. Practice scores do not predict visa approval.</p>';
    area.querySelectorAll('[data-task]').forEach(btn=>btn.addEventListener('click',()=>{
      const task=tasks[Number(btn.dataset.task)];if(!task)return;
