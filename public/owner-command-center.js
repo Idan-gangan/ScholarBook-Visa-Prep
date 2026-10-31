@@ -52,4 +52,18 @@
       '<p class="owner-cost-warning"><strong>Cost visibility:</strong> '+safe(caveat)+' These estimates exclude some text, transcription, hosting, payment and provider charges. Verify against your invoices before setting prices.</p>'+
      '</div>';
   };
+  window.toggleOwnerNavigation=function(){
+    const app=document.getElementById('app');
+    const nav=document.getElementById('nav');
+    const trigger=document.getElementById('ownerMobileNavToggle');
+    if(!app?.classList?.contains('owner-mode')||!nav||!trigger)return;
+    const open=nav.classList.toggle('owner-nav-open');
+    trigger.setAttribute('aria-expanded',String(open));
+  };
+  window.closeOwnerNavigation=function(){
+    const nav=document.getElementById('nav');
+    const trigger=document.getElementById('ownerMobileNavToggle');
+    nav?.classList?.remove('owner-nav-open');
+    trigger?.setAttribute?.('aria-expanded','false');
+  };
 })();
