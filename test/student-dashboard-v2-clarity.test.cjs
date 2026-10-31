@@ -63,7 +63,7 @@ test('history explains that partially assessed answers are not a full visa inter
  assert.match(markup,/not a full interview-readiness score/);
  assert.match(markup,/6 \/ 7 assessed areas/);
  assert.match(markup,/student-history-disclosure/);
- assert.match(markup,/View latest 1 mock attempts/);
+ assert.match(markup,/Review recent mock attempts/);
  assert.match(markup,/62\/100/);
 });
 
