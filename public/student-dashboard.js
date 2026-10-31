@@ -18,7 +18,7 @@
  }
  function scoreMeta(report){
    if(!report)return {value:null,label:'No attempts yet',detail:'Start a mock to receive feedback',coverage:coverage(null)};
-   const c=coverage(report),raw=c.full?report.overall:finite(report.practiceScore)?report.practiceScore:finite(report.partialScore)?report.partialScore:null;
+   const c=coverage(report),raw=c.full?report.overall:c.partial?(finite(report.practiceScore)?report.practiceScore:finite(report.partialScore)?report.partialScore:null):null;
    const value=finite(raw)?Math.round(raw):null;
    return {value,label:value===null?'Not scored':value+'/100',
      detail:c.full?'All required areas assessed':c.partial?'Assessed areas only':c.assessed===0?'No areas assessed':'Coverage not recorded',
