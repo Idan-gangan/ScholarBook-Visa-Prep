@@ -1,0 +1,50 @@
+/* Student profile: progressive four-step editor, accessible on narrow phone screens. */
+#profile .profile-security-note{font-size:12px;line-height:1.65;color:#49617c;background:#f0f5fb;border-left:3px solid #a8bfdc;border-radius:0 11px 11px 0;padding:12px 16px;margin:12px 0 16px}
+#profile .profile-journey{background:#fff;border:1px solid #dce6f1;border-radius:16px;padding:17px;margin:14px 0 18px}
+#profile .profile-journey-top{display:flex;justify-content:space-between;align-items:flex-start;gap:15px;flex-wrap:wrap}
+#profile .profile-journey-eyebrow{display:block;font-size:10px;letter-spacing:.14em;color:#48709f;font-weight:750}
+#profile .profile-journey h2{font-size:19px;margin:5px 0;letter-spacing:-.02em}
+#profile #profileCompletionText{font-size:12px;color:#617389;line-height:1.55;margin:5px 0 0}
+#profile .profile-save-state{font-size:11px;font-weight:700;background:#eef4fb;border-radius:30px;padding:7px 11px;color:#46617b}
+#profile .profile-save-state.unsaved{background:#fff0da;color:#82571c}
+#profile .profile-steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-top:16px}
+#profile .profile-steps button{display:flex;gap:9px;align-items:center;justify-content:center;min-width:0;border:1px solid #dce6f1;background:#f7f9fc;color:#526983;border-radius:11px;padding:12px 6px;font-size:12px;font-weight:650;cursor:pointer}
+#profile .profile-steps button span{color:#6f84a2;font-size:10px}
+#profile .profile-steps button.active{border-color:#245cce;background:#eef4ff;color:#174fc4}
+#profile .profile-steps button.active span{color:#174fc4}
+#profile .profile-stage[hidden],#profile .field[hidden],#profile .profile-step-actions [hidden]{display:none!important}
+#profile .profile-form-shell{overflow:visible;padding:24px}
+#profile .profile-stage{min-width:0}
+#profile .profile-stage-heading{grid-column:1/-1;margin:0 0 17px;padding-bottom:15px;border-bottom:1px solid #e3eaf3}
+#profile .profile-stage-heading .profile-stage-eyebrow{font-size:10px;color:#4772a9;font-weight:800;letter-spacing:.1em}
+#profile .profile-stage-heading h2{font-size:23px;line-height:1.2;margin:6px 0 8px;letter-spacing:-.035em}
+#profile .profile-stage-heading p{font-size:13px;line-height:1.55;color:#62738b;margin:0}
+#profile .profile-stage .formgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px 18px}
+#profile .profile-stage .formgrid>.wide{grid-column:1/-1}
+#profile .profile-stage .formgrid .formgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 18px}
+#profile .profile-stage .field label{font-size:13px;line-height:1.45}
+#profile .profile-stage .field{min-width:0;margin:7px 0 15px}
+#profile .profile-stage .field input,#profile .profile-stage .field select,#profile .profile-stage .field textarea{min-height:48px;max-width:100%;font-size:16px}
+#profile .profile-stage .lesson-check{font-size:14px;line-height:1.5;display:flex;align-items:flex-start;gap:10px;padding:5px 0}
+#profile .profile-stage .lesson-check input{width:18px;height:18px;margin-top:3px;flex-shrink:0;accent-color:#174fc4}
+#profile .profile-stage .wide>h2{font-size:20px;line-height:1.25}
+#profile .profile-stage .wide>h3{font-size:17px;margin:18px 0 10px}
+#profile .profile-stage .wide>p{font-size:13px;line-height:1.6;color:#64748a}
+#profile .profile-help{font-size:12px;color:#516a84;line-height:1.65;margin:16px 0 4px;background:#f4f7fb;padding:13px 15px;border-radius:10px}
+#profile .profile-save-bar{position:static!important;inset:auto!important;box-shadow:none!important;border-top:1px solid #e3e9f1;background:#fff;padding:18px 0 0;margin:24px 0 0;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+#profile .profile-save-bar .btn{min-height:46px}
+#profile #profileStatus{flex-basis:100%;line-height:1.6;font-size:12px}
+#profile .profile-home-link{border:none;background:transparent;color:#385b8c;font-size:12px;font-weight:650;margin-top:14px;padding:9px 0;cursor:pointer}
+#profile #profilePrevStep{margin-left:auto}
+@media(max-width:760px){
+ #profile .profile-stage .formgrid,#profile .profile-stage .formgrid .formgrid{grid-template-columns:1fr}
+ #profile .profile-form-shell{padding:18px}
+ #profile .profile-journey{padding:14px}
+ #profile .profile-steps{gap:5px}
+ #profile .profile-steps button{flex-direction:column;gap:3px;font-size:11px;min-height:52px;padding:8px 4px;text-align:center;line-height:1.25}
+ #profile .profile-stage-heading h2{font-size:21px}
+ #profile .profile-save-bar{flex-direction:column;align-items:stretch}
+ #profile .profile-save-bar .btn{width:100%;font-size:14px}
+ #profile #profilePrevStep{margin-left:0}
+ #profile .profile-save-state{font-size:10px}
+}
