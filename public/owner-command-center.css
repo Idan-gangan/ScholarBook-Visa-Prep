@@ -1,0 +1,83 @@
+/* VisaAtlas Owner Command Center 2.0. Scoped to owner screen only. */
+#owner{--owner-ink:#142b47;--owner-line:#e1e8f1;--owner-soft:#f7faff}
+#owner .owner-heading{background:linear-gradient(115deg,#0b2445,#173b70 72%,#3158ab);border-radius:22px;padding:30px 34px;color:#fff;box-shadow:0 14px 36px #102d5023}
+#owner .owner-heading .eyebrow{color:#aaccff;font-size:11px;letter-spacing:.14em}
+#owner .owner-heading h1{color:#fff;font-size:36px;letter-spacing:-1.1px;margin:9px 0}
+#owner .owner-heading p{color:#d9e6fa;max-width:470px;font-size:14px}
+#owner .owner-heading .btn{background:#fff;color:#1b4275;border:1px solid #b9cbe0;min-height:44px}
+#owner .owner-stats{margin-top:20px;gap:14px}
+#owner .owner-stat{border-radius:18px;box-shadow:0 4px 18px #15365d08;padding:22px}
+#owner .owner-stat:first-child{background:#fff;color:var(--owner-ink);border-color:#dfe5ec}
+#owner .owner-stat:first-child .muted,#owner .owner-stat:first-child p{color:#657488}
+#owner .owner-stat .kpi{font-size:36px;margin:12px 0 7px;color:#173b72}
+#owner .owner-stat .muted{color:#64788f}
+#owner .owner-stat-index{color:#c4d0dd}
+#owner .owner-insight-title{display:flex;align-items:flex-start;justify-content:space-between;gap:15px;margin-bottom:18px}
+#owner .owner-insight-title h2{font-size:22px;margin:6px 0 4px}
+#owner .owner-insight-title p{font-size:12px;line-height:1.5;color:#657488;margin:0}
+#owner .owner-eyebrow{font-size:10px;font-weight:800;letter-spacing:.14em;color:#3c6bb4}
+#owner .owner-insights{margin:18px 0}
+#owner .owner-insights-main,#owner .owner-attention{background:#fff;border:1px solid var(--owner-line);border-radius:20px;padding:24px;box-shadow:0 4px 16px #122c4907}
+#owner .owner-insight-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+#owner .owner-insight-stat{background:#f5f8fc;border:1px solid #e7eef7;border-radius:13px;padding:17px 15px;min-width:0}
+#owner .owner-insight-stat>span{display:block;font-size:11px;line-height:1.5;font-weight:700;color:#5d7087}
+#owner .owner-insight-stat strong{display:block;font-size:27px;line-height:1.25;color:#183d75;margin:8px 0;overflow-wrap:anywhere}
+#owner .owner-insight-stat small{font-size:11px;color:#6b7b8d}
+#owner .owner-status-pill{padding:8px 10px;border-radius:50px;background:#e7f7ed;color:#17764a;font-size:11px;font-weight:800;white-space:nowrap}
+#owner .owner-status-pill.paused{background:#fff1e4;color:#94611b}
+#owner .owner-chart{margin-top:20px;padding:18px;border:1px solid #e6edf5;border-radius:13px}
+#owner .owner-chart-head{display:flex;justify-content:space-between;gap:12px;align-items:center;font-size:13px}
+#owner .owner-chart-head small{color:#738397}
+#owner .owner-chart-grid{display:flex;align-items:stretch;gap:9px;height:145px;margin-top:18px}
+#owner .owner-chart-col{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px;font-size:10px;color:#566a82}
+#owner .owner-chart-value{font-weight:700;min-height:12px}
+#owner .owner-chart-track{height:100%;width:100%;max-width:70px;background:#edf3fa;border-radius:7px;overflow:hidden;display:flex;align-items:flex-end}
+#owner .owner-chart-bar{width:100%;background:linear-gradient(#498cf2,#2555b5);border-radius:6px 6px 0 0;min-height:3px}
+#owner .owner-insight-footer{display:flex;gap:12px 24px;flex-wrap:wrap;margin:16px 0;font-size:11px;color:#62748b}
+#owner .owner-cost-warning{font-size:12px;line-height:1.65;margin:0;padding:12px 15px;background:#fff8ed;border:1px solid #f6e4c6;border-radius:10px;color:#755021}
+#owner .owner-attention{margin:18px 0}
+#owner .owner-count{font-size:11px;padding:7px 11px;background:#eef3fa;border-radius:20px;white-space:nowrap;color:#365778;font-weight:700}
+#owner .owner-attention-item{display:flex;gap:12px;align-items:center;border-top:1px solid #edf0f5;padding:15px 0}
+#owner .owner-attention-item:last-child{padding-bottom:0}
+#owner .owner-attention-item strong{display:block;font-size:13px}
+#owner .owner-attention-item small{display:block;font-size:11px;color:#708093;line-height:1.5;margin-top:3px}
+#owner .owner-attention-item .btn{margin-left:auto;min-height:38px}
+#owner .owner-attention-dot{width:10px;height:10px;flex:0 0 10px;border-radius:50%;background:#e19d3a}
+#owner .owner-attention-ok{width:25px;height:25px;flex:0 0 25px;background:#e2f7ec;color:#14744b;border-radius:50%;display:grid;place-items:center;font-weight:900}
+#owner .owner-shortcuts{margin:18px 0 22px}
+#owner .owner-shortcuts .btn{min-height:42px}
+#owner .owner-workspace{box-shadow:0 4px 22px #17375d09}
+#owner .owner-tabs{gap:25px}
+#owner details.card{background:#fff;border-color:var(--owner-line)}
+#owner details.card>summary{cursor:pointer;font-weight:800;padding:4px}
+#owner #operationsTable table,#owner #costDiagnostics table{table-layout:auto;min-width:680px}
+#owner #operationsTable th,#owner #costDiagnostics th{padding:12px;font-size:10px}
+#owner #operationsTable td,#owner #costDiagnostics td{padding:13px 12px;font-size:12px}
+@media(max-width:900px){#owner .owner-insight-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){
+ #owner .owner-heading{padding:23px 19px;border-radius:17px;gap:16px}
+ #owner .owner-heading h1{font-size:29px}
+ #owner .owner-heading .btn{width:100%}
+ #owner .owner-stats{gap:9px;margin-top:12px}
+ #owner .owner-stat{padding:15px;border-radius:14px}
+ #owner .owner-stat .kpi{font-size:29px}
+ #owner .owner-insights-main,#owner .owner-attention{padding:17px;border-radius:16px}
+ #owner .owner-insight-title h2{font-size:19px}
+ #owner .owner-insight-stats{gap:9px}
+ #owner .owner-insight-stat{padding:13px 10px}
+ #owner .owner-insight-stat strong{font-size:22px}
+ #owner .owner-chart{padding:12px}
+ #owner .owner-chart-grid{height:115px;gap:5px}
+ #owner .owner-chart-head{flex-direction:column;align-items:flex-start;gap:3px}
+ #owner .owner-attention-item{align-items:flex-start;flex-wrap:wrap}
+ #owner .owner-attention-item .btn{margin-left:23px}
+ /* Operational records should remain readable: retain a compact table with horizontal scroll. */
+ #owner #operationsTable,#owner #costDiagnostics{overflow-x:auto;max-width:100%;-webkit-overflow-scrolling:touch}
+ #owner #operationsTable table,#owner #costDiagnostics table{display:table;min-width:680px;width:100%;table-layout:auto}
+ #owner #operationsTable thead,#owner #costDiagnostics thead{display:table-header-group}
+ #owner #operationsTable tbody,#owner #costDiagnostics tbody{display:table-row-group}
+ #owner #operationsTable tr,#owner #costDiagnostics tr{display:table-row;padding:0;border:0}
+ #owner #operationsTable td,#owner #costDiagnostics td{display:table-cell;width:auto;border-top:1px solid #edf0f4;padding:12px;white-space:nowrap}
+ #owner #operationsTable td::before,#owner #costDiagnostics td::before{display:none!important}
+ #owner #operationsTable th:first-child,#owner #costDiagnostics th:first-child{width:auto}
+}
