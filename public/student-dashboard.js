@@ -39,7 +39,7 @@
    if(!prior)return null;
    return {delta:scoreMeta(latest).value-scoreMeta(prior).value,previous:scoreMeta(prior).value,previousId:prior.id};
  }
- function dailyTasks({profileComplete=false,courseLoaded=false,modulesDone=0,modulesTotal=6,history=[],daysUntil=null,now=new Date()}={}){
+ function dailyTasks({profileComplete=false,courseLoaded=false,modulesDone=0,modulesTotal=6,history=[],daysUntil=null,learningCompletedToday=false,now=new Date()}={}){
    const today=dateKey(now),latest=history[0],tasks=[];
    const push=(task)=>{if(!tasks.some(existing=>existing.id===task.id))tasks.push(task);};
    if(!profileComplete)push({id:'profile',title:'Complete your study profile',description:'Add your school, funding and study plans so practice can be tailored to your situation.',action:'profile',done:false});
@@ -52,7 +52,7 @@
      push({id:'focus',title:focus.title||'Strengthen a weak area',description:focus.focus,action:'focus',reportId:latest.id,focusIndex:index,done:!!attempted});
    }
    if(daysUntil!==null&&daysUntil>=0&&daysUntil<=7&&profileComplete)push(mock);
-   if(courseLoaded&&modulesDone<modulesTotal)push({id:'learning',title:'Continue your next learning module',description:modulesDone+' of '+modulesTotal+' modules completed. Learn the topic and practise in your own words.',action:'learning',done:false});
+   if(courseLoaded&&modulesDone<modulesTotal)push({id:'learning',title:'Continue your next learning module',description:modulesDone+' of '+modulesTotal+' modules completed. Learn the topic and practise in your own words.',action:'learning',done:!!learningCompletedToday});
    else if(!courseLoaded)push({id:'learning',title:'Open your learning path',description:'Load your saved modules and pick up where you left off.',action:'learning',done:false});
    if(profileComplete&&!(daysUntil!==null&&daysUntil>=0&&daysUntil<=7))push(mock);
    if(latest)push({id:'reports',title:'Turn your feedback into action',description:'Review corrections and practise a question that needs improvement.',action:'reports',done:false});
