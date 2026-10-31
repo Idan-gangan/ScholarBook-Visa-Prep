@@ -73,7 +73,7 @@
  #app.student-mode .student-menu-backdrop{display:none}
  #app.student-mode.student-menu-open .student-menu-backdrop{display:block;position:fixed;inset:0;background:#06162a80;z-index:19;border:0;padding:0}
  #app.student-mode .student-bottom-nav{display:grid;position:fixed;left:0;right:0;bottom:0;grid-template-columns:repeat(5,minmax(0,1fr));gap:0;min-height:62px;padding:7px 6px calc(7px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid #dce5f0;box-shadow:0 -5px 24px #102b4512;z-index:18}
- #app.student-mode .student-bottom-nav button{display:flex;flex-direction:column;align-items:center;gap:3px;justify-content:center;border:0;background:transparent;color:#66768b;font:600 10px/1.25 inherit;padding:5px 0;min-width:0;border-radius:9px;cursor:pointer}
+ #app.student-mode .student-bottom-nav button{display:flex;flex-direction:column;align-items:center;gap:3px;justify-content:center;border:0;background:transparent;color:#66768b;font-size:10px;font-weight:650;line-height:1.25;font-family:inherit;padding:5px 0;min-width:0;border-radius:9px;cursor:pointer}
  #app.student-mode .student-bottom-nav button.on{background:#edf3ff;color:#0b4ec5}
  #app.student-mode .student-bottom-nav .nav-icon{width:22px;height:22px}
  #app.student-mode .student-bottom-nav .nav-icon svg{width:21px;height:21px}
@@ -87,7 +87,7 @@
  #app.student-mode .home-course progress{width:100%}
  #app.student-mode #dailyPractice{padding:20px}
  #app.student-mode .daily-task{grid-template-columns:30px 1fr;align-items:start;gap:10px;padding:13px}
- #app.student-mode .daily-task .btn,.daily-complete{grid-column:2;justify-self:start;margin-top:6px}
+ #app.student-mode .daily-task .btn,#app.student-mode .daily-complete{grid-column:2;justify-self:start;margin-top:6px}
  #app.student-mode #dashCards{grid-template-columns:repeat(2,minmax(0,1fr))}
  #app.student-mode .student-action-card{padding:22px}
  #app.student-mode #studentPlanner{padding:18px}
