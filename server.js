@@ -18,7 +18,6 @@ const recordStore=process.env.RECORD_STORAGE==='enabled'?require('./record-store
 // Update this version and the registration checkbox together when Terms change.
 const TERMS_VERSION = "2026-10-25";
 const operations=require('./operations').createOperations(pool);
-const ownerStudentAnalytics=require('./owner-student-analytics');
 const PORT = process.env.PORT || 3000;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 const {POLICY,createVoiceLimits,dailyLimit}=require('./voice-limits');
@@ -449,6 +448,7 @@ const server=http.createServer(async (req,res)=>{
       const u=await requireUser(req,res); if(!u)return;
       if(!isOwner(u))return json(res,403,{error:'Owner access required.'});
       if(req.method==='GET' && url.pathname==='/api/owner/student-analytics'){
+        const ownerStudentAnalytics=require('./owner-student-analytics');
         const db=await loadDb({collections:['users','athletes','reports','mockSessions']});
         const learningRows=(await pool.query("SELECT student_id,MAX(updated_at) AS last_progress_at,COUNT(*)::int AS saved_modules,COUNT(*) FILTER (WHERE data->>'completed'='true')::int AS completed_modules FROM learning_progress GROUP BY student_id")).rows;
         const knownGroups=ownerStudentAnalytics.historicalGroups({students:db.athletes||[],reports:db.reports||[],mockSessions:db.mockSessions||[]});
