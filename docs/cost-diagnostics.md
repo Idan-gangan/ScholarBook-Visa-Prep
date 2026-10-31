@@ -27,11 +27,21 @@ tokens are retained; dollar rates for the configured report model are deliberate
 not guessed. Network failures with no returned usage cannot be priced here.
 
 Rows contain hashes of session/response identifiers, category, model, numeric
-usage and timestamps, never names, user IDs, prompts, audio, transcripts or raw
-session tokens. Mock voice and report records share a hashed session grouping.
+usage and timestamps, never names, raw user IDs, prompts, audio, transcripts or
+session tokens. New records also contain a one-way SHA-256 hash of the random
+student profile ID for Owner-only student-level cost sampling. Mock voice and
+report records share a hashed session grouping; older linked mock sessions may
+be assigned to a student using retained reports, but earlier tutor usage cannot
+reliably be reconstructed. These sampled costs are never suitable for charging
+students or described as a complete bill.
+
 Old rows are cleaned on subsequent recordings after 30 days; backups follow the
-existing database backup policy. Metrics writes fail without failing practice.
-The diagnostics read endpoint is part of the existing owner-only operations route.
+existing database backup policy. Verified account deletion also purges new
+student-linked rows and older linked mock/report diagnostic groups. Metrics
+writes fail without failing practice. The diagnostics read endpoint is part of
+the existing owner-only operations route. The student analytics endpoint uses
+existing saved learning and report records and returns aggregate progress and
+cost coverage without notes, transcripts, prompts or raw responses.
 
 ## Pilot decision
 
