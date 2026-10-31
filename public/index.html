@@ -103,6 +103,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
 <script src="/owner-mobile-diagnostics.js"></script>
 <link rel="stylesheet" href="/student.css">
 <link rel="stylesheet" href="/home.css">
+<link rel="stylesheet" href="/student-dashboard-v2.css">
 <style>.language-choice{border:2px solid #3767ce;margin:20px 0;padding:20px;background:#f3f7ff}.language-choice h2{margin-top:0}.language-choice select{width:100%;min-height:44px}.language-choice .field{min-width:0}.language-choice p{overflow-wrap:anywhere}</style>
 </head>
 <body>
@@ -400,6 +401,8 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
 <script src="/country-picker.js"></script>
 <script src="/voice-consent.js"></script>
 <script src="/planning.js"></script>
+<script src="/student-dashboard.js"></script>
+<script src="/student-dashboard-v2.js"></script>
 <script src="/practice-languages.js"></script>
 <script src="/voice-cost-sample.js"></script>
 <script>
@@ -1360,6 +1363,7 @@ if(typeof MutationObserver!=='undefined'){
  const learningObserver=new MutationObserver(()=>{learningObserver.disconnect();translateLearning();learningObserver.observe($('learning'),{childList:true,subtree:true,characterData:true})});
  learningObserver.observe($('learning'),{childList:true,subtree:true,characterData:true});
 }
+window.VisaAtlasStudentDashboardV2.install();
 boot().catch(()=>{if(new URLSearchParams(location.search).get("signin")==="1")backToLogin()});
 </script>
 </body></html>
