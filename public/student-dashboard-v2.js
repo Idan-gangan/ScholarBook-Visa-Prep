@@ -38,8 +38,7 @@
    });
    backdrop.addEventListener('click',closeMenu);
    document.addEventListener('keydown',event=>{if(event.key==='Escape')closeMenu();});
-   const logout=document.createElement('button');logout.className='nav';logout.type='button';logout.textContent='Log out';logout.addEventListener('click',()=>logoutStudent());elem('nav').append(logout);
-   function logoutStudent(){logout();}
+   const logoutButton=document.createElement('button');logoutButton.className='nav';logoutButton.type='button';logoutButton.textContent='Log out';logoutButton.addEventListener('click',()=>root.logout());elem('nav').append(logoutButton);
  }
  function refreshNavigation(screen){
    if(!student())return;
