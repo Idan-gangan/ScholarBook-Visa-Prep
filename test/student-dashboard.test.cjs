@@ -48,3 +48,35 @@ test('saved mock and module completion are detected for today',()=>{
  assert.equal(tasks.find(t=>t.id==='learning')?.done,true);
  assert.equal(dateKey(now),dateKey(latest.createdAt));
 });
+
+
+test('feedback reading is suggested but excluded from the verified daily completion count',()=>{
+ const tasks=dailyTasks({profileComplete:false,courseLoaded:true,modulesDone:1,history:[partial]});
+ const reading=tasks.find(t=>t.id==='reports');
+ assert.equal(reading?.trackable,false);
+ assert.equal(reading?.done,false);
+ assert.equal(tasks.filter(t=>t.trackable!==false).length,2);
+ assert.equal(tasks.filter(t=>t.done&&t.trackable!==false).length,0);
+});
+test('saved targeted answer retry completes the relevant task even with an unfinished profile',()=>{
+ const now=new Date('2026-10-30T15:30:00Z');
+ const history=[{
+   ...partial,
+   practiceTargets:[{title:'Funding',focus:'Explain confirmed costs',lessonId:'funding'}],
+   practiceAttempts:[{focus:0,createdAt:'2026-10-30T14:20:00Z',outcome:'improved'}]
+ }];
+ const tasks=dailyTasks({profileComplete:false,courseLoaded:true,modulesDone:1,history,now});
+ const retry=tasks.find(t=>t.id==='focus');
+ assert.ok(retry);
+ assert.equal(retry.done,true);
+ assert.equal(retry.action,'focus');
+ assert.equal(tasks.filter(t=>t.trackable===false).length,0);
+});
+test('a practice retry saved on a previous local day does not count as a completed task today',()=>{
+ const now=new Date('2026-10-30T15:30:00Z');
+ const tasks=dailyTasks({profileComplete:true,courseLoaded:true,modulesDone:2,history:[{
+   ...partial,practiceTargets:[{title:'Academic background',focus:'Clarify schooling',lessonId:'academic-journey'}],
+   practiceAttempts:[{focus:0,createdAt:'2026-10-29T12:00:00Z'}]
+ }],now});
+ assert.equal(tasks.find(t=>t.id==='focus').done,false);
+});
