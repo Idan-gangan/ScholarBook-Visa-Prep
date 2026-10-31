@@ -1,0 +1,40 @@
+/* Owner diagnostic cards replace wide internal tables at phone widths. */
+#owner .owner-mobile-operations,
+#owner #ownerCostsMobile {display:none}
+#owner .owner-diagnostic-summary{font-size:13px;line-height:1.6;color:#62758c;margin:12px 0}
+#owner .owner-diagnostic-context{margin:10px 0 16px;font-size:12px;line-height:1.6;color:#61748a}
+#owner .owner-diagnostic-context summary{font-weight:700;color:#31547f;cursor:pointer}
+#owner .owner-mobile-panelhead{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin:17px 0 12px}
+#owner .owner-mobile-panelhead h4{margin:0;font-size:16px}
+#owner .owner-mobile-filter{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;color:#64778f}
+#owner .owner-mobile-filter select{border-radius:9px;border:1px solid #cedbed;background:#fff;color:#173252;padding:9px;font-size:14px;max-width:180px}
+#owner .owner-mobile-day{border:1px solid #e0e8f3;border-radius:14px;margin:12px 0;background:#fff;overflow:hidden}
+#owner .owner-mobile-day>summary{cursor:pointer;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px 12px;padding:15px;background:#f3f7fd;list-style-position:inside}
+#owner .owner-mobile-daydate{font-size:13px;font-weight:800;color:#17385d}
+#owner .owner-mobile-daytotals{font-size:11px;color:#60768f}
+#owner .owner-mobile-operation{padding:15px;border-top:1px solid #edf1f6}
+#owner .owner-mobile-operation-head{display:flex;justify-content:space-between;gap:7px 12px;align-items:flex-start;flex-wrap:wrap;margin-bottom:11px}
+#owner .owner-mobile-operation-head strong{font-size:14px;color:#1d3555}
+#owner .owner-mobile-operation-head small{font-size:10px;color:#7a8a9e;word-break:break-word}
+#owner .owner-mobile-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+#owner .owner-mobile-metrics>div{min-width:0;border:1px solid #e8eef5;border-radius:9px;background:#f8faff;padding:10px}
+#owner .owner-mobile-metrics span{font-size:10px;color:#62748d;display:block}
+#owner .owner-mobile-metrics strong{font-size:18px;color:#183c6d;display:block;margin-top:4px}
+#owner .owner-mobile-metrics .owner-metric-notice{background:#fff8eb;border-color:#f5dfb8}
+#owner .owner-mobile-metrics .owner-metric-error{background:#fff0f0;border-color:#f5cece}
+#owner .owner-mobile-costcard{border:1px solid #e1e8f2;border-radius:14px;padding:16px;margin:12px 0;background:white}
+#owner .owner-mobile-costhead{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+#owner .owner-mobile-costhead strong{font-size:15px}
+#owner .owner-mobile-costbadge{font-size:10px;font-weight:700;padding:6px 9px;border-radius:20px;background:#edf3fd;color:#37639c}
+#owner .owner-mobile-costbig{font-size:27px;font-weight:800;color:#183a70;margin:12px 0}
+#owner .owner-mobile-tokenrow{display:grid;gap:5px;margin-top:12px;font-size:11px;color:#5a7089;overflow-wrap:anywhere}
+#owner .owner-mobile-costnote{font-size:11px;color:#708297;line-height:1.6;margin:11px 0 0}
+#owner .owner-mobile-empty{padding:20px;background:#f6f8fc;border-radius:12px;font-size:12px;color:#61748b}
+@media(max-width:650px){
+ #owner .owner-mobile-operations, #owner #ownerCostsMobile{display:block}
+ #owner #operationsTable,#owner #costDiagnostics{display:none!important}
+ #owner #ownerDiagnostics{padding:17px;overflow:hidden}
+ #owner #ownerDiagnostics h3{font-size:18px;line-height:1.35;margin:23px 0 10px}
+ #owner #ownerDiagnostics .btn{font-size:13px;min-height:44px}
+ #owner #operationsStatus{font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+}
