@@ -1,6 +1,7 @@
 // Pseudonymous, short-lived diagnostics. Not a billing or entitlement ledger.
 const crypto=require('node:crypto');
 const {keys}=require('./public/voice-cost-sample');
+const {studentKey}=require('./owner-student-analytics');
 const hash=s=>crypto.createHash('sha256').update(s).digest('hex');
 const number=n=>Number.isSafeInteger(n)&&n>=0&&n<=10000000;
 // USD per million tokens, checked against OpenAI pricing on 2026-10-28.
@@ -24,15 +25,24 @@ function createCostDiagnostics(pool,{log=console.warn}={}){
  async function init(){await pool.query(`CREATE TABLE IF NOT EXISTS ai_cost_samples (
  sample_key TEXT PRIMARY KEY, group_key TEXT NOT NULL, category TEXT NOT NULL, model TEXT NOT NULL,
  source TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), finished_at TIMESTAMPTZ,
- usage JSONB, elapsed_seconds NUMERIC, estimated_usd NUMERIC)`);await pool.query('CREATE INDEX IF NOT EXISTS ai_cost_samples_created_idx ON ai_cost_samples(created_at)');}
- async function voiceStart(userId,token,mode,sessionId){return safe(async()=>{if(!['learn','mock'].includes(mode))return;const key=hash(userId+':'+token);await pool.query(`INSERT INTO ai_cost_samples(sample_key,group_key,category,model,source) VALUES($1,$3,$2,'gpt-realtime-2.1','browser_diagnostic') ON CONFLICT DO NOTHING`,[key,mode,sessionId?hash(sessionId):key]);await cleanup()})}
+ usage JSONB, elapsed_seconds NUMERIC, estimated_usd NUMERIC, student_key TEXT)`);
+  await pool.query('ALTER TABLE ai_cost_samples ADD COLUMN IF NOT EXISTS student_key TEXT');
+  await pool.query('CREATE INDEX IF NOT EXISTS ai_cost_samples_created_idx ON ai_cost_samples(created_at)');
+  await pool.query('CREATE INDEX IF NOT EXISTS ai_cost_samples_student_created_idx ON ai_cost_samples(student_key,created_at) WHERE student_key IS NOT NULL');}
+ async function voiceStart(userId,token,mode,sessionId,studentId){return safe(async()=>{if(!['learn','mock'].includes(mode))return;const key=hash(userId+':'+token);await pool.query(`INSERT INTO ai_cost_samples(sample_key,group_key,category,model,source,student_key) VALUES($1,$3,$2,'gpt-realtime-2.1','browser_diagnostic',$4) ON CONFLICT DO NOTHING`,[key,mode,sessionId?hash(sessionId):key,studentId?studentKey(studentId):null]);await cleanup()})}
  async function voiceEnd(userId,token,sample){return safe(async()=>{const s=voiceSample(sample);await pool.query(`UPDATE ai_cost_samples SET finished_at=NOW(),usage=$2::jsonb,elapsed_seconds=LEAST(480,GREATEST(0,EXTRACT(EPOCH FROM NOW()-created_at))),estimated_usd=$3 WHERE sample_key=$1 AND source='browser_diagnostic' AND finished_at IS NULL`,[hash(userId+':'+token),s?JSON.stringify(s):null,voiceEstimate(s)])})}
- async function report(sessionId,phase,model,response){return safe(async()=>{
+ async function report(sessionId,phase,model,response,studentId){return safe(async()=>{
   if(!['report','review','practice'].includes(phase))return;
   const s=reportSample(response?.usage),key=hash(response?.id||crypto.randomUUID());
-  await pool.query(`INSERT INTO ai_cost_samples(sample_key,group_key,category,model,source,usage,finished_at) VALUES($1,$2,$3,$4,'provider_response',$5::jsonb,NOW()) ON CONFLICT DO NOTHING`,[key,hash(sessionId),phase,String(response?.model||model).slice(0,100),s?JSON.stringify(s):null]);await cleanup();
+  await pool.query(`INSERT INTO ai_cost_samples(sample_key,group_key,category,model,source,usage,finished_at,student_key) VALUES($1,$2,$3,$4,'provider_response',$5::jsonb,NOW(),$6) ON CONFLICT DO NOTHING`,[key,hash(sessionId),phase,String(response?.model||model).slice(0,100),s?JSON.stringify(s):null,studentId?studentKey(studentId):null]);await cleanup();
  })}
  async function summary(){return (await pool.query(`SELECT category,model,source,COUNT(*)::int AS attempts,COUNT(usage)::int AS samples,COUNT(estimated_usd)::int AS priced_samples,COUNT(DISTINCT group_key)::int AS sessions,SUM(elapsed_seconds) AS elapsed_seconds,SUM(estimated_usd) AS estimated_usd,SUM((usage->>'inputTokens')::bigint) AS input_tokens,SUM((usage->>'cachedTokens')::bigint) AS cached_tokens,SUM((usage->>'outputTokens')::bigint) AS output_tokens FROM ai_cost_samples WHERE created_at>=NOW()-INTERVAL '30 days' GROUP BY category,model,source ORDER BY category,model`)).rows}
- return {init,voiceStart,voiceEnd,report,summary};
+ async function summaryByStudent(groupKeys=[]){
+   const sqlFields="category,COUNT(*)::int AS attempts,COUNT(usage)::int AS samples,COUNT(estimated_usd)::int AS priced_samples,SUM(elapsed_seconds) AS elapsed_seconds,SUM(estimated_usd) AS estimated_usd,SUM((usage->>'inputTokens')::bigint) AS input_tokens,SUM((usage->>'cachedTokens')::bigint) AS cached_tokens,SUM((usage->>'outputTokens')::bigint) AS output_tokens";
+   const keyed=(await pool.query("SELECT student_key,"+sqlFields+" FROM ai_cost_samples WHERE student_key IS NOT NULL AND created_at>=NOW()-INTERVAL '30 days' GROUP BY student_key,category")).rows;
+   const legacy=Array.isArray(groupKeys)&&groupKeys.length?(await pool.query("SELECT group_key,"+sqlFields+" FROM ai_cost_samples WHERE student_key IS NULL AND created_at>=NOW()-INTERVAL '30 days' AND group_key=ANY($1::text[]) GROUP BY group_key,category",[groupKeys])).rows:[];
+   return {keyed,legacy};
+ }
+ return {init,voiceStart,voiceEnd,report,summary,summaryByStudent};
 }
 module.exports={createCostDiagnostics,voiceSample,voiceEstimate,reportSample};
