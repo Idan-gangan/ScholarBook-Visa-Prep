@@ -28,9 +28,10 @@ test('owner attention identifies unassigned students and paused accounts', () =>
     students: [{ id: 's1', staffIds: [] }, { id: 's2', staffIds: ['c1'] }],
     users: [{ id: 's1', accessSuspended: false }, { id: 's2', accessSuspended: true }]
   });
-  assert.match(nodes.ownerAttention.innerHTML, /1 unassigned student/);
+  assert.match(nodes.ownerAttention.innerHTML, /1 student without assigned staff/);
   assert.match(nodes.ownerAttention.innerHTML, /1 paused account/);
-  assert.match(nodes.ownerAttention.innerHTML, /2 flagged/);
+  assert.match(nodes.ownerAttention.innerHTML, /1 urgent alert/);
+  assert.match(nodes.ownerAttention.innerHTML, /OPTIONAL TEAM COVERAGE/);
   assert.match(nodes.ownerAttention.innerHTML, /setOwnerTab\('assignments'\)/);
 });
 
@@ -40,8 +41,8 @@ test('owner attention shows an actionable all-clear state', () => {
     students: [{ id: 's1', staffIds: ['c1'] }],
     users: [{ id: 's1', accessSuspended: false }]
   });
-  assert.match(nodes.ownerAttention.innerHTML, /No assignment or access alerts/);
-  assert.match(nodes.ownerAttention.innerHTML, /0 flagged/);
+  assert.match(nodes.ownerAttention.innerHTML, /No urgent account alerts/);
+  assert.match(nodes.ownerAttention.innerHTML, /0 urgent alerts/);
 });
 
 test('owner insight metrics reflect existing data without treating estimates as invoices', () => {
@@ -86,4 +87,15 @@ test('owner view does not render raw untrusted date markup', () => {
   });
   assert.doesNotMatch(nodes.ownerInsights.innerHTML, /<img /);
   assert.match(nodes.ownerInsights.innerHTML, /&lt;img/);
+});
+
+test('unassigned owner-managed students are informational, not urgent flags', () => {
+  const { window, nodes } = setup();
+  window.renderOwnerAttention({
+    students: Array.from({length:40},(_,i)=>({id:'s'+i,staffIds:[]})),
+    users:[{id:'o1',role:'owner',accessSuspended:false}]
+  });
+  assert.match(nodes.ownerAttention.innerHTML,/40 students without assigned staff/);
+  assert.match(nodes.ownerAttention.innerHTML,/0 urgent alerts/);
+  assert.doesNotMatch(nodes.ownerAttention.innerHTML,/40 flagged/);
 });

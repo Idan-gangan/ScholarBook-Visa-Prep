@@ -81,3 +81,45 @@
  #owner #operationsTable td::before,#owner #costDiagnostics td::before{display:none!important}
  #owner #operationsTable th:first-child,#owner #costDiagnostics th:first-child{width:auto}
 }
+
+
+/* Owner-specific navigation: mobile starts with a compact menu instead of a full page of links. */
+#app .owner-mobile-nav-toggle{display:none}
+#owner .owner-coverage{display:flex;align-items:center;justify-content:space-between;gap:12px 18px;flex-wrap:wrap;background:#f5f8fc;border:1px solid #e5edf6;border-radius:12px;padding:15px;margin-top:14px}
+#owner .owner-coverage strong{display:block;font-size:14px;color:#19385f;margin:7px 0 4px}
+#owner .owner-coverage small{display:block;max-width:580px;font-size:11px;line-height:1.6;color:#6c7c90}
+#owner .owner-coverage .btn{min-height:40px;white-space:normal}
+#owner .owner-attention-urgent{border-left:3px solid #d88c37;padding-left:10px}
+@media(max-width:900px){
+  #app.owner-mode .owner-mobile-nav-toggle{
+    display:flex;
+    width:calc(100% - 28px);
+    margin:12px 14px 4px;
+    padding:12px 15px;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
+    border:1px solid #d6e0ee;
+    border-radius:12px;
+    background:#fff;
+    color:#1a3b6d;
+    font-size:14px;
+    font-weight:800;
+    min-height:50px;
+    cursor:pointer;
+    grid-column:1/-1
+  }
+  #app.owner-mode #nav:not(.owner-nav-open){display:none}
+  #app.owner-mode #nav.owner-nav-open{display:grid;grid-column:1/-1;margin:5px 14px 8px;width:auto;border-radius:14px}
+  #app.owner-mode .layout>.main{min-width:0}
+  #owner .owner-coverage{align-items:flex-start}
+  #owner .owner-coverage .btn{width:100%}
+}
+@media(max-width:600px){
+  #owner .owner-heading{padding:20px 18px}
+  #owner .owner-heading h1{font-size:27px}
+  #owner .owner-heading p{font-size:12px}
+  #owner .owner-heading .btn{min-height:43px}
+  #owner .owner-insight-title{flex-wrap:wrap}
+  #owner .owner-count{white-space:normal}
+}
