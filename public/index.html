@@ -1363,7 +1363,7 @@ if(typeof MutationObserver!=='undefined'){
  const learningObserver=new MutationObserver(()=>{learningObserver.disconnect();translateLearning();learningObserver.observe($('learning'),{childList:true,subtree:true,characterData:true})});
  learningObserver.observe($('learning'),{childList:true,subtree:true,characterData:true});
 }
-window.VisaAtlasStudentDashboardV2.install();
+window.VisaAtlasStudentDashboardV2?.install?.();
 boot().catch(()=>{if(new URLSearchParams(location.search).get("signin")==="1")backToLogin()});
 </script>
 </body></html>
