@@ -3,7 +3,7 @@
  'use strict';
  const names=['Study plans','Funding and sport','Interview details','Background and future plans'];
  const pick=id=>document.getElementById(id);
- let stage=0,dirty=false,ready=false,saving=false;
+ let stage=0,dirty=false,ready=false;
  const create=(tag,className)=>{const el=document.createElement(tag);if(className)el.className=className;return el;};
  function section(number,title,description){
    const el=create('section','profile-stage wide');
@@ -18,7 +18,6 @@
  function hint(stageEl,text){
    const p=create('p','profile-help');p.textContent=text;stageEl.append(p);
  }
- function moveAll(from,to){for(const node of [...from.children])to.append(node);}
  function moveChildren(from,to,children){for(const node of children)to.append(node);}
  function updateSport(){
    const input=pick('p_sport'),other=pick('p_sportOther');
@@ -93,7 +92,7 @@
    const backgroundChildren=[...inner.children].slice(backgroundStart);
    const grid2=create('div','formgrid');moveChildren(inner,grid2,contactChildren);stage2.append(grid2);
    const grid3=create('div','formgrid');moveChildren(inner,grid3,backgroundChildren);stage3.append(grid3);
-   hint(stage3,'For future plans, enter a real goal or write “I’m still deciding.” A placeholder like “nil” does not give the interviewer useful context.');
+   hint(stage3,'Count all your previous U.S. visa applications, including refusals. For future plans, enter a genuine goal or write “I’m still deciding.” A placeholder like “nil” does not give the interviewer useful context.');
    contact.remove();
    form.append(stage0,stage1,stage2,stage3);
    for(const input of form.querySelectorAll('input,select,textarea')){
@@ -108,18 +107,6 @@
  }
  function changed(){dirty=true;updateSport();progress();}
  function markSaved(){dirty=false;progress();}
- function reset(){dirty=false;ready=false;stage=0;saving=false;}
- async function next(){
-   if(!ready)return;
-   if(saving)return;
-   saving=true;
-   const next=pick('profileNextStep');if(next)next.disabled=true;
-   try{
-     if(typeof root.saveProfile==='function'){
-       const success=await root.saveProfile();
-       if(success!==false)switchTo(stage+1);
-     }
-   }finally{saving=false;if(next)next.disabled=false;}
- }
- root.VisaAtlasStudentProfile={setup,next,previous:()=>switchTo(stage-1),go:switchTo,markSaved,reset,hasUnsaved:()=>dirty,snapshot,progress,getStep:()=>stage};
+ function reset(){dirty=false;ready=false;stage=0;}
+ root.VisaAtlasStudentProfile={setup,previous:()=>switchTo(stage-1),go:switchTo,markSaved,reset,hasUnsaved:()=>dirty,snapshot,progress,getStep:()=>stage};
 })(window);
