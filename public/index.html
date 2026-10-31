@@ -597,6 +597,7 @@ function setOwnerTab(tab){
  document.querySelectorAll('[data-owner-tab]').forEach(el=>el.setAttribute('aria-pressed',String(el.dataset.ownerTab===tab)));
  for(const [key,id] of [['accounts','ownerAccounts'],['assignments','ownerAssignments'],['activity','ownerAudit']])$(id).classList.toggle('hidden',key!==tab);
  renderOwnerDirectory();
+ document.querySelector('#owner .owner-workspace')?.scrollIntoView({behavior:'smooth',block:'start'});
 }
 function ownerName(id){return ownerData.users.find(u=>u.id===id)?.name||(ownerData.students||[]).find(s=>s.id===id)?.name||id||'Unknown';}
 function ownerStaffNames(ids){return (ids||[]).map(ownerName).join(', ')||'Owner only';}
