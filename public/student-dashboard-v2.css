@@ -121,3 +121,48 @@
  #app.student-mode .student-action-card{padding:20px}
  #app.student-mode #dashCards .score-qualifier{font-size:11px}
 }
+
+/* Focused student homepage: clear next action and less repeated information. */
+#app.student-mode .student-hero-meta{display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap;margin:10px 0 15px}
+#app.student-mode .student-hero-meta .student-date-line{margin:0}
+#app.student-mode .student-profile-ready{display:inline-flex;align-items:center;border:1px solid #a5d8bd68;background:#d5f8e51e;color:#dcffe8;border-radius:9px;font-size:12px;font-weight:700;padding:8px 10px}
+#app.student-mode .home-course-stat{display:flex;align-items:baseline;gap:10px}
+#app.student-mode .home-course-stat span{font-size:12px;color:#d0deef}
+#app.student-mode .home-course-stat strong{line-height:1}
+#app.student-mode .student-score-trend{display:block;margin-top:10px;font-size:12px;line-height:1.5;font-weight:700;color:#1c5c9b;background:#eef5fc;padding:8px 10px;border-radius:9px}
+#app.student-mode .student-history-disclosure{margin-top:14px;border:1px solid #dee8f2;border-radius:12px;padding:0 13px;min-width:0}
+#app.student-mode .student-history-disclosure>summary{list-style-position:inside;font-weight:700;color:#254f83;cursor:pointer;padding:14px 0;font-size:13px;min-height:44px;line-height:1.6}
+#app.student-mode .student-history-disclosure>summary:focus-visible,
+#app.student-mode .student-planner-tools>summary:focus-visible{outline:2px solid #1853b6;outline-offset:3px}
+#app.student-mode .student-history-disclosure .history-card-list{margin:12px 0 16px}
+#app.student-mode .student-history-disclosure>.muted{margin:4px 0 10px}
+#app.student-mode .student-planner-tools{border:1px solid #e0e9f2;border-radius:12px;margin-top:12px;padding:0 12px}
+#app.student-mode .student-planner-tools>summary{list-style-position:inside;font-size:13px;font-weight:750;color:#225083;cursor:pointer;min-height:46px;padding:12px 0}
+#app.student-mode .student-planner-tools .countdown{font-size:14px}
+#app.student-mode .daily-complete{display:inline-flex;align-items:center;line-height:1.45;font-size:12px}
+@media(max-width:900px){
+ #app.student-mode .student-hero{padding:16px 18px;gap:9px;margin-bottom:15px}
+ #app.student-mode .student-hero .home-greeting{font-size:13px;margin:5px 0 2px}
+ #app.student-mode .student-hero h2{font-size:23px;line-height:1.15;margin:7px 0}
+ #app.student-mode .student-hero .student-hero-copy{font-size:12px;line-height:1.5;margin:6px 0}
+ #app.student-mode .student-hero-meta{margin:9px 0 11px}
+ #app.student-mode .student-hero .student-date-line,
+ #app.student-mode .student-profile-ready{font-size:11px;padding:6px 9px}
+ #app.student-mode .student-hero .btn{min-height:42px}
+ #app.student-mode .home-course{display:grid;grid-template-columns:1fr 1fr;gap:7px 12px;padding:11px 0 0}
+ #app.student-mode .home-course .eyebrow{align-self:center}
+ #app.student-mode .home-course .home-course-stat{justify-content:flex-end;align-items:center;gap:6px}
+ #app.student-mode .home-course .home-course-stat strong{font-size:22px}
+ #app.student-mode .home-course .home-course-stat span{font-size:10px}
+ #app.student-mode .home-course progress{grid-column:1/-1;width:100%}
+ #app.student-mode .home-course small{display:none}
+ #app.student-mode #dailyPractice{padding:16px;margin-bottom:15px}
+ #app.student-mode .daily-plan-head h2{font-size:21px}
+ #app.student-mode .daily-task{padding:12px;gap:9px}
+ #app.student-mode .daily-task .btn{margin-top:2px}
+ #app.student-mode .practice-history{padding:17px;margin:17px 0}
+ #app.student-mode .practice-history .history-heading h2{font-size:21px}
+ #app.student-mode .student-action-card h2{font-size:21px}
+ #app.student-mode #studentPlanner{margin:14px 0;padding:15px}
+ #app.student-mode #studentPlanner .history-heading h2{font-size:20px}
+}
