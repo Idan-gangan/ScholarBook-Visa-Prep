@@ -309,13 +309,14 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
             <div class="interviewer-caption"><span id="interviewerActivity" role="status">Ready when you are</span><span class="interviewer-wave" aria-hidden="true"><i></i><i></i><i></i><i></i></span></div>
           </div>
           <p class="small muted">AI practice with a still portrait, not a real consular officer. Microphone only; no camera or video recording.</p>
-          <p class="muted">Answer naturally after each question. Pause when you finish; the interviewer will respond automatically.</p><div id="transcript" dir="auto" class="transcript"></div>
+          <p id="mockInterviewInstructions" class="muted">Answer naturally after each question. Pause when you finish; the interviewer will respond automatically.</p>
+          <details id="mockTranscriptDisclosure" class="mock-transcript-disclosure" open><summary>Live interview transcript</summary><div id="transcript" dir="auto" class="transcript"></div></details>
         </div>
         <div class="card">
           <h3>After the interview</h3>
-          <p class="muted">End your interview to see what went well and what to practise next. Coaching and corrections appear here, after the conversation.</p>
-          <button class="btn primary" style="width:100%" id="feedbackBtn" onclick="generateReport()">View my feedback</button>
-          <p class="muted small">One saved report per mock interview. If generation fails, you can retry.</p>
+          <p id="mockAfterHelp" class="muted" role="status" aria-live="polite">When the AI finishes your interview, VisaAtlas generates feedback automatically. If you end early, you can still generate feedback from the captured answers.</p>
+          <button class="btn primary" style="width:100%" id="feedbackBtn" onclick="openMockFeedback()" disabled>View my feedback</button>
+          <p class="muted small">One saved report per mock interview. Partial sessions receive feedback on assessed answers only. If generation fails, you can retry.</p>
 <p id="reportUsage" class="small muted" role="status"></p>
 <div id="evalStatus" class="small muted" style="margin-top:12px"></div>
         </div>
@@ -1035,8 +1036,13 @@ function interviewerState(state){
 function voiceReady(v){
   if(voice!==v || v.busy || v.playing || v.waiting || !v.connected)return;
   if(v.closing){
-    stopVoice('Interview complete — view your feedback below.');
-    $('feedbackBtn')?.scrollIntoView?.({behavior:'smooth',block:'center'});$('feedbackBtn')?.focus?.();return;
+    stopVoice('AI interview finished — preparing your feedback.');
+    // Only the AI's completed closing turn triggers automatic scoring. Manual
+    // endings and interruptions retain the visible feedback button.
+    $('mockAfterHelp').textContent='Your interviewer finished the conversation. Generating your feedback automatically…';
+    $('mockAfterHelp')?.scrollIntoView?.({behavior:'smooth',block:'center'});
+    automaticReport=generateReport();
+    return;
   }
   voiceSend(v,"input_audio_buffer.clear");voiceMic(v,true);
   voiceEl("voiceStatus").textContent="Your turn — listening";
@@ -1114,7 +1120,12 @@ async function startVoice(mode="mock",consented=false){
   const v={costCounter:typeof VisaAtlasVoiceCost==='undefined'?null:VisaAtlasVoiceCost.create(),mode,language:$(mode==='learn'?'tutorLanguage':'mockLanguage').value,feedbackLanguage:$('feedbackLanguage').value,difficulty:mode==='mock'?$('interviewDifficulty').value:'standard',athleteId:voiceEl("athleteSelect").value,busy:false,playing:false,waiting:false,pendingItem:null,connected:false};voice=v;
   for(const id of ["tutorLanguage","mockLanguage","feedbackLanguage"])$(id).disabled=true;
   if(mode==="learn"){learningTranscript=[];v.retryContext=lessonPractice?.spokenRetry?{...lessonPractice}:null;$('spokenRetryReview').replaceChildren();}
-  else {mockSessionId=null;mockSave=Promise.resolve();$('interviewDifficulty').disabled=true;interviewerState('connecting');transcript=[];mockStudentId=v.athleteId;$("evalStatus").textContent=""}
+  else {
+    mockSessionId=null;mockSave=Promise.resolve();$('interviewDifficulty').disabled=true;interviewerState('connecting');transcript=[];mockStudentId=v.athleteId;$("evalStatus").textContent="";
+    $('mockInterviewInstructions').hidden=false;$('mockTranscriptDisclosure').open=true;
+    $('mockAfterHelp').textContent='The interview is in progress. When the AI finishes, your feedback will be generated automatically.';
+    $('feedbackBtn').disabled=true;$('feedbackBtn').textContent='View my feedback';
+  }
   voiceEl("transcript").replaceChildren();
   voiceEl("startBtn").disabled=true;voiceEl("stopBtn").disabled=false;
   voiceEl("athleteSelect").disabled=true;
@@ -1172,9 +1183,18 @@ function stopVoice(message=voiceScreen==="learn"?"Lesson conversation ended":"In
   if(v?.audio){v.audio.pause();v.audio.srcObject=null}
   if(v?.mode==='mock'){
     interviewerState('ended');$('interviewDifficulty').disabled=false;
-    if(mockSessionId&&transcript.some(line=>line.role==='athlete')){
+    $('mockTranscriptDisclosure').open=false;$('mockInterviewInstructions').hidden=true;
+    const hasAnswers=!!mockSessionId&&transcript.some(line=>line.role==='athlete');
+    $('feedbackBtn').disabled=!hasAnswers;
+    $('feedbackBtn').textContent='View my feedback';
+    $('mockAfterHelp').textContent=hasAnswers
+      ?'The interview has ended. You can generate feedback from the answers captured, even if some topics were not covered.'
+      :'No student answers were captured. Start a new mock interview to receive feedback.';
+    if(hasAnswers){
       const version=sessionVersion;
-      mockSave=api('/api/mock-session/end',{method:'POST',body:JSON.stringify({mockSessionId,transcript})}).catch(()=>{if(version===sessionVersion&&me)$('evalStatus').textContent='Your conversation is still here. Use View my feedback to retry saving it.';});
+      mockSave=api('/api/mock-session/end',{method:'POST',body:JSON.stringify({mockSessionId,transcript})}).catch(()=>{
+        if(version===sessionVersion&&me)$('evalStatus').textContent='Your conversation is still here. Use View my feedback to retry saving it.';
+      });
     }
   }
   if(v?.mode==='learn'&&v.retryContext&&v.practiceSessionId)reviewSpokenRetry(v,learningTranscript);
@@ -1196,24 +1216,48 @@ function reviewSpokenRetry(v,lines){
   }catch(e){if(me?.id===account){status.textContent=e.message;button.disabled=false;select.disabled=false;}}
  };
 }
-let reportGenerating=false;
+let reportGenerating=false,automaticReport=Promise.resolve();
+function openMockFeedback(){
+  if(mockSessionId&&reports.some(report=>report.mockSessionId===mockSessionId)){show('reports');return}
+  return generateReport();
+}
 async function generateReport(){
- if(reportGenerating)return;
- if(voice){$("evalStatus").textContent="End the conversation before generating a report.";return}
- if(!mockSessionId){$("evalStatus").textContent="Complete a voice mock interview first.";return}
- if(transcript.length<2){$("evalStatus").textContent="Answer at least one interview question first.";return}
- reportGenerating=true;
- $("evalStatus").textContent="Generating readiness report… This may take up to 90 seconds.";
- try{
-   const athleteId=mockStudentId || $("athleteSelect").value;
-   const reportTranscript=transcript.map(line=>({...line})),reportSessionId=mockSessionId;
-   await mockSave;
-   await api("/api/save-transcript",{method:"POST",body:JSON.stringify({athleteId,transcript:reportTranscript})});
-   const r=await api("/api/evaluate",{method:"POST",body:JSON.stringify({athleteId,transcript:reportTranscript,mockSessionId:reportSessionId})});
-   $("evalStatus").textContent=Number.isFinite(r.overall)?`Report created: ${r.overall}/100 — ${r.readiness}`:"Feedback ready — not enough information to score.";
-   athletes=await api("/api/athletes");reports=await api("/api/reports");renderAll();show("reports");
- }catch(e){$("evalStatus").textContent=e.message}
- finally{reportGenerating=false;refreshVoiceUsage();}
+  if(reportGenerating)return;
+  if(voice){$("evalStatus").textContent="End the conversation before generating a report.";return}
+  if(!mockSessionId){$("evalStatus").textContent="Complete a voice mock interview first.";return}
+  if(!transcript.some(line=>line.role==='athlete')){$("evalStatus").textContent="Answer at least one interview question first.";return}
+  const account=me?.id,version=sessionVersion;
+  reportGenerating=true;
+  const button=$('feedbackBtn');
+  button.disabled=true;button.textContent='Generating feedback…';
+  $('startBtn').disabled=true;
+  $('mockAfterHelp').textContent='Your interview has ended. VisaAtlas is preparing feedback from the captured answers. You do not need to end it again.';
+  $("evalStatus").textContent="Generating your feedback… You can retry if the report cannot be saved.";
+  try{
+    const athleteId=mockStudentId || $("athleteSelect").value;
+    const reportTranscript=transcript.map(line=>({...line})),reportSessionId=mockSessionId;
+    await mockSave;
+    await api("/api/save-transcript",{method:"POST",body:JSON.stringify({athleteId,transcript:reportTranscript})});
+    const r=await api("/api/evaluate",{method:"POST",body:JSON.stringify({athleteId,transcript:reportTranscript,mockSessionId:reportSessionId})});
+    if(me?.id!==account||sessionVersion!==version)return;
+    $("evalStatus").textContent=Number.isFinite(r.overall)?`Report created: ${r.overall}/100 — ${r.readiness}`:"Feedback ready — not enough information to score.";
+    athletes=await api("/api/athletes");reports=await api("/api/reports");
+    if(me?.id!==account||sessionVersion!==version)return;
+    $('mockAfterHelp').textContent='Your report is saved. Open Reports to review the assessed answers and your next practice steps.';
+    button.textContent='Open saved feedback';
+    renderAll();show("reports");
+  }catch(error){
+    if(me?.id===account&&sessionVersion===version){
+      $("evalStatus").textContent='Feedback could not be generated: '+error.message;
+      $('mockAfterHelp').textContent='Your recorded answers are still available. Use Retry feedback; there is no need to repeat the interview.';
+      button.textContent='Retry feedback';
+    }
+  }finally{
+    reportGenerating=false;
+    if(me?.id===account&&sessionVersion===version){
+      button.disabled=false;$('startBtn').disabled=false;refreshVoiceUsage();
+    }
+  }
 }
 
 const curriculum=window.VisaAtlasCurriculum;
