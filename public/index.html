@@ -94,7 +94,9 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
 <link rel="stylesheet" href="/profile.css">
 <link rel="stylesheet" href="/owner.css">
 <link rel="stylesheet" href="/owner-command-center.css">
+<link rel="stylesheet" href="/owner-mobile-diagnostics.css">
 <script src="/owner-command-center.js"></script>
+<script src="/owner-mobile-diagnostics.js"></script>
 <link rel="stylesheet" href="/student.css">
 <link rel="stylesheet" href="/home.css">
 <style>.language-choice{border:2px solid #3767ce;margin:20px 0;padding:20px;background:#f3f7ff}.language-choice h2{margin-top:0}.language-choice select{width:100%;min-height:44px}.language-choice .field{min-width:0}.language-choice p{overflow-wrap:anywhere}</style>
@@ -335,7 +337,9 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
         <div id="ownerAccounts" class="owner-table-wrap"></div><div id="ownerAssignments" class="owner-table-wrap hidden"></div><div id="ownerAudit" class="owner-table-wrap hidden"></div>
         <div class="owner-pagination"><span id="ownerRange" role="status" aria-live="polite"></span><div><button id="ownerPrev" class="btn secondary" onclick="ownerPage--;renderOwnerDirectory()">Previous</button><button id="ownerNext" class="btn secondary" onclick="ownerPage++;renderOwnerDirectory()">Next</button></div></div>
       </div>
-      <details class="card" id="ownerDiagnostics" style="margin-top:24px"><summary>Advanced diagnostics · detailed usage and AI cost samples</summary><p>Counts cover the last seven UTC dates. They do not show actual AI spending. Hosting backup and alert settings must be checked in Render and OpenAI.</p><button class="btn secondary" type="button" onclick="loadOperations()">Refresh service activity</button><p id="operationsStatus" role="status"></p><div id="operationsTable" style="overflow:auto"></div><h3>Practice cost diagnostics — last 30 days</h3><p>Voice estimates come from browser-reported counters and can be incomplete or altered. They exclude transcription, report generation, hosting and payment fees. Elapsed time is connection time, not speaking time. Missing samples are not free usage. These diagnostics never charge students. Report tokens come directly from provider responses; report dollar cost is not yet configured. Confirm totals against the OpenAI bill before setting prices.</p><div id="costDiagnostics" style="overflow:auto"></div></details>
+      <details class="card" id="ownerDiagnostics" style="margin-top:24px"><summary>Advanced diagnostics · detailed usage and AI cost samples</summary><p>Counts cover the last seven UTC dates. They do not show actual AI spending. Hosting backup and alert settings must be checked in Render and OpenAI.</p><button class="btn secondary" type="button" onclick="loadOperations()">Refresh service activity</button><p id="operationsStatus" role="status"></p><div id="operationsTable" style="overflow:auto"></div>
+       <div class="owner-mobile-operations" aria-label="Recent service activity"><div class="owner-mobile-panelhead"><h4>Daily activity</h4><label class="owner-mobile-filter" for="ownerOperationMobileFilter">Show <select id="ownerOperationMobileFilter" onchange="setOwnerOperationMobileFilter()"><option value="all">All operations</option><option value="rejected">With rejections</option><option value="failures">With service errors</option><option value="successful">With successes</option></select></label></div><div id="ownerOperationMobileCards"></div></div>
+       <h3>Practice cost diagnostics — last 30 days</h3><p>Voice estimates come from browser-reported counters and can be incomplete or altered. They exclude transcription, report generation, hosting and payment fees. Elapsed time is connection time, not speaking time. Missing samples are not free usage. These diagnostics never charge students. Report tokens come directly from provider responses; report dollar cost is not yet configured. Confirm totals against the OpenAI bill before setting prices.</p><div id="costDiagnostics" style="overflow:auto"></div><div id="ownerCostsMobile" aria-label="AI cost breakdown"></div></details>
       <p class="owner-footnote">Staff see only their assigned students. Only you can manage roles and assignments.</p>
       <dialog id="ownerEdit" class="owner-dialog" aria-labelledby="ownerEditTitle" onclose="$('ownerPassword').value=''" oncancel="if(ownerSaving)event.preventDefault()">
         <form onsubmit="event.preventDefault();submitOwnerEdit()"><span class="eyebrow">ACCESS MANAGEMENT</span><h2 id="ownerEditTitle">Manage access</h2><p id="ownerEditPerson"></p><div id="ownerEditFields"></div><p id="ownerEditHelp" class="small muted"></p><div class="field"><label for="ownerPassword">Confirm with your current password</label><input id="ownerPassword" type="password" autocomplete="current-password" required></div><p id="ownerEditStatus" role="status" aria-live="polite"></p><div class="owner-dialog-actions"><button id="ownerEditCancel" type="button" class="btn secondary" onclick="$('ownerEdit').close()">Cancel</button><button id="ownerEditSave" type="submit" class="btn primary">Save changes</button></div></form>
@@ -510,6 +514,7 @@ async function loadOperations(){
  $('operationsTable').innerHTML='<table><thead><tr><th>Date (UTC)</th><th>Operation</th><th>Requests</th><th>Successful</th><th>Rejected</th><th>Service failures</th></tr></thead><tbody>'+data.days.map(r=>'<tr>'+[String(r.day).slice(0,10),r.operation,r.requests,r.successes,r.rejected,r.failures].map(v=>'<td>'+escapeHtml(v)+'</td>').join('')+'</tr>').join('')+'</tbody></table>';
  const costs=data.costs||[];
  window.renderOwnerInsights?.(data);
+  window.renderOwnerMobileDiagnostics?.(data);
   $('costDiagnostics').innerHTML=costs.length?'<table><thead><tr><th>Type</th><th>Model</th><th>Attempts</th><th>Usage samples</th><th>Priced voice samples</th><th>Observed minutes</th><th>Partial voice estimate (USD)</th><th>Report tokens: input / cached / output</th></tr></thead><tbody>'+costs.map(r=>'<tr>'+[r.category,r.model,r.attempts,r.samples,r.priced_samples,r.elapsed_seconds==null?'—':(Number(r.elapsed_seconds)/60).toFixed(1),r.estimated_usd==null?'Not priced':'$'+Number(r.estimated_usd).toFixed(4),r.source==='provider_response'?[r.input_tokens??'—',r.cached_tokens??'—',r.output_tokens??'—'].join(' / '):'—'].map((v,i)=>'<td data-label="'+['Type','Model','Attempts','Usage samples','Priced voice samples','Observed minutes','Partial voice estimate (USD)','Report tokens: input / cached / output'][i]+'">'+escapeHtml(v)+'</td>').join('')+'</tr>').join('')+'</tbody></table>':'<p>No samples yet. New practice sessions will appear here; earlier costs cannot be reconstructed.</p>';
  }catch(error){$('operationsStatus').textContent=error.message;}
 }
@@ -568,6 +573,7 @@ function clearOwnerView(){
  $('ownerPassword').value='';$('ownerSearch').value='';
  if($('ownerEdit').open)$('ownerEdit').close();
  for(const id of ['ownerStats','ownerAccounts','ownerAudit','ownerAssignments','ownerEditFields','ownerAttention','ownerInsights'])$(id).replaceChildren();
+ window.clearOwnerMobileDiagnostics?.();
  $('ownerStatus').textContent='';$('ownerRange').textContent='';
 }
 async function loadOwner(){
