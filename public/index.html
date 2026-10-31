@@ -208,7 +208,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
 
 <div id="app" class="hidden">
   <div class="top"><div class="brand"><div class="logo" aria-hidden="true">VA</div>VisaAtlas</div><div class="account-summary"><span class="account-avatar" id="accountAvatar" aria-hidden="true"></span><div class="account-copy"><b id="who"></b><span id="role" class="muted"></span></div><button class="btn secondary" onclick="logout()">Log out</button></div></div>
-  <div class="layout"><nav class="side" id="nav" aria-label="Main navigation"></nav><main class="main">
+  <div class="layout"><button id="ownerMobileNavToggle" type="button" class="owner-mobile-nav-toggle" aria-controls="nav" aria-expanded="false" onclick="toggleOwnerNavigation()"><span aria-hidden="true">☰</span><span>Owner menu</span><span aria-hidden="true">⌄</span></button><nav class="side" id="nav" aria-label="Main navigation"></nav><main class="main">
     <section id="learning" class="screen">
       <div class="learning-welcome"><div><h1 id="learningGreeting">Welcome back</h1><p>Continue your preparation for your F-1 interview.</p></div><div class="course-status"><p id="courseProgress" role="status">Loading progress…</p><progress id="courseMeter" class="course-meter" max="6" value="0" aria-label="Modules completed"></progress></div></div>
       <div class="field learning-student-picker" id="learningStudentPicker"><label for="learn_athleteSelect">Student</label><select id="learn_athleteSelect" onchange="changeLearningStudent()"></select></div>
@@ -536,6 +536,7 @@ function show(id,el){
  if(me && ['learning','interview'].includes(id))refreshVoiceUsage();
  if(id!=='account'){clearPasswordForm();$('passwordMessage').textContent='';}
  if(voice && id!==(voice.mode==="learn"?"learning":"interview"))stopVoice("Conversation ended when you left this page.");
+if(me?.role==='owner')window.closeOwnerNavigation?.();
 document.querySelectorAll(".screen").forEach(x=>x.classList.remove("on"));$(id).classList.add("on");document.querySelectorAll(".nav").forEach(x=>x.classList.remove("on"));document.querySelectorAll(".nav").forEach(x=>{const active=x.dataset.screen===id;x.classList.toggle("on",active);if(active)x.setAttribute("aria-current","page");else x.removeAttribute("aria-current")})}
 function escapeHtml(value){return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 async function boot(){
@@ -548,6 +549,7 @@ async function boot(){
  if(typeof URLSearchParams!=="undefined" && new URLSearchParams(location.search).get("next")==="review"){location.replace("/share-review.html");return;} athletes=await api("/api/athletes"); reports=await api("/api/reports");
  ["welcome","login","registration"].forEach(id=>$(id).classList.add("hidden"));$("password").value="";$("app").classList.remove("hidden");$("who").textContent=me.name;$("role").textContent=me.role==="athlete"?"Student":me.role==='owner'?'Owner':me.role;
  $("accountAvatar").textContent=String(me.name||'S').trim().split(/\s+/).slice(0,2).map(part=>part[0]||'').join('').toUpperCase();
+ $('app').classList.toggle('owner-mode',me.role==='owner');
  $('exportAccountSection').classList.toggle('hidden',me.role!=='athlete');
  $('deleteAccountSection').classList.toggle('hidden',me.role!=='athlete');
  $("nav").innerHTML=navItems().map((x,i)=>`<button type="button" data-screen="${x[1]}" class="nav ${i===0?"on":""} ${me.role==='athlete'&&x[1]==='profile'?'nav-secondary-start':''}" onclick="show('${x[1]}',this)">${navIcon(x[1])}<span>${x[0]}</span></button>`).join("");
@@ -585,7 +587,7 @@ async function loadOwner(){
   ownerData=data;
   const staff=data.users.filter(u=>['coach','supervisor','manager'].includes(u.role));
   const unassigned=(data.students||[]).filter(s=>!s.staffIds?.length).length;
-  const stats=[['Total accounts',data.counts.accounts,'Registered in your workspace'],['Student profiles',data.counts.students,unassigned+' without assigned staff'],['Staff members',staff.length,'Coaches, supervisors & managers'],['Readiness reports',data.counts.reports,'Saved practice feedback']];
+  const stats=[['Total accounts',data.counts.accounts,'Registered in your workspace'],['Student profiles',data.counts.students,unassigned+' managed by Owner (not delegated)'],['Staff members',staff.length,'Coaches, supervisors & managers'],['Readiness reports',data.counts.reports,'Saved practice feedback']];
   $('ownerStats').innerHTML=stats.map(([label,value,help],i)=>`<div class="owner-stat"><span class="owner-stat-index">0${i+1}</span><div class="muted">${escapeHtml(label)}</div><div class="kpi">${escapeHtml(value)}</div><p>${escapeHtml(help)}</p></div>`).join('');
   window.renderOwnerAttention?.(data);
   renderOwnerDirectory();$('ownerStatus').textContent='';
