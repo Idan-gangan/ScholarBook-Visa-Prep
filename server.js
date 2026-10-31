@@ -18,6 +18,7 @@ const recordStore=process.env.RECORD_STORAGE==='enabled'?require('./record-store
 // Update this version and the registration checkbox together when Terms change.
 const TERMS_VERSION = "2026-10-25";
 const operations=require('./operations').createOperations(pool);
+const ownerStudentAnalytics=require('./owner-student-analytics');
 const PORT = process.env.PORT || 3000;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 const {POLICY,createVoiceLimits,dailyLimit}=require('./voice-limits');
@@ -447,6 +448,21 @@ const server=http.createServer(async (req,res)=>{
     if(url.pathname.startsWith('/api/owner/')){
       const u=await requireUser(req,res); if(!u)return;
       if(!isOwner(u))return json(res,403,{error:'Owner access required.'});
+      if(req.method==='GET' && url.pathname==='/api/owner/student-analytics'){
+        const db=await loadDb({collections:['users','athletes','reports','mockSessions']});
+        const learningRows=(await pool.query("SELECT student_id,MAX(updated_at) AS last_progress_at,COUNT(*)::int AS saved_modules,COUNT(*) FILTER (WHERE data->>'completed'='true')::int AS completed_modules FROM learning_progress GROUP BY student_id")).rows;
+        const knownGroups=ownerStudentAnalytics.historicalGroups({students:db.athletes||[],reports:db.reports||[],mockSessions:db.mockSessions||[]});
+        let costData={keyed:[],legacy:[]},costAvailable=true;
+        try{costData=await operations.costs.summaryByStudent([...knownGroups.keys()]);}
+        catch{costAvailable=false;console.warn('[owner] STUDENT_COST_SUMMARY_UNAVAILABLE');}
+        const analytics=ownerStudentAnalytics.buildAnalytics({
+          students:db.athletes||[],users:db.users||[],reports:db.reports||[],
+          mockSessions:db.mockSessions||[],learning:learningRows,costs:costData
+        });
+        analytics.costTrackingAvailable=costAvailable;
+        if(!costAvailable)analytics.notes.costs='Cost attribution is temporarily unavailable. No cost estimate should be treated as zero.';
+        return json(res,200,analytics);
+      }
       if(req.method==='GET' && url.pathname==='/api/owner/operations')return json(res,200,{aiEnabled:process.env.AI_ENABLED!=='false',days:await operations.summary(),costs:await operations.costs.summary(),costNote:'Request counts are not billing totals. Check the OpenAI project Usage and Limits pages for actual cost and alerts.'});
       if(req.method==='GET' && url.pathname==='/api/owner/accounts'){
         const db=await loadDb();
@@ -601,7 +617,7 @@ const server=http.createServer(async (req,res)=>{
           method:'POST',headers:{Authorization:`Bearer ${OPENAI_API_KEY}`,'Content-Type':'application/json','OpenAI-Safety-Identifier':sha(u.id).slice(0,32)},signal:AbortSignal.timeout(45000),
           body:JSON.stringify({model:EVALUATION_MODEL,input:improvement.prompt(target,input.answer,spoken)+practiceLanguages.feedbackInstructions(report.feedbackLanguage||'en',report.practiceLanguage||'en'),max_output_tokens:1200,store:false})
         });
-        const result=await response.json();await operations.costs.report(report.mockSessionId||report.id,'practice',EVALUATION_MODEL,result);
+        const result=await response.json();await operations.costs.report(report.mockSessionId||report.id,'practice',EVALUATION_MODEL,result,report.athleteId);
         let feedback;try{if(!response.ok||result.status==='incomplete')throw Error();feedback=improvement.normalize(JSON.parse(outputText(result).trim().replace(/^```json\s*/, '').replace(/```$/, '').trim()));}
         catch{return json(res,502,{error:'Practice feedback could not be completed. Your answer has not been saved; try again.'});}
         const attempt=await mutateDb(async(current,client)=>{
@@ -733,7 +749,7 @@ Use only information in the supplied profile and transcript. Do not reward inven
         body:JSON.stringify({model:EVALUATION_MODEL,input:prompt.replace("using plain English", "using the selected feedback language")+practiceLanguages.feedbackInstructions(mockSession.feedbackLanguage,mockSession.practiceLanguage),max_output_tokens:EVALUATION_POLICY.outputTokens,store:false})
       });
       const api=await r.json();
-      await operations.costs.report(mockSession.id,'report',EVALUATION_MODEL,api);
+      await operations.costs.report(mockSession.id,'report',EVALUATION_MODEL,api,athlete.id);
       if(!r.ok)return json(res,502,{error:"Report generation is temporarily unavailable. Please try again later."});
       if(api.status==="incomplete")return json(res,502,{error:"The report could not finish within its output limit. Please try again later."});
       let text=outputText(api).trim().replace(/^```json\s*/,"").replace(/```$/,"").trim();
@@ -753,7 +769,7 @@ Use only information in the supplied profile and transcript. Do not reward inven
             body:JSON.stringify({model:EVALUATION_MODEL,input:interviewDesign.evidenceReviewPrompt(result,interview),max_output_tokens:EVALUATION_POLICY.outputTokens,store:false})
           });
           const reviewApi=await reviewResponse.json();
-          await operations.costs.report(mockSession.id,'review',EVALUATION_MODEL,reviewApi);
+          await operations.costs.report(mockSession.id,'review',EVALUATION_MODEL,reviewApi,athlete.id);
           if(!reviewResponse.ok||reviewApi.status==='incomplete')throw new Error('Evidence review unavailable');
           const review=JSON.parse(outputText(reviewApi).trim().replace(/^```json\s*/,"").replace(/```$/,"").trim());
           result=interviewDesign.applyEvidenceReview(result,review);
@@ -1000,7 +1016,7 @@ Start with the opening guidance in INTERVIEW DESIGN below.`;
           current.mockSessions.push({id:mockSessionId,userId:u.id,athleteId:athlete.id,createdAt:new Date().toISOString(),difficulty,practiceLanguage,feedbackLanguage,plan:interviewPlan,evaluationVersion:3,profile:interviewDesign.profileSnapshot(athlete)});
         },{userId:u.id,athleteId:athlete.id});
       }
-      await operations.costs.voiceStart(u.id,voiceToken,mode,mockSessionId);
+      await operations.costs.voiceStart(u.id,voiceToken,mode,mockSessionId,athlete.id);
       if(res.destroyed)return;
       res.writeHead(rr.status,{"X-Voice-Token":voiceToken,"Content-Type":"application/sdp","Cache-Control":"no-store","X-Voice-Limit-Seconds":String(seconds),...(mockSessionId?{'X-Mock-Session-Id':mockSessionId}:{}),...(practiceSessionId?{'X-Practice-Session-Id':practiceSessionId}:{})});
       res.end(answer);
