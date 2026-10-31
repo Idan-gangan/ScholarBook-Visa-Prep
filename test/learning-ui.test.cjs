@@ -661,6 +661,6 @@ test('interview feedback presentation uses one live region, retry control and co
  assert.match(html,/id="feedbackBtn" onclick="openMockFeedback\(\)" disabled/);
  assert.match(html,/After the interview/);
  assert.match(html,/automatically generates feedback from the answers captured/);
- assert.match(html,/id="stopBtn" onclick="endInterviewAndGenerate()"/);
+ assert.match(html,/id="stopBtn" onclick="endInterviewAndGenerate\(\)"/);
  assert.equal(f.elements.get('feedbackBtn').disabled,false,'fixture starts without native HTML boolean attribute interpretation');
 });
