@@ -80,3 +80,32 @@ test('a practice retry saved on a previous local day does not count as a complet
  }],now});
  assert.equal(tasks.find(t=>t.id==='focus').done,false);
 });
+
+test('comparable score trends require explicit matching scoring metadata',()=>{
+ const earlier={...partial,id:'earlier',practiceScore:60};
+ const newest={...partial,id:'newer',practiceScore:62};
+ assert.equal(comparison([newest,earlier]).delta,2);
+ assert.equal(comparable(newest,{...earlier,scoringMethod:undefined}),false);
+ assert.equal(comparable(newest,{...earlier,difficulty:undefined}),false);
+ assert.equal(comparable(newest,{...earlier,scoreType:'complete'}),false);
+});
+test('missing profile guidance is specific and labels the correct saved actions',()=>{
+ const tasks=dailyTasks({
+   profileComplete:false,profileMissing:['University','Phone number','Study plans'],
+   courseLoaded:true,modulesDone:1,
+   history:[{...partial,practiceTargets:[{title:'Study plans',focus:'Explain major',lessonId:'study-purpose'}]}]
+ });
+ assert.equal(tasks.find(t=>t.id==='profile').actionLabel,'Complete profile');
+ assert.match(tasks.find(t=>t.id==='profile').description,/Still needed: University · Phone number · \+1 more/);
+ assert.equal(tasks.find(t=>t.id==='focus').actionLabel,'Practise this answer');
+ assert.equal(tasks.find(t=>t.id==='learning').actionLabel,'Continue lesson');
+});
+test('completed learning and answer retries specify exactly which work was saved',()=>{
+ const now=new Date('2026-10-30T12:00:00Z');
+ const report={...partial,practiceTargets:[{title:'Funding',focus:'Explain tuition support',lessonId:'funding'}],
+   practiceAttempts:[{focus:0,createdAt:now.toISOString()}]};
+ const tasks=dailyTasks({profileComplete:true,courseLoaded:true,modulesDone:2,learningCompletedToday:true,history:[report],now});
+ assert.equal(tasks.find(t=>t.id==='focus').done,true);
+ assert.equal(tasks.find(t=>t.id==='focus').doneLabel,'Answer retry saved today');
+ assert.equal(tasks.find(t=>t.id==='learning').doneLabel,'Lesson completed today');
+});
