@@ -12,6 +12,7 @@ const {isStaff, isOwner, changeRole, assignStudent, withdrawGuardianPermission} 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
+const billing=require('./billing').createBilling(pool);
 
 const recordStore=process.env.RECORD_STORAGE==='enabled'?require('./record-store').create(pool):null;
 
@@ -239,6 +240,23 @@ const server=http.createServer(async (req,res)=>{
   try{
     const url=new URL(req.url, `http://${req.headers.host}`);
     res.once?.('finish',()=>{void operations.record(url.pathname,res.statusCode);});
+    if(url.pathname==='/api/billing/webhook' && req.method==='POST'){
+      await billing.webhook(await readBody(req,256*1024),req.headers['stripe-signature']);
+      return json(res,200,{received:true});
+    }
+    if(['/api/billing/status','/api/billing/checkout'].includes(url.pathname)){
+      const u=await requireUser(req,res);if(!u)return;
+      billing.authorize(u);
+      if(needsVerification(u))return json(res,403,{error:'Verify your email before testing billing.'});
+      if(req.method==='GET' && url.pathname==='/api/billing/status')return json(res,200,await billing.status(u));
+      if(req.method!=='POST' || url.pathname!=='/api/billing/checkout')return json(res,405,{error:'Method not allowed.'});
+      billing.origin(req.headers.origin);
+      if(!allowAuth('billing:'+u.id))return json(res,429,{error:'Please wait before trying again.'});
+      if(!(req.headers['content-type']||'').startsWith('application/json'))return json(res,415,{error:'JSON required.'});
+      let body;try{body=JSON.parse((await readBody(req,4096)).toString());}catch(e){if(e.status===413)throw e;return json(res,400,{error:'Invalid request.'});}
+      if(!body || typeof body.planId!=='string' || Object.keys(body).some(k=>k!=='planId'))return json(res,400,{error:'Only a plan ID is accepted.'});
+      return json(res,200,await billing.checkout(u,body.planId));
+    }
     if(url.pathname==='/api/reviews' && req.method==='GET')return json(res,200,require('./reviews').publicReviews(await loadDb({collections:['users','reviews']})));
     if(['/api/my-review','/api/review-moderation'].includes(url.pathname)){
       const u=await requireUser(req,res);if(!u)return;
@@ -1035,7 +1053,7 @@ Start with the opening guidance in INTERVIEW DESIGN below.`;
     return json(res,500,{error:"Server error"});
   }
 });
-initDb().then(()=>passwordRecovery.init()).then(()=>voiceLimits.init()).then(()=>evaluationLimits.init()).then(()=>operations.init()).then(() => {
+initDb().then(()=>passwordRecovery.init()).then(()=>voiceLimits.init()).then(()=>evaluationLimits.init()).then(()=>operations.init()).then(()=>billing.init()).then(() => {
   voiceLimits.start();
   passwordRecovery.start();
   server.listen(PORT, () => console.log(`VisaAtlas demo running on http://localhost:${PORT}`));
