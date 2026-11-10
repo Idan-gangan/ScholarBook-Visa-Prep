@@ -12,7 +12,7 @@ const {isStaff, isOwner, changeRole, assignStudent, withdrawGuardianPermission} 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
-const billing=require('./billing').createBilling(pool);
+const billing=require('./billing-provider').createBilling(pool);
 
 const recordStore=process.env.RECORD_STORAGE==='enabled'?require('./record-store').create(pool):null;
 
@@ -241,19 +241,24 @@ const server=http.createServer(async (req,res)=>{
     const url=new URL(req.url, `http://${req.headers.host}`);
     res.once?.('finish',()=>{void operations.record(url.pathname,res.statusCode);});
     if(url.pathname==='/api/billing/webhook' && req.method==='POST'){
-      await billing.webhook(await readBody(req,256*1024),req.headers['stripe-signature']);
+      await billing.webhook(await readBody(req,256*1024),req.headers);
       return json(res,200,{received:true});
     }
-    if(['/api/billing/status','/api/billing/checkout'].includes(url.pathname)){
+    if(['/api/billing/status','/api/billing/checkout','/api/billing/verify'].includes(url.pathname)){
       const u=await requireUser(req,res);if(!u)return;
       billing.authorize(u);
       if(needsVerification(u))return json(res,403,{error:'Verify your email before testing billing.'});
       if(req.method==='GET' && url.pathname==='/api/billing/status')return json(res,200,await billing.status(u));
-      if(req.method!=='POST' || url.pathname!=='/api/billing/checkout')return json(res,405,{error:'Method not allowed.'});
+      if(req.method!=='POST' || !['/api/billing/checkout','/api/billing/verify'].includes(url.pathname))return json(res,405,{error:'Method not allowed.'});
       billing.origin(req.headers.origin);
       if(!allowAuth('billing:'+u.id))return json(res,429,{error:'Please wait before trying again.'});
       if(!(req.headers['content-type']||'').startsWith('application/json'))return json(res,415,{error:'JSON required.'});
       let body;try{body=JSON.parse((await readBody(req,4096)).toString());}catch(e){if(e.status===413)throw e;return json(res,400,{error:'Invalid request.'});}
+      if(url.pathname==='/api/billing/verify'){
+        if(!billing.verify)return json(res,404,{error:'Verification route unavailable.'});
+        if(!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).length)return json(res,400,{error:'No payment reference is accepted from the browser.'});
+        return json(res,200,await billing.verify(u));
+      }
       if(!body || typeof body.planId!=='string' || Object.keys(body).some(k=>k!=='planId'))return json(res,400,{error:'Only a plan ID is accepted.'});
       return json(res,200,await billing.checkout(u,body.planId));
     }

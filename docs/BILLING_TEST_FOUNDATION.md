@@ -1,10 +1,57 @@
-# Stripe sandbox foundation — not launch ready
+# Payment sandbox foundation — not launch ready
 
 Billing is disabled by default. This change cannot accept live payments: it rejects
 live keys, live events and live prices. It never grants practice access. Existing
 practice behavior remains unchanged. Do not advertise paid plans as available.
 
-## Configure an isolated test deployment
+## Paystack test checkout (default provider)
+
+Use an isolated staging deployment and database. Saving a key alone does not
+enable billing. Configure:
+
+- `BILLING_PROVIDER=paystack`
+- `BILLING_MODE=test` (disabled by default; live mode is rejected)
+- `PAYSTACK_SECRET_KEY`: test secret, stored only in hosting secret configuration
+- `BILLING_ORIGIN`: exact HTTPS staging origin
+- `BILLING_TEST_USER_IDS`: comma-separated verified test-account IDs
+- `PAYSTACK_TEST_PLANS`: JSON mapping IDs to integer minor-unit amounts and uppercase
+  currency. Synthetic example only: `{"starter":{"amount":10000,"currency":"NGN"}}`.
+  This means NGN 100, not a proposed sale price. USD requires provider account support.
+- `PAYSTACK_WEBHOOK_SECRET`: optional endpoint signing secret beginning `whsec_`.
+  When configured, timestamped `paystack-signature` signatures are required and
+  legacy signatures are rejected. Otherwise legacy `x-paystack-signature` is
+  verified using the test API secret. Configure the matching provider scheme.
+
+Set the test webhook endpoint to `/api/billing/webhook`. Sign in as an allowed,
+email-verified account and open `/billing-test.html`. Use Paystack test credentials.
+The refresh button calls authenticated `POST /api/billing/verify` with an empty
+JSON object. The server obtains the reference from its own checkout record.
+
+Paystack currently performs a **one-time test payment**, not a subscription. It
+never grants paid practice access. A successful redirect is not payment proof.
+Signed charge notifications trigger independent server verification of test domain,
+reference, amount, currency and customer email. Payment records commit atomically
+and duplicate notifications cannot create duplicate payment records.
+
+One checkout reference is reserved durably per test account. Repeated clicks reuse
+the checkout. After a provider timeout, no second reference is issued automatically;
+refresh can reconcile a successful payment. Failed or unresolved attempts require
+operator investigation and, if appropriate, an isolated test-data reset. This is
+intentionally not a production purchase/retry lifecycle. Renewals, cancellation,
+refunds, disputes, usage enforcement and account entitlement remain unimplemented.
+
+Paystack automated tests use mocked HTTP and embedded PostgreSQL, including real
+HMAC verification, forged/stale signatures, repeated checkout, uncertain requests,
+mismatched payment details, provider failures, duplicate events and rollback/retry.
+Actual Paystack sandbox checkout and multi-process PostgreSQL tests are still
+required before deployment approval. Do not assume Stripe sandbox tests validate
+the Paystack integration.
+
+## Retained Stripe sandbox adapter
+
+Set `BILLING_PROVIDER=stripe` explicitly to use this adapter.
+
+## Configure an isolated Stripe test deployment
 
 Use a separate staging database and Stripe sandbox. Keep secrets in hosting secret
 configuration, never in Git, browser code, screenshots or chat messages.
@@ -84,3 +131,6 @@ PGlite tests do not establish multi-process PostgreSQL concurrency correctness.
 
 References: https://docs.stripe.com/webhooks and
 https://docs.stripe.com/billing/subscriptions/webhooks.
+
+Paystack references: https://paystack.com/docs/payments/verify-payments/ and
+https://paystack.com/docs/payments/webhooks/.

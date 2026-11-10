@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test:billing": "node --test billing.test.js"
+    "test:billing": "node --test billing.test.js paystack-billing.test.js"
   },
   "dependencies": {
     "dejavu-fonts-ttf": "2.37.3",
