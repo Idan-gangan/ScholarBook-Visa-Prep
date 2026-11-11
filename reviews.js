@@ -15,7 +15,9 @@ function submit(db,userId,b){
  db.reviews??=[];let r=db.reviews.find(r=>r.userId===userId);
  if(r&&Date.now()-Date.parse(r.updatedAt)<60000)throw fail('Wait one minute before updating your review.');
  if(!r){r={id:crypto.randomUUID(),userId,createdAt:new Date().toISOString()};db.reviews.push(r);}
- Object.assign(r,{rating:b.rating,displayName:b.displayName.trim(),text:b.text.trim(),status:'published',updatedAt:new Date().toISOString(),publishedAt:new Date().toISOString(),publicationAcceptedAt:new Date().toISOString(),noticeVersion:'2026-11-11'});delete r.reason;return {ok:true,status:r.status};
+ // A rejected review must be re-approved, or the author could republish removed abuse.
+ const status=r.status==='rejected'?'pending':'published';
+ Object.assign(r,{rating:b.rating,displayName:b.displayName.trim(),text:b.text.trim(),status,updatedAt:new Date().toISOString(),publishedAt:status==='published'?new Date().toISOString():null,publicationAcceptedAt:new Date().toISOString(),noticeVersion:'2026-11-11'});delete r.reason;return {ok:true,status:r.status};
 }
 function moderate(db,actorId,b){
  if(!db.users.some(u=>u.id===actorId&&u.role==='owner'&&!u.accessSuspended))throw fail('Owner access required.');
