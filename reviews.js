@@ -1,5 +1,8 @@
 const crypto=require('node:crypto');
 const fail=m=>Object.assign(new Error(m),{status:400,publicMessage:m});
+// Prevent obvious contact information and links from becoming publicly visible instantly.
+// Owner review remains available for abuse that automated checks miss.
+const exposesContact=value=>/(?:https?:\/\/|www\.|[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,})/i.test(value)||/(?:\+?\d[\d .()\-]{7,}\d)/.test(value);
 function submit(db,userId,b){
  const u=db.users.find(u=>u.id===userId);
  if(!u||u.accessSuspended||u.role!=='athlete')throw fail('A student account is required.');
@@ -8,10 +11,11 @@ function submit(db,userId,b){
  if(b.publicReview!==true)throw fail('Confirm that this is a public review.');
  if(!Number.isInteger(b.rating)||b.rating<1||b.rating>5)throw fail('Choose 1–5 stars.');
  if(typeof b.displayName!=='string'||!b.displayName.trim()||b.displayName.trim().length>60||typeof b.text!=='string'||b.text.trim().length<10||b.text.trim().length>2000)throw fail('Enter a display name (up to 60 characters) and a review (10–2,000 characters).');
+ if(exposesContact(b.displayName)||exposesContact(b.text))throw fail('Remove links, email addresses, phone numbers and other contact details before publishing your review.');
  db.reviews??=[];let r=db.reviews.find(r=>r.userId===userId);
  if(r&&Date.now()-Date.parse(r.updatedAt)<60000)throw fail('Wait one minute before updating your review.');
  if(!r){r={id:crypto.randomUUID(),userId,createdAt:new Date().toISOString()};db.reviews.push(r);}
- Object.assign(r,{rating:b.rating,displayName:b.displayName.trim(),text:b.text.trim(),status:'pending',updatedAt:new Date().toISOString(),publicationAcceptedAt:new Date().toISOString(),noticeVersion:'2026-10-26'});delete r.reason;return {ok:true,status:r.status};
+ Object.assign(r,{rating:b.rating,displayName:b.displayName.trim(),text:b.text.trim(),status:'published',updatedAt:new Date().toISOString(),publishedAt:new Date().toISOString(),publicationAcceptedAt:new Date().toISOString(),noticeVersion:'2026-11-11'});delete r.reason;return {ok:true,status:r.status};
 }
 function moderate(db,actorId,b){
  if(!db.users.some(u=>u.id===actorId&&u.role==='owner'&&!u.accessSuspended))throw fail('Owner access required.');
