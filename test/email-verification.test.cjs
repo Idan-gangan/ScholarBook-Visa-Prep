@@ -17,6 +17,22 @@ test('verification uses a hashed expiring token, cannot replay, and does not ele
  await assert.rejects(f.service.verify(token));
  assert.equal(needsVerification({id:'legacy',role:'athlete'}),false);
 });
+test('legacy student can opt in to email verification without being gated or losing progress',async()=>{
+ const f=fixture();await f.mutateDb(db=>{db.users[0]={id:'u',role:'athlete',email:'student@example.test'};db.athletes[0].savedLessons=3;});
+ assert.equal(needsVerification(f.db().users[0]),false);
+ await f.service.request('u');assert.equal(needsVerification(f.db().users[0]),false);
+ const token=f.token();await f.service.verify(token);
+ assert.ok(f.db().users[0].emailVerifiedAt);
+ assert.equal(f.db().users[0].verificationRequired,undefined);
+ assert.equal(f.db().athletes[0].savedLessons,3);
+ await assert.rejects(f.service.request('u'),/does not need/);
+});
+test('staff and demo legacy accounts cannot request student-review verification',async()=>{
+ const f=fixture();await f.mutateDb(db=>{db.users[0]={id:'u',role:'owner',email:'student@example.test'};});
+ await assert.rejects(f.service.request('u'),/does not need/);
+ await f.mutateDb(db=>{db.users[0]={id:'u',role:'athlete',demoAccount:true,email:'student@example.test'};});
+ await assert.rejects(f.service.request('u'),/does not need/);
+});
 test('resend invalidates earlier links and persistent cooldown blocks concurrent sends',async()=>{
  const f=fixture();const results=await Promise.allSettled([f.service.request('u'),f.service.request('u')]);
  assert.equal(results.filter(x=>x.status==='fulfilled').length,1);const old=f.token();
