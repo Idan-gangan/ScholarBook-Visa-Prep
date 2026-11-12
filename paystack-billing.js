@@ -1,5 +1,6 @@
 'use strict';
 const {randomBytes,createHmac,timingSafeEqual}=require('node:crypto');
+const {createAccess,validateAccess}=require('./billing-access');
 const fail=(status,message)=>Object.assign(new Error(message),{status,publicMessage:message});
 function configuration(env){
   if(!env.BILLING_MODE||env.BILLING_MODE==='disabled')return null;
@@ -13,9 +14,12 @@ function configuration(env){
   for(const [id,p] of Object.entries(plans)){
     if(!/^[a-z][a-z0-9_-]{0,39}$/.test(id)||!p||!Number.isSafeInteger(p.amount)||p.amount<=0||!['NGN','USD'].includes(p.currency))throw Error('Invalid test price');
   }
+  if(env.BILLING_TEST_ACCESS && !['disabled','enabled'].includes(env.BILLING_TEST_ACCESS))throw Error('Invalid test access setting');
+  const testAccess=env.BILLING_TEST_ACCESS==='enabled';
+  for(const p of Object.values(plans)){if(p.access!==undefined)validateAccess(p.access);if(testAccess&&!p.access)throw Error('Every access test plan needs an allowance');}
   const webhookSecret=env.PAYSTACK_WEBHOOK_SECRET;
   if(webhookSecret&&!/^whsec_/.test(webhookSecret))throw Error('Invalid webhook signing secret');
-  return {origin:url.origin,users,plans,secret:env.PAYSTACK_SECRET_KEY,webhookSecret};
+  return {origin:url.origin,users,plans,secret:env.PAYSTACK_SECRET_KEY,webhookSecret,testAccess};
 }
 function signatureValid(raw,headers,config,now=Math.floor(Date.now()/1000)){
   if(!Buffer.isBuffer(raw))return false;
@@ -41,6 +45,7 @@ function checkoutUrl(value){
 }
 function createBilling(pool,{env=process.env,request=fetch}={}){
   const config=configuration(env);
+  const access=createAccess(pool,{enabled:!!config?.testAccess,users:config?.users||new Set()});
   async function init(){
     if(!config)return;
     await pool.query(`CREATE TABLE IF NOT EXISTS paystack_test_checkouts (
@@ -48,9 +53,14 @@ function createBilling(pool,{env=process.env,request=fetch}={}){
       email TEXT NOT NULL, amount BIGINT NOT NULL CHECK(amount>0), currency TEXT NOT NULL,
       state TEXT NOT NULL DEFAULT 'reserved', checkout_url TEXT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`);
+    // Keep the reference unique/FK target; allow a later purchase after expiry.
+    await pool.query('ALTER TABLE paystack_test_checkouts ADD COLUMN IF NOT EXISTS access_snapshot JSONB');
+    await pool.query('ALTER TABLE paystack_test_checkouts DROP CONSTRAINT IF EXISTS paystack_test_checkouts_pkey');
+    await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS paystack_one_pending_checkout ON paystack_test_checkouts(user_id) WHERE state <> 'paid'");
     await pool.query(`CREATE TABLE IF NOT EXISTS paystack_test_payments (
       reference TEXT PRIMARY KEY REFERENCES paystack_test_checkouts(reference),
       paid_at TIMESTAMPTZ NOT NULL, verified_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`);
+    await access.init();
   }
   function authorize(user){
     if(!config)throw fail(404,'Billing testing is disabled.');
@@ -71,11 +81,11 @@ function createBilling(pool,{env=process.env,request=fetch}={}){
   }
   async function status(user){
     authorize(user);
-    const rows=(await pool.query(`SELECT c.plan_id,c.state,p.paid_at FROM paystack_test_checkouts c
-      LEFT JOIN paystack_test_payments p USING(reference) WHERE c.user_id=$1`,[user.id])).rows;
-    return {provider:'paystack',mode:'test',grantsAccess:false,recurring:false,
-      plans:Object.entries(config.plans).map(([id,p])=>({id,amount:p.amount,currency:p.currency})),
-      payments:rows.map(row=>({plan_id:row.plan_id,status:row.paid_at?'verified':row.state})),subscriptions:[]};
+    const rows=(await pool.query(`SELECT c.plan_id,c.state,p.paid_at,c.amount,c.currency,c.reference FROM paystack_test_checkouts c
+      LEFT JOIN paystack_test_payments p USING(reference) WHERE c.user_id=$1 ORDER BY c.created_at DESC LIMIT 50`,[user.id])).rows;
+    return {provider:'paystack',mode:'test',grantsAccess:!!config.testAccess,recurring:false,access:await access.status(user),
+      plans:Object.entries(config.plans).map(([id,p])=>({id,amount:p.amount,currency:p.currency,access:config.testAccess?p.access:null})),
+      payments:rows.map(row=>({plan_id:row.plan_id,status:row.paid_at?'verified':row.state,amount:Number(row.amount),currency:row.currency,paidAt:row.paid_at,reference:row.reference})),subscriptions:[]};
   }
   async function checkout(user,planId){
     authorize(user);
@@ -83,17 +93,28 @@ function createBilling(pool,{env=process.env,request=fetch}={}){
     const email=typeof user.email==='string'?user.email.trim().toLowerCase():'';
     if(!email||email.length>254||!email.includes('@'))throw fail(400,'An account email is required.');
     const plan=config.plans[planId];
-    // Persist one reference per account before the provider call. Do not generate
-    // a second reference after a timeout: the first call may have succeeded.
-    await pool.query(`INSERT INTO paystack_test_checkouts(user_id,reference,plan_id,email,amount,currency)
-      VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(user_id) DO NOTHING`,
-      [user.id,'va-test-'+randomBytes(24).toString('hex'),planId,email,plan.amount,plan.currency]);
-    const row=(await pool.query('SELECT * FROM paystack_test_checkouts WHERE user_id=$1',[user.id])).rows[0];
+    // Serialize checkout creation per account; never replace an uncertain reference.
+    const c=await pool.connect();let row;
+    try{
+      await c.query('BEGIN');
+      await c.query("SELECT pg_advisory_xact_lock(hashtext($1))",['billing:'+user.id]);
+      const active=await access.active(user.id,c);
+      if(active)throw fail(409,'Your test plan is still active. Renew after it expires.');
+      row=(await c.query("SELECT * FROM paystack_test_checkouts WHERE user_id=$1 AND state <> 'paid'",[user.id])).rows[0];
+      if(!row){
+        // Checkout-only mode retains the original one-payment-per-account policy.
+        if(!config.testAccess && (await c.query("SELECT 1 FROM paystack_test_checkouts WHERE user_id=$1 AND state='paid'",[user.id])).rows.length)throw fail(409,'This test checkout is already paid.');
+        row=(await c.query(`INSERT INTO paystack_test_checkouts(user_id,reference,plan_id,email,amount,currency,access_snapshot)
+          VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+          [user.id,'va-test-'+randomBytes(24).toString('hex'),planId,email,plan.amount,plan.currency,config.testAccess?JSON.stringify(plan.access):null])).rows[0];
+      }
+      await c.query('COMMIT');
+    }catch(error){await c.query('ROLLBACK');throw error;}finally{c.release();}
     if(row.plan_id!==planId)throw fail(409,'This account already has a different test checkout.');
     if(row.state==='paid')throw fail(409,'This test checkout is already paid.');
     if(row.checkout_url)return {url:checkoutUrl(row.checkout_url)};
     const claimed=await pool.query(`UPDATE paystack_test_checkouts SET state='initializing',updated_at=NOW()
-      WHERE user_id=$1 AND state='reserved' RETURNING reference`,[user.id]);
+      WHERE reference=$1 AND state='reserved' RETURNING reference`,[row.reference]);
     if(!claimed.rows.length)throw fail(409,'This test checkout needs status verification before another attempt.');
     try{
       const result=await api('/transaction/initialize',{email:row.email,amount:String(row.amount),currency:row.currency,
@@ -102,10 +123,10 @@ function createBilling(pool,{env=process.env,request=fetch}={}){
       if(result.reference!==row.reference)throw fail(502,'Invalid payment provider reference.');
       const url=checkoutUrl(result.authorization_url);
       await pool.query(`UPDATE paystack_test_checkouts SET checkout_url=$2,
-        state=CASE WHEN state='paid' THEN state ELSE 'open' END,updated_at=NOW() WHERE user_id=$1`,[user.id,url]);
+        state=CASE WHEN state='paid' THEN state ELSE 'open' END,updated_at=NOW() WHERE reference=$1`,[row.reference,url]);
       return {url};
     }catch(error){
-      await pool.query("UPDATE paystack_test_checkouts SET state='uncertain',updated_at=NOW() WHERE user_id=$1 AND state='initializing'",[user.id]);
+      await pool.query("UPDATE paystack_test_checkouts SET state='uncertain',updated_at=NOW() WHERE reference=$1 AND state='initializing'",[row.reference]);
       throw error;
     }
   }
@@ -123,12 +144,13 @@ function createBilling(pool,{env=process.env,request=fetch}={}){
       await c.query('SELECT user_id FROM paystack_test_checkouts WHERE reference=$1 FOR UPDATE',[row.reference]);
       await c.query('INSERT INTO paystack_test_payments(reference,paid_at) VALUES($1,$2) ON CONFLICT DO NOTHING',[row.reference,new Date(paidAt).toISOString()]);
       await c.query("UPDATE paystack_test_checkouts SET state='paid',updated_at=NOW() WHERE reference=$1",[row.reference]);
+      await access.grant(c,row,new Date(paidAt).toISOString());
       await c.query('COMMIT');
     }catch(e){await c.query('ROLLBACK');throw e;}finally{c.release();}
   }
   async function verify(user){
     authorize(user);
-    const row=(await pool.query('SELECT * FROM paystack_test_checkouts WHERE user_id=$1',[user.id])).rows[0];
+    const row=(await pool.query('SELECT * FROM paystack_test_checkouts WHERE user_id=$1 ORDER BY created_at DESC LIMIT 1',[user.id])).rows[0];
     if(row)await verifyRow(row);
     return status(user);
   }
@@ -143,6 +165,19 @@ function createBilling(pool,{env=process.env,request=fetch}={}){
     const row=(await pool.query('SELECT * FROM paystack_test_checkouts WHERE reference=$1',[reference])).rows[0];
     if(row)await verifyRow(row);
   }
-  return {init,authorize,origin,status,checkout,verify,webhook};
+  async function history(user,{before}={}){
+    if(user?.role!=='owner')throw fail(403,'Owner access required.');
+    if(!config)return {mode:'disabled',payments:[],next:null};
+    if(before!==undefined && (typeof before!=='string'||!/^va-test-[a-f0-9]{48}$/.test(before)))throw fail(400,'Invalid payment cursor.');
+    const rows=(await pool.query(`SELECT c.reference,c.user_id,c.email,c.plan_id,c.amount,c.currency,c.state,c.created_at,
+      p.paid_at,p.verified_at,e.starts_at,e.expires_at,e.session_limit,
+      (SELECT COUNT(*)::int FROM billing_test_usage u WHERE u.reference=c.reference AND u.state <> 'released') AS sessions_used
+      FROM paystack_test_checkouts c LEFT JOIN paystack_test_payments p USING(reference)
+      LEFT JOIN billing_test_entitlements e USING(reference)
+      WHERE ($1::text IS NULL OR (c.created_at,c.reference)<(SELECT created_at,reference FROM paystack_test_checkouts WHERE reference=$1))
+      ORDER BY c.created_at DESC,c.reference DESC LIMIT 51`,[before||null])).rows;
+    return {mode:'test',payments:rows.slice(0,50).map(r=>({...r,amount:Number(r.amount)})),next:rows.length>50?rows[49].reference:null};
+  }
+  return {init,authorize,origin,status,checkout,verify,webhook,access,history};
 }
 module.exports={createBilling,configuration,signatureValid,checkoutUrl};

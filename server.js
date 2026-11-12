@@ -470,6 +470,10 @@ const server=http.createServer(async (req,res)=>{
     if(url.pathname.startsWith('/api/owner/')){
       const u=await requireUser(req,res); if(!u)return;
       if(!isOwner(u))return json(res,403,{error:'Owner access required.'});
+      if(req.method==='GET' && url.pathname==='/api/owner/payments'){
+        if(!billing.history)return json(res,404,{error:'Payment history unavailable for this provider.'});
+        return json(res,200,await billing.history(u,{before:url.searchParams.get('before')||undefined}));
+      }
       if(req.method==='GET' && url.pathname==='/api/owner/student-analytics'){
         const ownerStudentAnalytics=require('./owner-student-analytics');
         const db=await loadDb({collections:['users','athletes','reports','mockSessions']});
@@ -612,6 +616,7 @@ const server=http.createServer(async (req,res)=>{
       const u=await requireUser(req,res);if(!u)return;
       if(u.role!=='athlete')return json(res,403,{error:'Written retries are for your own student account.'});
       if(!OPENAI_API_KEY)return json(res,503,{error:'Practice feedback is temporarily unavailable.'});
+      await billing.access?.requireActive(u);
       const improvement=require('./report-improvement');
       let input,sourceSessionId;try{const body=JSON.parse((await readBody(req,12000)).toString());input=improvement.answerInput(body);sourceSessionId=body.sourceSessionId;if(sourceSessionId!==undefined&&(typeof sourceSessionId!=='string'||sourceSessionId.length>100))throw Error('Invalid spoken practice session.');}
       catch(error){if(error.status===413)throw error;return json(res,400,{error:error.message});}
@@ -953,6 +958,7 @@ Use only information in the supplied profile and transcript. Do not reward inven
       if(!voiceToken)return json(res,429,{error:'End your current voice session before starting another. After a recent start, wait 10 seconds and try again.'});
       let voiceDelivered=false;
       try{
+      await billing.access?.reserve(u,voiceToken,mode);
       if(!await voiceLimits.reserve(u.id,dailyLimit(u,mode),mode))return json(res,429,{error:'Unable to start this voice session right now. Please try again shortly.'});
 const embassyKnowledge = loadEmbassyKnowledge(athlete.interviewLocation);
       let instructions=`You are a realistic but fair F-1 student visa mock interviewer for VisaAtlas.
@@ -1041,12 +1047,13 @@ Start with the opening guidance in INTERVIEW DESIGN below.`;
       }
       await operations.costs.voiceStart(u.id,voiceToken,mode,mockSessionId,athlete.id);
       if(res.destroyed)return;
+      await billing.access?.commit(u,voiceToken);
       res.writeHead(rr.status,{"X-Voice-Token":voiceToken,"Content-Type":"application/sdp","Cache-Control":"no-store","X-Voice-Limit-Seconds":String(seconds),...(mockSessionId?{'X-Mock-Session-Id':mockSessionId}:{}),...(practiceSessionId?{'X-Practice-Session-Id':practiceSessionId}:{})});
       res.end(answer);
       voiceDelivered=true;
       return;
       }finally{
-        if(!voiceDelivered)try{await voiceLimits.end(u.id,voiceToken);}catch{console.error('[voice] SESSION_CLEANUP_RETRY');}
+        if(!voiceDelivered)try{await voiceLimits.end(u.id,voiceToken);await billing.access?.release(u,voiceToken);}catch{console.error('[voice] SESSION_CLEANUP_RETRY');}
       }
     }
 
