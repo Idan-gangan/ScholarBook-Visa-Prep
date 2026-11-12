@@ -4,16 +4,21 @@
   "private": true,
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test:billing": "node --test billing.test.js paystack-billing.test.js"
   },
   "dependencies": {
     "dejavu-fonts-ttf": "2.37.3",
     "flag-icons": "7.6.0",
     "libphonenumber-js": "1.13.15",
     "pdfkit": "0.17.2",
-    "pg": "^8.16.3"
+    "pg": "^8.16.3",
+    "stripe": "23.1.0"
   },
   "engines": {
     "node": ">=20"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.16"
   }
 }

@@ -12,6 +12,7 @@ const {isStaff, isOwner, changeRole, assignStudent, withdrawGuardianPermission} 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
+const billing=require('./billing-provider').createBilling(pool);
 
 const recordStore=process.env.RECORD_STORAGE==='enabled'?require('./record-store').create(pool):null;
 
@@ -239,6 +240,28 @@ const server=http.createServer(async (req,res)=>{
   try{
     const url=new URL(req.url, `http://${req.headers.host}`);
     res.once?.('finish',()=>{void operations.record(url.pathname,res.statusCode);});
+    if(url.pathname==='/api/billing/webhook' && req.method==='POST'){
+      await billing.webhook(await readBody(req,256*1024),req.headers);
+      return json(res,200,{received:true});
+    }
+    if(['/api/billing/status','/api/billing/checkout','/api/billing/verify'].includes(url.pathname)){
+      const u=await requireUser(req,res);if(!u)return;
+      billing.authorize(u);
+      if(needsVerification(u))return json(res,403,{error:'Verify your email before testing billing.'});
+      if(req.method==='GET' && url.pathname==='/api/billing/status')return json(res,200,await billing.status(u));
+      if(req.method!=='POST' || !['/api/billing/checkout','/api/billing/verify'].includes(url.pathname))return json(res,405,{error:'Method not allowed.'});
+      billing.origin(req.headers.origin);
+      if(!allowAuth('billing:'+u.id))return json(res,429,{error:'Please wait before trying again.'});
+      if(!(req.headers['content-type']||'').startsWith('application/json'))return json(res,415,{error:'JSON required.'});
+      let body;try{body=JSON.parse((await readBody(req,4096)).toString());}catch(e){if(e.status===413)throw e;return json(res,400,{error:'Invalid request.'});}
+      if(url.pathname==='/api/billing/verify'){
+        if(!billing.verify)return json(res,404,{error:'Verification route unavailable.'});
+        if(!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).length)return json(res,400,{error:'No payment reference is accepted from the browser.'});
+        return json(res,200,await billing.verify(u));
+      }
+      if(!body || typeof body.planId!=='string' || Object.keys(body).some(k=>k!=='planId'))return json(res,400,{error:'Only a plan ID is accepted.'});
+      return json(res,200,await billing.checkout(u,body.planId));
+    }
     if(url.pathname==='/api/reviews' && req.method==='GET')return json(res,200,require('./reviews').publicReviews(await loadDb({collections:['users','reviews']})));
     if(['/api/my-review','/api/review-moderation'].includes(url.pathname)){
       const u=await requireUser(req,res);if(!u)return;
@@ -447,6 +470,10 @@ const server=http.createServer(async (req,res)=>{
     if(url.pathname.startsWith('/api/owner/')){
       const u=await requireUser(req,res); if(!u)return;
       if(!isOwner(u))return json(res,403,{error:'Owner access required.'});
+      if(req.method==='GET' && url.pathname==='/api/owner/payments'){
+        if(!billing.history)return json(res,404,{error:'Payment history unavailable for this provider.'});
+        return json(res,200,await billing.history(u,{before:url.searchParams.get('before')||undefined}));
+      }
       if(req.method==='GET' && url.pathname==='/api/owner/student-analytics'){
         const ownerStudentAnalytics=require('./owner-student-analytics');
         const db=await loadDb({collections:['users','athletes','reports','mockSessions']});
@@ -589,6 +616,7 @@ const server=http.createServer(async (req,res)=>{
       const u=await requireUser(req,res);if(!u)return;
       if(u.role!=='athlete')return json(res,403,{error:'Written retries are for your own student account.'});
       if(!OPENAI_API_KEY)return json(res,503,{error:'Practice feedback is temporarily unavailable.'});
+      await billing.access?.requireActive(u);
       const improvement=require('./report-improvement');
       let input,sourceSessionId;try{const body=JSON.parse((await readBody(req,12000)).toString());input=improvement.answerInput(body);sourceSessionId=body.sourceSessionId;if(sourceSessionId!==undefined&&(typeof sourceSessionId!=='string'||sourceSessionId.length>100))throw Error('Invalid spoken practice session.');}
       catch(error){if(error.status===413)throw error;return json(res,400,{error:error.message});}
@@ -930,6 +958,7 @@ Use only information in the supplied profile and transcript. Do not reward inven
       if(!voiceToken)return json(res,429,{error:'End your current voice session before starting another. After a recent start, wait 10 seconds and try again.'});
       let voiceDelivered=false;
       try{
+      await billing.access?.reserve(u,voiceToken,mode);
       if(!await voiceLimits.reserve(u.id,dailyLimit(u,mode),mode))return json(res,429,{error:'Unable to start this voice session right now. Please try again shortly.'});
 const embassyKnowledge = loadEmbassyKnowledge(athlete.interviewLocation);
       let instructions=`You are a realistic but fair F-1 student visa mock interviewer for VisaAtlas.
@@ -1018,12 +1047,13 @@ Start with the opening guidance in INTERVIEW DESIGN below.`;
       }
       await operations.costs.voiceStart(u.id,voiceToken,mode,mockSessionId,athlete.id);
       if(res.destroyed)return;
+      await billing.access?.commit(u,voiceToken);
       res.writeHead(rr.status,{"X-Voice-Token":voiceToken,"Content-Type":"application/sdp","Cache-Control":"no-store","X-Voice-Limit-Seconds":String(seconds),...(mockSessionId?{'X-Mock-Session-Id':mockSessionId}:{}),...(practiceSessionId?{'X-Practice-Session-Id':practiceSessionId}:{})});
       res.end(answer);
       voiceDelivered=true;
       return;
       }finally{
-        if(!voiceDelivered)try{await voiceLimits.end(u.id,voiceToken);}catch{console.error('[voice] SESSION_CLEANUP_RETRY');}
+        if(!voiceDelivered)try{await voiceLimits.end(u.id,voiceToken);await billing.access?.release(u,voiceToken);}catch{console.error('[voice] SESSION_CLEANUP_RETRY');}
       }
     }
 
@@ -1035,7 +1065,7 @@ Start with the opening guidance in INTERVIEW DESIGN below.`;
     return json(res,500,{error:"Server error"});
   }
 });
-initDb().then(()=>passwordRecovery.init()).then(()=>voiceLimits.init()).then(()=>evaluationLimits.init()).then(()=>operations.init()).then(() => {
+initDb().then(()=>passwordRecovery.init()).then(()=>voiceLimits.init()).then(()=>evaluationLimits.init()).then(()=>operations.init()).then(()=>billing.init()).then(() => {
   voiceLimits.start();
   passwordRecovery.start();
   server.listen(PORT, () => console.log(`VisaAtlas demo running on http://localhost:${PORT}`));

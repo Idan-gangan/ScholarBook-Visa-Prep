@@ -2,7 +2,7 @@ name: State reliability
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, codex/billing-test-foundation]
 permissions:
   contents: read
 jobs:
@@ -25,8 +25,9 @@ jobs:
           node-version: '22'
       # The existing lockfile is incomplete; lockfile repair remains separate work.
       - run: npm install --ignore-scripts --package-lock=false
+      - run: npm run test:billing
       - run: node --test test/*.test.cjs
-      - run: node --test --test-concurrency=1 test/postgres-state.cjs test/postgres-recovery.cjs test/postgres-deletion.cjs test/postgres-operations.cjs test/postgres-record-store.cjs test/postgres-record-http.cjs test/postgres-voice.cjs
+      - run: node --test --test-concurrency=1 test/postgres-state.cjs test/postgres-recovery.cjs test/postgres-deletion.cjs test/postgres-operations.cjs test/postgres-record-store.cjs test/postgres-record-http.cjs test/postgres-voice.cjs test/postgres-billing.cjs
         env:
           TEST_DATABASE_URL: postgres://postgres:disposable-test-only@localhost:5432/visaatlas_test
       - name: Measure integrated record storage
