@@ -5,6 +5,7 @@ async function refresh(verify=false){
   plans.replaceChildren();
   try{
     const data=await api(verify?'/api/billing/verify':'/api/billing/status',verify?{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}:undefined);
+    if(data.mode==='live')throw Error('Live checkout is available on the billing page, not this test page.');
     document.querySelector('#refresh').onclick=()=>refresh(data.provider==='paystack');
     const access=data.access;
     const accessText=document.querySelector('#access');

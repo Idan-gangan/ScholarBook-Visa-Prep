@@ -51,7 +51,7 @@ test('record mode HTTP: registration, login, profile, learning, reviews, export,
   assert.equal(pdf.status,200);assert.match(pdf.headers.get('content-type'),/application\/pdf/);
 
   await call('/api/my-review',{method:'POST',cookie,body:{rating:4,displayName:'Synthetic',text:'Synthetic test review only.',adult:true,publicReview:true}});
-  assert.equal((await call('/api/reviews')).data.count,0);
+  assert.equal((await call('/api/reviews')).data.count,1);
   const owner=(await call('/api/login',{method:'POST',body:{email:'owner@example.test',password}})).cookie;
   // Assignment changes take effect immediately in both lists and lesson access.
   await adapter.mutate(async(db,c)=>{db.users.push({id:'staff',email:'staff@example.test',role:'coach'},{id:'minor',email:'minor@example.test',role:'athlete',ageEligibility:{ageBand:'13-17',guardian:{email:'guardian@example.test'}}});db.athletes.push({id:'minor-profile',userId:'minor'});await c.query("INSERT INTO user_credentials(user_id,password_hash) VALUES('staff',$1),('minor',$1)",[await hashPassword(password)]);});

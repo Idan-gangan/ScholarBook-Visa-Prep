@@ -2,6 +2,8 @@ const crypto=require('node:crypto');
 const digest=value=>crypto.createHash('sha256').update(value).digest('hex');
 const fail=(status,message)=>Object.assign(new Error(message),{status,publicMessage:message});
 const needsVerification=user=>user?.verificationRequired===true && !user.emailVerifiedAt;
+// Older students can opt into verification without losing legacy access.
+const canRequestVerification=user=>!!user&&!user.emailVerifiedAt&&(needsVerification(user)||(user.role==='athlete'&&user.verificationRequired!==true&&!user.demoAccount&&!user.accessSuspended));
 function createEmailVerification({mutateDb,env=process.env,send=globalThis.fetch,now=Date.now}){
  function config(){
   let url;try{url=new URL(env.APP_BASE_URL||'https://visaatlasprep.com')}catch{}
@@ -12,7 +14,7 @@ function createEmailVerification({mutateDb,env=process.env,send=globalThis.fetch
   const cfg=config(),token=crypto.randomBytes(32).toString('hex'),time=now();
   const destination=await mutateDb(async(db,client)=>{
    const user=db.users.find(u=>u.id===userId);
-   if(!needsVerification(user))throw fail(400,'This account does not need email verification.');
+   if(!canRequestVerification(user))throw fail(400,'This account does not need email verification.');
    const email=newEmail===undefined?user.email:String(newEmail).trim().toLowerCase();
    if(email.length>160||!/^\S+@\S+\.\S+$/.test(email))throw fail(400,'Enter a valid email address.');
    if(newEmail!==undefined){
@@ -39,7 +41,7 @@ function createEmailVerification({mutateDb,env=process.env,send=globalThis.fetch
   if(typeof token!=='string'||!/^[a-f0-9]{64}$/.test(token))throw fail(400,'This link is invalid or expired. Request a new email.');
   return mutateDb(async db=>{
    const user=db.users.find(u=>u.emailVerification?.hash===digest(token));
-   if(!user||!needsVerification(user)||user.emailVerification.email!==user.email||user.emailVerification.expiresAt<=now())throw fail(400,'This link is invalid or expired. Request a new email.');
+   if(!canRequestVerification(user)||user.emailVerification?.email!==user.email||user.emailVerification.expiresAt<=now())throw fail(400,'This link is invalid or expired. Request a new email.');
    user.emailVerifiedAt=new Date(now()).toISOString();delete user.emailVerification;
    return {ok:true};
   });
