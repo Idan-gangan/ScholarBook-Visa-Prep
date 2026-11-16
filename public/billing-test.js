@@ -15,7 +15,7 @@ async function refresh(verify=false){
     for(const plan of data.plans){
       const button=document.createElement('button');button.textContent=`Test ${plan.id} — ${new Intl.NumberFormat('en-US',{style:'currency',currency:plan.currency}).format(plan.amount/100)}${data.recurring===false?' (one-time test)':'/month'}`;
       if(plan.access)button.textContent+=` · ${plan.access.sessions} total tutor/mock sessions over ${plan.access.days} days`;
-      button.disabled=access?.active===true;
+      button.disabled=data.paymentReview===true || (access?.active===true && access.remaining>0);
       button.onclick=async()=>{
         for(const b of plans.children)b.disabled=true;
         try{
@@ -23,7 +23,7 @@ async function refresh(verify=false){
           if(result.retry){message.textContent='Previous checkout closed. Choose your plan again to start a new test.';return;}
           const url=new URL(result.url);if(url.protocol!=='https:'||url.hostname!==(data.provider==='paystack'?'checkout.paystack.com':'checkout.stripe.com')||url.username||url.password||url.port)throw Error('Unexpected checkout destination.');
           location.assign(url.href);
-        }catch(e){message.textContent=e.message;}finally{for(const b of plans.children)b.disabled=access?.active===true;}
+        }catch(e){message.textContent=e.message;}finally{for(const b of plans.children)b.disabled=data.paymentReview===true || (access?.active===true && access.remaining>0);}
       };plans.append(button);
     }
   }catch(e){message.textContent=e.message;}
