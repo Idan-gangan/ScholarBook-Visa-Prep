@@ -11,6 +11,8 @@ function render(row){
   for(const [label,value] of [
     ['Amount',new Intl.NumberFormat('en-US',{style:'currency',currency:row.currency}).format(row.amount/100)],
     ['Plan',row.plan_id],['Paid at',date(row.paid_at)],['Access',access],['Expires',date(row.expires_at)],
+    ['Mock interviews used',row.mode_limits?`${row.mock_used} / ${row.mode_limits.mock}`:'—'],
+    ['Tutor sessions used',row.mode_limits?`${row.learn_used} / ${row.mode_limits.learn}`:'—'],
     ['Sessions used',row.session_limit?`${row.sessions_used} / ${row.session_limit}`:'—'],
     ['Reference',row.reference],['Account ID',row.user_id],['Verified at',date(row.verified_at)]
   ]){const group=node('div','');group.append(node('dt',label),node('dd',value));details.append(group);}

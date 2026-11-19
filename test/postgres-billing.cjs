@@ -24,11 +24,17 @@ for(const mode of ['test','live'])test(mode+': concurrent checkout, notification
     const headers={'x-paystack-signature':createHmac('sha512',env.PAYSTACK_SECRET_KEY).update(raw).digest('hex')};
     await Promise.all(Array.from({length:12},(_,i)=>(i%2?a:b).webhook(raw,headers)));
     assert.equal((await pools[0].query(`SELECT * FROM billing_${mode}_entitlements`)).rows.length,1);
-    if(mode==='live')for(let i=0;i<19;i++){const token=('a'+i).padStart(48,'0');await a.access.reserve(user,token,'mock');await a.access.commit(user,token);}
-    const starts=await Promise.allSettled(Array.from({length:12},(_,i)=>(i%2?a:b).access.reserve(user,String(i).padStart(48,'0'),i%2?'mock':'learn')));
+    if(mode==='live')for(let i=0;i<5;i++){const token=('a'+i).padStart(48,'0');await a.access.reserve(user,token,'mock');await a.access.commit(user,token);}
+    const starts=await Promise.allSettled(Array.from({length:12},(_,i)=>(i%2?a:b).access.reserve(user,String(i).padStart(48,'0'),'mock')));
     assert.equal(starts.filter(r=>r.status==='fulfilled').length,1);
+    if(mode==='live'){
+      const tutors=await Promise.allSettled(Array.from({length:12},(_,i)=>(i%2?a:b).access.reserve(user,('b'+i).padStart(48,'0'),'learn')));
+      assert.equal(tutors.filter(r=>r.status==='fulfilled').length,6);
+      assert.equal((await a.access.status(user)).modes.mock.remaining,0);
+      assert.equal((await a.access.status(user)).modes.learn.remaining,0);
+    }
     assert.equal((await a.access.status(user)).remaining,0);
-    assert.equal((await b.history({role:'owner'})).payments[0].sessions_used,mode==='live'?20:1);
+    assert.equal((await b.history({role:'owner'})).payments[0].sessions_used,mode==='live'?12:1);
   }finally{
     await Promise.all(pools.map(p=>p.end()));await admin.query('DROP SCHEMA IF EXISTS '+schema+' CASCADE');await admin.end();
   }

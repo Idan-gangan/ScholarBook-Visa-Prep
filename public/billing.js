@@ -9,12 +9,12 @@ async function refresh(verify=false){
     document.querySelector('#refresh').onclick=()=>refresh(data.provider==='paystack');
     const access=data.access;
     const accessText=document.querySelector('#access');
-    accessText.textContent=access?.enforced?(access.active?`${access.remaining} of ${access.limit} sessions remaining. Expires ${new Date(access.expiresAt).toLocaleString()}.`:'Choose Starter to activate your practice allowance.'):'No practice allowance is active.';
+    accessText.textContent=access?.enforced?(access.active?`${access.modes?`${access.modes.mock.remaining} mock interviews and ${access.modes.learn.remaining} tutor sessions remaining`:`${access.remaining} of ${access.limit} shared sessions remaining`}. Expires ${new Date(access.expiresAt).toLocaleString()}.`:'Choose a plan to activate your practice allowance.'):'No practice allowance is active.';
     const records=data.payments||data.subscriptions;
     message.textContent=records.length?records.map(s=>`${s.plan_id||'Unrecognized plan'}: ${s.status}${s.cancel_at_period_end?' (cancels at period end)':''}`).join('\n'):'Your access activates after your payment is verified.';
     for(const plan of data.plans){
-      const button=document.createElement('button');button.textContent=`${plan.id === 'starter' ? 'Buy Starter' : plan.id} — ${new Intl.NumberFormat('en-US',{style:'currency',currency:plan.currency}).format(plan.amount/100)}${data.recurring===false?' (one payment)':'/month'}`;
-      if(plan.access)button.textContent+=` · ${plan.access.sessions} total tutor/mock sessions over ${plan.access.days} days`;
+      const button=document.createElement('button');button.textContent=`${plan.id === 'starter' ? 'Buy Starter' : plan.id === 'standard' ? 'Buy Standard' : plan.id} — ${new Intl.NumberFormat('en-US',{style:'currency',currency:plan.currency}).format(plan.amount/100)}${data.recurring===false?' (one payment)':'/month'}`;
+      if(plan.access)button.textContent+=` · ${plan.access.mock!==undefined?`${plan.access.mock} mock interviews + ${plan.access.learn} tutor sessions`:`${plan.access.sessions} shared tutor/mock sessions`} over ${plan.access.days} days`;
       button.disabled=data.paymentReview===true || (access?.active===true && access.remaining>0);
       button.onclick=async()=>{
         for(const b of plans.children)b.disabled=true;

@@ -12,7 +12,7 @@ function configuration(env){
   if(url.protocol!=='https:'||url.username||url.password||url.pathname!=='/'||url.search||url.hash)throw Error('BILLING_ORIGIN must be an HTTPS origin');
   const users=new Set((env[mode==='live'?'BILLING_LIVE_USER_IDS':'BILLING_TEST_USER_IDS']||'').split(',').map(s=>s.trim()).filter(Boolean));
   if(!users.size||mode==='live'&&users.size>25)throw Error('Explicit pilot accounts required (maximum 25 in live mode)');
-  const plans=mode==='live'?{starter:{amount:2900,currency:'USD',access:{days:30,sessions:20}}}:JSON.parse(env.PAYSTACK_TEST_PLANS||'{}');
+  const plans=mode==='live'?{starter:{amount:2900,currency:'USD',access:{days:30,sessions:12,mock:6,learn:6}},standard:{amount:4900,currency:'USD',access:{days:30,sessions:20,mock:12,learn:8}}}:JSON.parse(env.PAYSTACK_TEST_PLANS||'{}');
   if(!plans||Array.isArray(plans)||!Object.keys(plans).length)throw Error('Test prices required');
   for(const [id,p] of Object.entries(plans)){
     if(!/^[a-z][a-z0-9_-]{0,39}$/.test(id)||!p||!Number.isSafeInteger(p.amount)||p.amount<=0||!['NGN','USD'].includes(p.currency))throw Error('Invalid test price');
@@ -189,8 +189,10 @@ function createBilling(pool,{env=process.env,request=fetch}={}){
     if(!config)return {mode:'disabled',payments:[],next:null};
     if(before!==undefined && (typeof before!=='string'||!new RegExp('^va-'+config.mode+'-[a-f0-9]{48}$').test(before)))throw fail(400,'Invalid payment cursor.');
     const rows=(await pool.query(`SELECT c.reference,c.user_id,c.email,c.plan_id,c.amount,c.currency,c.state,c.created_at,
-      p.paid_at,p.verified_at,e.starts_at,e.expires_at,e.session_limit,h.reason AS hold_reason,
-      (SELECT COUNT(*)::int FROM ${tables.usage} u WHERE u.reference=c.reference AND u.state <> 'released') AS sessions_used
+      p.paid_at,p.verified_at,e.starts_at,e.expires_at,e.session_limit,e.mode_limits,h.reason AS hold_reason,
+      (SELECT COUNT(*)::int FROM ${tables.usage} u WHERE u.reference=c.reference AND u.state <> 'released') AS sessions_used,
+      (SELECT COUNT(*)::int FROM ${tables.usage} u WHERE u.reference=c.reference AND u.mode='mock' AND u.state <> 'released') AS mock_used,
+      (SELECT COUNT(*)::int FROM ${tables.usage} u WHERE u.reference=c.reference AND u.mode='learn' AND u.state <> 'released') AS learn_used
       FROM ${tables.checkouts} c LEFT JOIN ${tables.payments} p USING(reference)
       LEFT JOIN ${tables.entitlements} e USING(reference)
       LEFT JOIN ${tables.holds} h USING(reference)

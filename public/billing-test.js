@@ -9,12 +9,12 @@ async function refresh(verify=false){
     document.querySelector('#refresh').onclick=()=>refresh(data.provider==='paystack');
     const access=data.access;
     const accessText=document.querySelector('#access');
-    accessText.textContent=access?.enforced?(access.active?`Test access: ${access.remaining} of ${access.limit} sessions remaining. Expires ${new Date(access.expiresAt).toLocaleString()}.`:'No active test practice plan. Complete a test checkout to activate it.'):'Checkout verification only; no practice allowance included.';
+    accessText.textContent=access?.enforced?(access.active?`Test access: ${access.modes?`${access.modes.mock.remaining} mock interviews and ${access.modes.learn.remaining} tutor sessions remaining`:`${access.remaining} of ${access.limit} sessions remaining`}. Expires ${new Date(access.expiresAt).toLocaleString()}.`:'No active test practice plan. Complete a test checkout to activate it.'):'Checkout verification only; no practice allowance included.';
     const records=data.payments||data.subscriptions;
     message.textContent=records.length?records.map(s=>`${s.plan_id||'Unrecognized plan'}: ${s.status}${s.cancel_at_period_end?' (cancels at period end)':''}`).join('\n'):'No verified test payment yet. Refresh status after completing checkout.';
     for(const plan of data.plans){
       const button=document.createElement('button');button.textContent=`Test ${plan.id} — ${new Intl.NumberFormat('en-US',{style:'currency',currency:plan.currency}).format(plan.amount/100)}${data.recurring===false?' (one-time test)':'/month'}`;
-      if(plan.access)button.textContent+=` · ${plan.access.sessions} total tutor/mock sessions over ${plan.access.days} days`;
+      if(plan.access)button.textContent+=` · ${plan.access.mock!==undefined?`${plan.access.mock} mock interviews + ${plan.access.learn} tutor sessions`:`${plan.access.sessions} shared tutor/mock sessions`} over ${plan.access.days} days`;
       button.disabled=data.paymentReview===true || (access?.active===true && access.remaining>0);
       button.onclick=async()=>{
         for(const b of plans.children)b.disabled=true;

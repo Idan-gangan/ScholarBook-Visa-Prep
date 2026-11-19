@@ -1341,7 +1341,7 @@ async function refreshVoiceUsage(){
   const data=await api('/api/voice-usage');
   if(!me||version!==sessionVersion)return;
   for(const [id,mode,label] of [['learningVoiceUsage','learn','tutoring starts'],['lessonVoiceUsage','learn','tutoring starts'],['mockVoiceUsage','mock','mock interviews']]){
-   const usage=data[mode],access=data.access;$(id).textContent=access?.enforced?(access.active?access.remaining+' of '+access.limit+' shared tutor/mock sessions remaining.':'No active practice plan.'):(usage.unlimited?'Session time limits apply.':usage.remaining+' of '+usage.limit+' '+label+' left today.');
+   const usage=data[mode],access=data.access;$(id).textContent=access?.enforced?(access.active?(access.modes?access.modes[mode].remaining+' of '+access.modes[mode].limit+' '+(mode==='mock'?'mock interview':'tutor')+' sessions remaining.':access.remaining+' of '+access.limit+' shared tutor/mock sessions remaining.'):'No active practice plan.'):(usage.unlimited?'Session time limits apply.':usage.remaining+' of '+usage.limit+' '+label+' left today.');
    if(access?.enforced){const link=document.createElement('a');link.href=data.billingPage==='/billing.html'?'/billing.html':'/billing-test.html';link.textContent=' View plan';$(id).append(link);}
   }
   $('reportUsage').textContent=data.reports.unlimited?'One feedback report is included with each mock interview.':data.reports.remaining+' new reports left today.';

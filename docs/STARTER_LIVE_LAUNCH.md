@@ -2,7 +2,7 @@
 
 ## Commercial terms
 
-One-time USD 29.00, 20 shared tutor/mock starts, 30 days from the verified
+Starter: one-time USD 29.00, 6 mock + 6 tutor starts. Standard (including the Scholarbook offer): one-time USD 49.00, 12 mock + 8 tutor starts. Each package lasts 30 days from the verified
 provider payment timestamp. Each voice session lasts up to 8 minutes. Mock
 reports are included. No automatic renewal or rollover. Repurchase is permitted
 after expiry or depletion. The backend fixes these terms; a browser cannot
@@ -50,7 +50,7 @@ exact USD 29 checkout; bank conversion charges are separate.
 5. Confirm the commercial and refund terms, eligible pilot accounts and currency.
 6. Deploy production, then configure live credentials privately. Complete one
    authorized real purchase and verify the provider record, exact amount/currency,
-   single 20-session entitlement, owner history and delivered webhook before
+   single entitlement with the purchased separate mock/tutor limits, owner history and delivered webhook before
    inviting the remaining pilot customers. Automated fixtures do not prove live
    provider delivery or settlement.
 
@@ -88,3 +88,5 @@ budget per fully used package is a planning assumption, not a spending cap.
 This code does not establish Paystack USD activation, live credentials, account
 settlement eligibility, refund terms, or a verified live transaction. Those are
 launch dependencies, not implied by passing tests.
+
+Separate allowances are immutable checkout snapshots. Existing shared allowances retain their original terms. Reading modules consumes no voice allowance. Repurchase is available after both allowances are exhausted or the plan expires; exhausting only one category does not permit repurchase. Sandbox plans may opt into separate limits using access.mock and access.learn, whose sum must equal access.sessions.
