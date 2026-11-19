@@ -38,10 +38,15 @@ function fixture(){
  vm.runInContext(html.match(/<script>([\s\S]*?)<\/script>/)[1].replace('boot().catch(()=>{if(new URLSearchParams(location.search).get("signin")==="1")backToLogin()});',''),ctx);
  activeFixtures.push(ctx);return {elements,store,ctx,run:code=>vm.runInContext(code,ctx)};
 }
-test('unlimited usage is readable without null counters or reset promises',async()=>{
+test('unmetered accounts show session limits without promising unlimited paid usage',async()=>{
  const f=fixture();f.store.usage={learn:{unlimited:true,limit:null,remaining:null},mock:{unlimited:true,limit:null,remaining:null},reports:{unlimited:true,limit:null,remaining:null}};
  await f.run('boot()');await f.run('refreshVoiceUsage()');
- for(const id of ['lessonVoiceUsage','mockVoiceUsage','reportUsage']){assert.match(f.elements.get(id).textContent,/Unlimited/);assert.doesNotMatch(f.elements.get(id).textContent,/null|Resets|left today/);}
+ for(const id of ['lessonVoiceUsage','mockVoiceUsage','reportUsage']){assert.ok(f.elements.get(id).textContent);assert.doesNotMatch(f.elements.get(id).textContent,/Unlimited|null|Resets|left today/);}
+});
+test('paid usage displays the same shared allowance in tutor and mock screens with a billing link',async()=>{
+ const f=fixture();f.store.usage={learn:{unlimited:true},mock:{unlimited:true},reports:{unlimited:true},access:{enforced:true,active:true,remaining:17,limit:20},billingPage:'/billing.html'};
+ await f.run('boot()');await f.run('refreshVoiceUsage()');
+ for(const id of ['lessonVoiceUsage','mockVoiceUsage']){assert.match(f.elements.get(id).textContent,/17 of 20 shared/);assert.equal(f.elements.get(id).children.at(-1).href,'/billing.html');}
 });
 test('student dashboard uses latest feedback and omits staff-only columns',()=>{
  const f=fixture();f.run(`me={id:'u1',role:'athlete'};athletes=[{id:'s1',userId:'u1',name:'Test',mocks:2,currentScore:0,mainConcern:'New student — not yet assessed'}];reports=[{id:'old',athleteId:'s1',createdAt:'2026-01-01',overall:45},{id:'new',athleteId:'s1',createdAt:'2026-02-01',overall:75,feedback:'Clear study plans',nextStep:'Check your funding details'}];renderAll()`);

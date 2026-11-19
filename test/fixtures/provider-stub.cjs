@@ -6,3 +6,12 @@ globalThis.fetch=async url=>{
  if(url==='https://api.openai.com/v1/responses')return Response.json({output_text:JSON.stringify({summary:'Synthetic storage test report.',strengths:[],assessments:require('../../interview-design').TOPICS.map(([topic])=>({topic,status:'not_covered'}))})});
  throw Error('Unexpected external request in synthetic test');
 };
+
+const Module=require('node:module'),originalLoad=Module._load;
+Module._load=function(id,...args){
+ if(id==='ws')return class SyntheticSocket extends require('node:events').EventEmitter{
+  constructor(){super();queueMicrotask(()=>{this.emit('open');queueMicrotask(()=>this.emit('close',1000));});}
+  terminate(){this.emit('close',1006);}
+ };
+ return originalLoad.call(this,id,...args);
+};

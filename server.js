@@ -12,6 +12,7 @@ const {isStaff, isOwner, changeRole, assignStudent, withdrawGuardianPermission} 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
+const billing=require('./billing-provider').createBilling(pool);
 
 const recordStore=process.env.RECORD_STORAGE==='enabled'?require('./record-store').create(pool):null;
 
@@ -20,6 +21,7 @@ const TERMS_VERSION = "2026-10-25";
 const operations=require('./operations').createOperations(pool);
 const PORT = process.env.PORT || 3000;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
+const costObserver=require('./provider-cost-observer').createObserver({ledger:operations.costs.provider,apiKey:OPENAI_API_KEY});
 const {POLICY,createVoiceLimits,dailyLimit}=require('./voice-limits');
 const voiceLimits=createVoiceLimits(pool,OPENAI_API_KEY,(url,options)=>fetch(url,options));
 const MAX_CONCURRENT_VOICE=Number(process.env.MAX_CONCURRENT_VOICE || 10);
@@ -239,6 +241,28 @@ const server=http.createServer(async (req,res)=>{
   try{
     const url=new URL(req.url, `http://${req.headers.host}`);
     res.once?.('finish',()=>{void operations.record(url.pathname,res.statusCode);});
+    if(url.pathname==='/api/billing/webhook' && req.method==='POST'){
+      await billing.webhook(await readBody(req,256*1024),req.headers);
+      return json(res,200,{received:true});
+    }
+    if(['/api/billing/status','/api/billing/checkout','/api/billing/verify'].includes(url.pathname)){
+      const u=await requireUser(req,res);if(!u)return;
+      billing.authorize(u);
+      if(needsVerification(u))return json(res,403,{error:'Verify your email before opening checkout.'});
+      if(req.method==='GET' && url.pathname==='/api/billing/status')return json(res,200,await billing.status(u));
+      if(req.method!=='POST' || !['/api/billing/checkout','/api/billing/verify'].includes(url.pathname))return json(res,405,{error:'Method not allowed.'});
+      billing.origin(req.headers.origin);
+      if(!allowAuth('billing:'+u.id))return json(res,429,{error:'Please wait before trying again.'});
+      if(!(req.headers['content-type']||'').startsWith('application/json'))return json(res,415,{error:'JSON required.'});
+      let body;try{body=JSON.parse((await readBody(req,4096)).toString());}catch(e){if(e.status===413)throw e;return json(res,400,{error:'Invalid request.'});}
+      if(url.pathname==='/api/billing/verify'){
+        if(!billing.verify)return json(res,404,{error:'Verification route unavailable.'});
+        if(!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).length)return json(res,400,{error:'No payment reference is accepted from the browser.'});
+        return json(res,200,await billing.verify(u));
+      }
+      if(!body || typeof body.planId!=='string' || Object.keys(body).some(k=>k!=='planId'))return json(res,400,{error:'Only a plan ID is accepted.'});
+      return json(res,200,await billing.checkout(u,body.planId));
+    }
     if(url.pathname==='/api/reviews' && req.method==='GET')return json(res,200,require('./reviews').publicReviews(await loadDb({collections:['users','reviews']})));
     if(['/api/my-review','/api/review-moderation'].includes(url.pathname)){
       const u=await requireUser(req,res);if(!u)return;
@@ -442,11 +466,20 @@ const server=http.createServer(async (req,res)=>{
 
     if(req.method==='GET' && url.pathname==='/api/voice-usage'){
       const u=await requireUser(req,res);if(!u)return;
-      return json(res,200,{learn:await voiceLimits.status(u.id,dailyLimit(u,'learn'),'learn'),mock:await voiceLimits.status(u.id,dailyLimit(u,'mock'),'mock'),reports:await evaluationLimits.status(u.id)});
+      return json(res,200,{learn:await voiceLimits.status(u.id,dailyLimit(u,'learn'),'learn'),mock:await voiceLimits.status(u.id,dailyLimit(u,'mock'),'mock'),reports:await evaluationLimits.status(u.id),access:await billing.access?.status(u),billingPage:process.env.BILLING_MODE==='live'?'/billing.html':'/billing-test.html'});
     }
     if(url.pathname.startsWith('/api/owner/')){
       const u=await requireUser(req,res); if(!u)return;
       if(!isOwner(u))return json(res,403,{error:'Owner access required.'});
+      if(req.method==='GET' && url.pathname==='/api/owner/payments'){
+        if(!billing.history)return json(res,404,{error:'Payment history unavailable for this provider.'});
+        return json(res,200,await billing.history(u,{before:url.searchParams.get('before')||undefined}));
+      }
+      if(req.method==='GET' && url.pathname==='/api/owner/cost-export'){
+        const end=url.searchParams.get('end')||new Date().toISOString();
+        const start=url.searchParams.get('start')||new Date(Date.now()-30*86400000).toISOString();
+        return json(res,200,await operations.costs.provider.exportPeriod(start,end));
+      }
       if(req.method==='GET' && url.pathname==='/api/owner/student-analytics'){
         const ownerStudentAnalytics=require('./owner-student-analytics');
         const db=await loadDb({collections:['users','athletes','reports','mockSessions']});
@@ -589,6 +622,7 @@ const server=http.createServer(async (req,res)=>{
       const u=await requireUser(req,res);if(!u)return;
       if(u.role!=='athlete')return json(res,403,{error:'Written retries are for your own student account.'});
       if(!OPENAI_API_KEY)return json(res,503,{error:'Practice feedback is temporarily unavailable.'});
+      await billing.access?.requireActive(u);
       const improvement=require('./report-improvement');
       let input,sourceSessionId;try{const body=JSON.parse((await readBody(req,12000)).toString());input=improvement.answerInput(body);sourceSessionId=body.sourceSessionId;if(sourceSessionId!==undefined&&(typeof sourceSessionId!=='string'||sourceSessionId.length>100))throw Error('Invalid spoken practice session.');}
       catch(error){if(error.status===413)throw error;return json(res,400,{error:error.message});}
@@ -613,11 +647,11 @@ const server=http.createServer(async (req,res)=>{
         const current=(await loadDb(scope)).reports.find(r=>r.id===input.reportId);
         const cached=current?.practiceAttempts?.find(a=>a.key===input.key);if(cached)return json(res,200,cached);
         if(!current||current.practiceAttempts?.filter(a=>a.focus===input.focus).length>=10)return json(res,409,{error:'You have saved ten retries for this question. Take a new mock to check your progress.'});
-        const response=await fetch('https://api.openai.com/v1/responses',{
+        const response=await operations.costs.measuredFetch(report.mockSessionId||report.id,'practice',EVALUATION_MODEL,report.athleteId,()=>fetch('https://api.openai.com/v1/responses',{
           method:'POST',headers:{Authorization:`Bearer ${OPENAI_API_KEY}`,'Content-Type':'application/json','OpenAI-Safety-Identifier':sha(u.id).slice(0,32)},signal:AbortSignal.timeout(45000),
           body:JSON.stringify({model:EVALUATION_MODEL,input:improvement.prompt(target,input.answer,spoken)+practiceLanguages.feedbackInstructions(report.feedbackLanguage||'en',report.practiceLanguage||'en'),max_output_tokens:1200,store:false})
-        });
-        const result=await response.json();await operations.costs.report(report.mockSessionId||report.id,'practice',EVALUATION_MODEL,result,report.athleteId);
+        }));
+        const result=await response.json();
         let feedback;try{if(!response.ok||result.status==='incomplete')throw Error();feedback=improvement.normalize(JSON.parse(outputText(result).trim().replace(/^```json\s*/, '').replace(/```$/, '').trim()));}
         catch{return json(res,502,{error:'Practice feedback could not be completed. Your answer has not been saved; try again.'});}
         const attempt=await mutateDb(async(current,client)=>{
@@ -738,7 +772,7 @@ Tie feedback to actual answers. If evidence is too limited to identify a strengt
 Use only information in the supplied profile and transcript. Do not reward invented facts or memorized-sounding certainty.`;
 
       const evaluationSignal=AbortSignal.timeout(EVALUATION_POLICY.timeoutMs);
-      const r=await fetch("https://api.openai.com/v1/responses",{
+      const r=await operations.costs.measuredFetch(mockSession.id,'report',EVALUATION_MODEL,athlete.id,()=>fetch("https://api.openai.com/v1/responses",{
         method:"POST",
         headers:{
           "Authorization":`Bearer ${OPENAI_API_KEY}`,
@@ -747,9 +781,8 @@ Use only information in the supplied profile and transcript. Do not reward inven
         },
         signal:evaluationSignal,
         body:JSON.stringify({model:EVALUATION_MODEL,input:prompt.replace("using plain English", "using the selected feedback language")+practiceLanguages.feedbackInstructions(mockSession.feedbackLanguage,mockSession.practiceLanguage),max_output_tokens:EVALUATION_POLICY.outputTokens,store:false})
-      });
+      }));
       const api=await r.json();
-      await operations.costs.report(mockSession.id,'report',EVALUATION_MODEL,api,athlete.id);
       if(!r.ok)return json(res,502,{error:"Report generation is temporarily unavailable. Please try again later."});
       if(api.status==="incomplete")return json(res,502,{error:"The report could not finish within its output limit. Please try again later."});
       let text=outputText(api).trim().replace(/^```json\s*/,"").replace(/```$/,"").trim();
@@ -762,14 +795,13 @@ Use only information in the supplied profile and transcript. Do not reward inven
           // Validate indices and shape before sending a separate, score-blind topic review.
           interviewDesign.normalizeEvidenceReport(result,interview,mockSession.profile||athlete,mockSession.difficulty);
           if(result.assessments.some(a=>a.status==='assessed')){
-          const reviewResponse=await fetch("https://api.openai.com/v1/responses",{
+          const reviewResponse=await operations.costs.measuredFetch(mockSession.id,'review',EVALUATION_MODEL,athlete.id,()=>fetch("https://api.openai.com/v1/responses",{
             method:"POST",
             headers:{"Authorization":`Bearer ${OPENAI_API_KEY}`,"Content-Type":"application/json","OpenAI-Safety-Identifier":sha(u.id).slice(0,32)},
             signal:evaluationSignal,
             body:JSON.stringify({model:EVALUATION_MODEL,input:interviewDesign.evidenceReviewPrompt(result,interview),max_output_tokens:EVALUATION_POLICY.outputTokens,store:false})
-          });
+          }));
           const reviewApi=await reviewResponse.json();
-          await operations.costs.report(mockSession.id,'review',EVALUATION_MODEL,reviewApi,athlete.id);
           if(!reviewResponse.ok||reviewApi.status==='incomplete')throw new Error('Evidence review unavailable');
           const review=JSON.parse(outputText(reviewApi).trim().replace(/^```json\s*/,"").replace(/```$/,"").trim());
           result=interviewDesign.applyEvidenceReview(result,review);
@@ -930,6 +962,7 @@ Use only information in the supplied profile and transcript. Do not reward inven
       if(!voiceToken)return json(res,429,{error:'End your current voice session before starting another. After a recent start, wait 10 seconds and try again.'});
       let voiceDelivered=false;
       try{
+      await billing.access?.reserve(u,voiceToken,mode);
       if(!await voiceLimits.reserve(u.id,dailyLimit(u,mode),mode))return json(res,429,{error:'Unable to start this voice session right now. Please try again shortly.'});
 const embassyKnowledge = loadEmbassyKnowledge(athlete.interviewLocation);
       let instructions=`You are a realistic but fair F-1 student visa mock interviewer for VisaAtlas.
@@ -1017,13 +1050,18 @@ Start with the opening guidance in INTERVIEW DESIGN below.`;
         },{userId:u.id,athleteId:athlete.id});
       }
       await operations.costs.voiceStart(u.id,voiceToken,mode,mockSessionId,athlete.id);
+      // Establish provider observation before the browser can begin speaking.
+      // Diagnostics failure remains visible as incomplete, without blocking practice.
+      try{await costObserver.attach(u.id,voiceToken,rr.headers.get('location'));}
+      catch{console.warn('[cost] VOICE_OBSERVER_UNAVAILABLE');}
       if(res.destroyed)return;
+      await billing.access?.commit(u,voiceToken);
       res.writeHead(rr.status,{"X-Voice-Token":voiceToken,"Content-Type":"application/sdp","Cache-Control":"no-store","X-Voice-Limit-Seconds":String(seconds),...(mockSessionId?{'X-Mock-Session-Id':mockSessionId}:{}),...(practiceSessionId?{'X-Practice-Session-Id':practiceSessionId}:{})});
       res.end(answer);
       voiceDelivered=true;
       return;
       }finally{
-        if(!voiceDelivered)try{await voiceLimits.end(u.id,voiceToken);}catch{console.error('[voice] SESSION_CLEANUP_RETRY');}
+        if(!voiceDelivered)try{await voiceLimits.end(u.id,voiceToken);await billing.access?.release(u,voiceToken);}catch{console.error('[voice] SESSION_CLEANUP_RETRY');}
       }
     }
 
@@ -1035,7 +1073,7 @@ Start with the opening guidance in INTERVIEW DESIGN below.`;
     return json(res,500,{error:"Server error"});
   }
 });
-initDb().then(()=>passwordRecovery.init()).then(()=>voiceLimits.init()).then(()=>evaluationLimits.init()).then(()=>operations.init()).then(() => {
+initDb().then(()=>passwordRecovery.init()).then(()=>voiceLimits.init()).then(()=>evaluationLimits.init()).then(()=>operations.init()).then(()=>billing.init()).then(() => {
   voiceLimits.start();
   passwordRecovery.start();
   server.listen(PORT, () => console.log(`VisaAtlas demo running on http://localhost:${PORT}`));

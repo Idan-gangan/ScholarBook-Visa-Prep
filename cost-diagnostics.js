@@ -18,7 +18,8 @@ function reportSample(u){
  if(!u||!number(u.input_tokens)||!number(u.output_tokens)||!number(u.input_tokens_details?.cached_tokens)||u.input_tokens_details.cached_tokens>u.input_tokens)return null;
  return {inputTokens:u.input_tokens,outputTokens:u.output_tokens,cachedTokens:u.input_tokens_details.cached_tokens};
 }
-function createCostDiagnostics(pool,{log=console.warn}={}){
+function createCostDiagnostics(pool,{log=console.warn,now=Date.now}={}){
+ const provider=require('./provider-costs').createProviderCosts(pool,{now});
  let nextCleanup=0;
  async function safe(fn){try{return await fn()}catch{log('[cost] DIAGNOSTICS_UNAVAILABLE');return null}}
  async function cleanup(){if(Date.now()<nextCleanup)return;nextCleanup=Date.now()+3600000;await pool.query("DELETE FROM ai_cost_samples WHERE created_at < NOW()-INTERVAL '30 days'")}
@@ -28,7 +29,7 @@ function createCostDiagnostics(pool,{log=console.warn}={}){
  usage JSONB, elapsed_seconds NUMERIC, estimated_usd NUMERIC, student_key TEXT)`);
   await pool.query('ALTER TABLE ai_cost_samples ADD COLUMN IF NOT EXISTS student_key TEXT');
   await pool.query('CREATE INDEX IF NOT EXISTS ai_cost_samples_created_idx ON ai_cost_samples(created_at)');
-  await pool.query('CREATE INDEX IF NOT EXISTS ai_cost_samples_student_created_idx ON ai_cost_samples(student_key,created_at) WHERE student_key IS NOT NULL');}
+  await pool.query('CREATE INDEX IF NOT EXISTS ai_cost_samples_student_created_idx ON ai_cost_samples(student_key,created_at) WHERE student_key IS NOT NULL');await provider.init();}
  async function voiceStart(userId,token,mode,sessionId,studentId){return safe(async()=>{if(!['learn','mock'].includes(mode))return;const key=hash(userId+':'+token);await pool.query(`INSERT INTO ai_cost_samples(sample_key,group_key,category,model,source,student_key) VALUES($1,$3,$2,'gpt-realtime-2.1','browser_diagnostic',$4) ON CONFLICT DO NOTHING`,[key,mode,sessionId?hash(sessionId):key,studentId?studentKey(studentId):null]);await cleanup()})}
  async function voiceEnd(userId,token,sample){return safe(async()=>{const s=voiceSample(sample);await pool.query(`UPDATE ai_cost_samples SET finished_at=NOW(),usage=$2::jsonb,elapsed_seconds=LEAST(480,GREATEST(0,EXTRACT(EPOCH FROM NOW()-created_at))),estimated_usd=$3 WHERE sample_key=$1 AND source='browser_diagnostic' AND finished_at IS NULL`,[hash(userId+':'+token),s?JSON.stringify(s):null,voiceEstimate(s)])})}
  async function report(sessionId,phase,model,response,studentId){return safe(async()=>{
@@ -41,8 +42,24 @@ function createCostDiagnostics(pool,{log=console.warn}={}){
    const sqlFields="category,COUNT(*)::int AS attempts,COUNT(usage)::int AS samples,COUNT(estimated_usd)::int AS priced_samples,SUM(elapsed_seconds) AS elapsed_seconds,SUM(estimated_usd) AS estimated_usd,SUM((usage->>'inputTokens')::bigint) AS input_tokens,SUM((usage->>'cachedTokens')::bigint) AS cached_tokens,SUM((usage->>'outputTokens')::bigint) AS output_tokens";
    const keyed=(await pool.query("SELECT student_key,"+sqlFields+" FROM ai_cost_samples WHERE student_key IS NOT NULL AND created_at>=NOW()-INTERVAL '30 days' GROUP BY student_key,category")).rows;
    const legacy=Array.isArray(groupKeys)&&groupKeys.length?(await pool.query("SELECT group_key,"+sqlFields+" FROM ai_cost_samples WHERE student_key IS NULL AND created_at>=NOW()-INTERVAL '30 days' AND group_key=ANY($1::text[]) GROUP BY group_key,category",[groupKeys])).rows:[];
-   return {keyed,legacy};
+   return {keyed,legacy,provider:await provider.byStudent()};
  }
- return {init,voiceStart,voiceEnd,report,summary,summaryByStudent};
+ async function measuredFetch(sessionId,phase,model,studentId,request){
+  const key=hash(crypto.randomUUID());
+  await safe(()=>pool.query(`INSERT INTO ai_cost_samples(sample_key,group_key,category,model,source,student_key)
+   VALUES($1,$2,$3,$4,'provider_response',$5)`,[key,hash(sessionId),phase,model,studentKey(studentId)]));
+  // Pending records survive timeouts, invalid JSON and crashes as unpriced attempts.
+  const response=await request();
+  const original=response.json.bind(response);
+  response.json=async()=>{
+   const result=await original(),s=reportSample(result?.usage);
+   await safe(()=>pool.query('UPDATE ai_cost_samples SET usage=$2::jsonb,finished_at=NOW() WHERE sample_key=$1',[key,s?JSON.stringify(s):null]));
+   await safe(()=>provider.report(key,model,result));
+   await safe(cleanup);
+   return result;
+  };
+  return response;
+ }
+ return {init,voiceStart,voiceEnd,report,summary,summaryByStudent,provider,measuredFetch};
 }
 module.exports={createCostDiagnostics,voiceSample,voiceEstimate,reportSample};

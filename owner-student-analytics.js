@@ -47,6 +47,14 @@ function buildAnalytics({students=[],users=[],reports=[],mockSessions=[],learnin
   const learningByStudent=new Map((learning||[]).filter(x=>allowed.has(x.student_id)).map(x=>[x.student_id,x]));
   const groupLookup=historicalGroups({students,reports,mockSessions});
   const keyLookup=new Map(students.map(s=>[studentKey(s.id),s.id]));
+  const providerByStudent=new Map();
+  for(const row of costs.provider||[]){
+    const id=row.student_key?keyLookup.get(row.student_key):groupLookup.get(row.group_key);
+    if(!id)continue;
+    const value=providerByStudent.get(id)||{events:0,pricedEvents:0,subtotalUsd:0,voiceUsd:0,transcriptionUsd:0,textUsd:0,incompleteSessions:0,legacyTextRequests:0};
+    for(const [field,key] of Object.entries({events:'events',pricedEvents:'priced_events',subtotalUsd:'usd',voiceUsd:'voice_usd',transcriptionUsd:'transcription_usd',textUsd:'text_usd',incompleteSessions:'incomplete_sessions',legacyTextRequests:'legacy_text_requests'}))value[field]+=finite(row[key]);
+    providerByStudent.set(id,value);
+  }
   const costByStudent=new Map();
   const accum=(id,row)=>{
     if(!id || !allowed.has(id))return;
@@ -91,6 +99,7 @@ function buildAnalytics({students=[],users=[],reports=[],mockSessions=[],learnin
       (lastActivity===null&&registered!==null&&registered<now-14*DAY);
     const cost=costByStudent.get(student.id)||{voiceAttempts:0,voiceSamples:0,pricedVoiceSamples:0,partialVoiceUsd:0,voiceMinutes:0,textAttempts:0,textSamples:0,inputTokens:0,outputTokens:0,cachedTokens:0};
     const costView={
+      provider:providerByStudent.get(student.id)||null,
       voiceAttempts:cost.voiceAttempts,voiceSamples:cost.voiceSamples,pricedVoiceSamples:cost.pricedVoiceSamples,
       partialVoiceUsd:cost.pricedVoiceSamples?Math.round(cost.partialVoiceUsd*10000)/10000:null,
       observedVoiceMinutes:Math.round(cost.voiceMinutes*10)/10,
@@ -128,7 +137,7 @@ function buildAnalytics({students=[],users=[],reports=[],mockSessions=[],learnin
     notes:{
       activity:'Activity is based on saved learning changes, mock starts and reports. Staff-assisted activity may appear; it does not prove the student personally logged in.',
       improvement:'Improvement compares the last two complete scored mocks using the same scoring method. Partial or incomplete interviews are not compared.',
-      costs:'Only sampled voice estimates and text token usage are available. Historical tutor sessions may be unattributable. Text, hosting, transcription and other charges remain unpriced. Costs cover at most 30 days.'
+      costs:'Provider-recorded subtotals are separate from older browser estimates; never add them together. Missing usage, unknown rates and interrupted collection remain unpriced. Subtotals are not invoice totals and exclude hosting, payment fees and taxes. Coverage is the last 30 days.'
     },
     students:rows
   };

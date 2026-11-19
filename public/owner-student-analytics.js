@@ -68,11 +68,15 @@
          metric('Comparable score change',trend)+
          metric('Partial voice cost · last 30 days',cost)+
          metric('Cost sampling coverage',covered)+
+         metric('Provider-recorded AI subtotal · 30 days',snapshot.costTrackingAvailable===false?'Temporarily unavailable':s.cost?.provider?.pricedEvents?'$'+Number(s.cost.provider.subtotalUsd).toFixed(4):'Not yet priced')+
+         metric('Provider usage priced',s.cost?.provider?num(s.cost.provider.pricedEvents)+' of '+num(s.cost.provider.events)+' events':'No provider records')+
        '</div>'+
        '<details class="owner-analytics-extra"><summary>More details and interpretation</summary>'+
         '<p><strong>Practice records:</strong> '+num(s.studentLedMocks)+' student-led mock starts; '+num(s.staffLedMocks)+' staff-assisted mock starts; '+num(s.savedModules)+' saved learning modules. Recorded learning changes may also have been made by staff.</p>'+
         '<p><strong>Report comparisons:</strong> '+num(s.completeReports)+' complete comparable-method reports. '+(s.scoreChange===null?'At least two complete reports using the same scoring method are needed for a reliable change.':'Change compares the last two complete reports with the same scoring method.')+'</p>'+
         '<p><strong>Unpriced usage:</strong> '+num(s.cost?.unpricedVoiceAttempts)+' voice starts not fully priced, '+num(s.cost?.textAttempts)+' text/model attempts, '+tokenCount+' observed text tokens. Text, transcription, hosting, payments and unmatched historical tutor samples are not included in the voice estimate.</p>'+
+        '<p><a href="/api/owner/cost-export" target="_blank" rel="noopener">Export provider cost totals for reconciliation</a></p>'+
+        '<p><strong>Provider cost coverage:</strong> '+num(s.cost?.provider?.incompleteSessions)+' voice sessions lack complete server observation; '+num(s.cost?.provider?.legacyTextRequests)+' text requests lack new provider records. Unknown prices are not zero. The provider subtotal includes priced voice, transcription and text events only. It overlaps the older voice estimate: do not add them together. It has not been reconciled to a provider bill.</p>'+
         '<p>This is practice progress, not a prediction of visa approval or a judgement about the student.</p>'+
        '</details>'+
        '</article>';

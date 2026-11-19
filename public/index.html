@@ -239,7 +239,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
         <div class="session-toolbar"><div id="learn_voiceStatus" role="status" aria-live="polite">Ready to start</div><span id="learn_voiceClock" class="voice-clock" aria-label="Voice lesson time remaining">08:00</span></div>
         <div id="learn_voiceLimitNotice" class="small muted" role="status" aria-live="polite"></div>
         <p id="lessonVoiceUsage" class="small muted" role="status"></p>
-        <p class="small muted">Voice lessons last up to 8 minutes. Daily practice attempts are unlimited. Reading and notes remain available.</p>
+        <p class="small muted">Voice lessons last up to 8 minutes. Your plan determines your session allowance. Reading and notes remain available.</p>
         <div class="lesson-actions"><button class="btn primary" id="learn_startBtn" onclick="startLearningTutor()">Start voice lesson</button><button class="btn danger" id="learn_stopBtn" onclick="stopVoice()" disabled>End lesson conversation</button></div>
         <div id="learn_transcript" dir="auto" class="lesson-transcript" aria-label="Tutor conversation"></div>
         <p class="small muted">Your conversation is for learning, with no readiness score. Save the points you want to keep in your notes; the regular lesson conversation itself is not saved. In a spoken retry, you can choose to save an answer transcript and comparison with your report.</p>
@@ -338,7 +338,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
       <div id="ownerStats" class="owner-stats" aria-label="Owner workspace totals"></div>
        <div id="ownerAttention" class="owner-attention" aria-live="polite"></div>
        <div id="ownerInsights" class="owner-insights" aria-live="polite"></div>
-      <div class="owner-shortcuts"><button class="btn secondary" type="button" onclick="openOwnerStudentAnalytics()">Student analytics</button><button class="btn secondary" type="button" onclick="setOwnerTab('accounts')">Manage accounts</button><button class="btn secondary" type="button" onclick="setOwnerTab('assignments')">Staff assignments</button><button class="btn secondary" type="button" onclick="show('manager')">Student progress</button><button class="btn secondary" type="button" onclick="show('reports')">Readiness reports</button><a class="btn secondary" href="/review-moderation.html">Student reviews</a><span>Owner-only workspace · Existing session limits apply</span></div>
+      <div class="owner-shortcuts"><button class="btn secondary" type="button" onclick="openOwnerStudentAnalytics()">Student analytics</button><button class="btn secondary" type="button" onclick="setOwnerTab('accounts')">Manage accounts</button><button class="btn secondary" type="button" onclick="setOwnerTab('assignments')">Staff assignments</button><button class="btn secondary" type="button" onclick="show('manager')">Student progress</button><button class="btn secondary" type="button" onclick="show('reports')">Readiness reports</button><a class="btn secondary" href="/review-moderation.html">Student reviews</a><a class="btn secondary" href="/owner-payments.html">Payments</a><span>Owner-only workspace · Existing session limits apply</span></div>
       <section class="owner-analytics" id="ownerStudentAnalytics" aria-labelledby="ownerStudentAnalyticsTitle">
         <div class="owner-analytics-heading"><div><span class="owner-eyebrow">STUDENT SUCCESS & USAGE</span><h2 id="ownerStudentAnalyticsTitle">Student analytics</h2><p>See saved practice activity, comparable mock-score improvements, follow-up opportunities and the AI usage we can actually measure.</p></div><button class="btn secondary" type="button" onclick="loadOwnerStudentAnalytics()">Refresh analytics</button></div>
         <p id="ownerStudentAnalyticsStatus" role="status" aria-live="polite">Student analytics loads from saved records.</p>
@@ -1341,9 +1341,10 @@ async function refreshVoiceUsage(){
   const data=await api('/api/voice-usage');
   if(!me||version!==sessionVersion)return;
   for(const [id,mode,label] of [['learningVoiceUsage','learn','tutoring starts'],['lessonVoiceUsage','learn','tutoring starts'],['mockVoiceUsage','mock','mock interviews']]){
-   const usage=data[mode];$(id).textContent=usage.unlimited?'Unlimited '+label+'. Session time limits still apply.':usage.remaining+' of '+usage.limit+' '+label+' left today.';
+   const usage=data[mode],access=data.access;$(id).textContent=access?.enforced?(access.active?(access.modes?access.modes[mode].remaining+' of '+access.modes[mode].limit+' '+(mode==='mock'?'mock interview':'tutor')+' sessions remaining.':access.remaining+' of '+access.limit+' shared tutor/mock sessions remaining.'):'No active practice plan.'):(usage.unlimited?'Session time limits apply.':usage.remaining+' of '+usage.limit+' '+label+' left today.');
+   if(access?.enforced){const link=document.createElement('a');link.href=data.billingPage==='/billing.html'?'/billing.html':'/billing-test.html';link.textContent=' View plan';$(id).append(link);}
   }
-  $('reportUsage').textContent=data.reports.unlimited?'Unlimited feedback reports. Generate one report at a time.':data.reports.remaining+' new reports left today.';
+  $('reportUsage').textContent=data.reports.unlimited?'One feedback report is included with each mock interview.':data.reports.remaining+' new reports left today.';
  }catch(error){if(me && version===sessionVersion){for(const id of ['learningVoiceUsage','lessonVoiceUsage','mockVoiceUsage','reportUsage'])$(id).textContent='Practice allowance could not be loaded. Try refreshing the page.';}}
 }
 function continueLearning(){return selectLearningModule((curriculum.find(m=>!courseSaved[m.id]?.completed)||curriculum[0]).id)}
