@@ -13,7 +13,7 @@ function createBilling(pool,{env=process.env}={}){
     async reserve(user,token,mode){if(await partners.reserve(user,token,mode))return;return existing.reserve(user,token,mode);},
     async commit(user,token){if(await partners.commit(user,token))return;return existing.commit(user,token);},
     async release(user,token){await partners.release(user,token);return existing.release(user,token);},
-    async removeTrial(client,userId,email){await partners.removeUser(userId);return existing.removeTrial?.(client,userId,email);}
+    async removeTrial(client,userId,email){await partners.removeUser(userId,client);return existing.removeTrial?.(client,userId,email);}
   };
   const withStatus=async(user)=>({...await base.status(user),access:await access.status(user)});
   const combined={
