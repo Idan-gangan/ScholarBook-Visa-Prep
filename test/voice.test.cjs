@@ -150,3 +150,13 @@ test('ending a voice session sends only deduplicated numeric diagnostic counters
  await s.run('stopVoice();voiceEnd');
  assert.equal(requests.length,1);assert.equal(requests[0].body.costSample.responses,1);assert.equal(requests[0].body.costSample.inputAudio,2);assert.doesNotMatch(JSON.stringify(requests),/private text|resp_cost/);
 });
+
+
+test('server-selected interviewer switches to the matching local portrait',()=>{
+ const s=setup();
+ for(const [id,file] of [['female','ai-interviewer-female.webp'],['male','ai-interviewer.webp'],['unknown','ai-interviewer.webp']]){
+  s.run('setInterviewerPortrait('+JSON.stringify(id)+')');
+  assert.equal(s.els.get('interviewerPortrait').src,'/assets/'+file);
+  assert.match(s.els.get('interviewerPortrait').alt,/Fictional .* AI interviewer portrait/);
+ }
+});

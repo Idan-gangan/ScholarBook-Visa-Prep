@@ -534,9 +534,14 @@ test('failed reports can retry without consuming the successful report allowance
 test('mock modes are validated before spending, persisted, and passed to interviewer',async()=>{
  const h=harness();
  assert.equal((await h.request('POST','/api/realtime-session?athleteId=s1&difficulty=unknown','v=0\r\noffer')).status,400);assert.equal(h.calls.length,0);
+ let index=0;
  for(const difficulty of ['standard','challenging','intensive']){
   const response=await h.request('POST','/api/realtime-session?athleteId=s1&difficulty='+difficulty,'v=0\r\noffer');assert.equal(response.status,200);
-  const session=h.db.mockSessions.at(-1);assert.equal(session.difficulty,difficulty);assert.equal(session.evaluationVersion,3);assert.equal(session.profile.phone,undefined);
+  const session=h.db.mockSessions.at(-1);assert.equal(session.difficulty,difficulty);assert.equal(session.evaluationVersion,3);
+  const expected=index++%2?'female':'male';
+  assert.equal(response.headers['X-Interviewer'],expected);assert.equal(session.interviewer,expected);
+  assert.equal(h.db.users[0].lastMockInterviewer,expected);
+  assert.equal(h.calls.at(-1).session.audio.output.voice,expected==='male'?'cedar':'marin');assert.equal(session.profile.phone,undefined);
   assert.ok(h.calls.at(-1).session.instructions.includes(require('../interview-design').MODES[difficulty]+' mode'));await h.finishVoice();
  }
 });
