@@ -10,10 +10,11 @@ choose a price, currency, customer or allowance.
 
 ## Rollout scope
 
-This is an explicitly invited pilot, not a site-wide paywall. Only IDs in
-`BILLING_LIVE_USER_IDS` are charged and metered; existing non-pilot access is
-unchanged. Maximum 25 IDs. Do not remove an unpaid or exhausted pilot account
-from this list to manage support: doing so removes its pilot metering.
+Live billing is open to every signed-in, email-verified account. All accounts
+need a verified paid plan to start paid practice, including existing non-pilot
+accounts. Reading and account management remain available. The legacy
+`BILLING_LIVE_USER_IDS` variable no longer restricts checkout or metering.
+Test billing remains restricted to `BILLING_TEST_USER_IDS`.
 
 Test and live checkouts, payments, holds, entitlements and usage are physically
 separate tables. Switching modes never promotes a sandbox payment. Duplicate
@@ -26,7 +27,6 @@ verified events cannot reset allowance. All access writes use transactions.
 - `PAYSTACK_SECRET_KEY`: live secret, entered directly in Render secret settings
 - `BILLING_ORIGIN=https://visaatlasprep.com`
 - `BILLING_LIVE_USD_READY=confirmed`: only after USD collection is actually enabled
-- `BILLING_LIVE_USER_IDS`: comma-separated verified account IDs, up to 25
 - `PAYSTACK_WEBHOOK_SECRET`: optional separate signing secret if configured in
   Paystack; when set, legacy signatures are rejected, so this must match.
 

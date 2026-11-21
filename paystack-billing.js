@@ -11,7 +11,7 @@ function configuration(env){
   const url=new URL(env.BILLING_ORIGIN);
   if(url.protocol!=='https:'||url.username||url.password||url.pathname!=='/'||url.search||url.hash)throw Error('BILLING_ORIGIN must be an HTTPS origin');
   const users=new Set((env[mode==='live'?'BILLING_LIVE_USER_IDS':'BILLING_TEST_USER_IDS']||'').split(',').map(s=>s.trim()).filter(Boolean));
-  if(!users.size||mode==='live'&&users.size>25)throw Error('Explicit pilot accounts required (maximum 25 in live mode)');
+  if(mode==='test'&&!users.size)throw Error('Explicit test accounts required');
   const plans=mode==='live'?{starter:{amount:2900,currency:'USD',access:{days:30,sessions:12,mock:6,learn:6}},standard:{amount:4900,currency:'USD',access:{days:30,sessions:20,mock:12,learn:8}}}:JSON.parse(env.PAYSTACK_TEST_PLANS||'{}');
   if(!plans||Array.isArray(plans)||!Object.keys(plans).length)throw Error('Test prices required');
   for(const [id,p] of Object.entries(plans)){
@@ -68,7 +68,8 @@ function createBilling(pool,{env=process.env,request=fetch}={}){
   }
   function authorize(user){
     if(!config)throw fail(404,'Billing is disabled.');
-    if(!config.users.has(user.id))throw fail(403,'Checkout is currently available to invited pilot accounts only.');
+    if(!user||typeof user.id!=='string'||!user.id)throw fail(401,'Sign in to manage your plan.');
+    if(config.mode==='test'&&!config.users.has(user.id))throw fail(403,'Billing testing is not enabled for this account.');
   }
   function origin(value){if(!config||value!==config.origin)throw fail(403,'Invalid request origin.');}
   async function api(path,body){

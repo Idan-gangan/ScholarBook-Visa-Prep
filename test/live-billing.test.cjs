@@ -13,12 +13,12 @@ async function fixture(t){
  function event(name='charge.success',patch={}){const data=name==='charge.success'?{reference:initialized.reference,domain:'live',...patch}:{transaction_reference:initialized.reference,domain:'live',...patch};const raw=Buffer.from(JSON.stringify({event:name,data}));return [raw,{'x-paystack-signature':createHmac('sha512',env.PAYSTACK_SECRET_KEY).update(raw).digest('hex')}];}
  return {db,pool,billing,calls,event,set:p=>changes=p,get initialized(){return initialized}};
 }
-test('live launch requires matching keys, USD confirmation and at most 25 explicit accounts',()=>{
- for(const patch of [{PAYSTACK_SECRET_KEY:'sk_test_fixture'},{BILLING_LIVE_USD_READY:''},{BILLING_LIVE_USER_IDS:''},{BILLING_LIVE_USER_IDS:Array.from({length:26},(_,i)=>'u'+i).join(',')}])assert.throws(()=>configuration({...env,...patch}));
+test('live launch requires matching keys and USD confirmation but no pilot allowlist',()=>{
+ for(const patch of [{PAYSTACK_SECRET_KEY:'sk_test_fixture'},{BILLING_LIVE_USD_READY:''}])assert.throws(()=>configuration({...env,...patch}));
  const c=configuration({...env,PAYSTACK_TEST_PLANS:'{"starter":{"amount":1}}'});assert.deepEqual(c.plans,{starter:{amount:2900,currency:'USD',access:{days:30,sessions:12,mock:6,learn:6}},standard:{amount:4900,currency:'USD',access:{days:30,sessions:20,mock:12,learn:8}}});
 });
 test('live payment uses separate ledger, fixed $29 terms, exactly 6 mock and 6 tutor starts and depleted-plan repurchase',async t=>{
- const f=await fixture(t);assert.throws(()=>f.billing.authorize({id:'other'}),{status:403});
+ const f=await fixture(t);assert.doesNotThrow(()=>f.billing.authorize({id:'other'}));
  await assert.rejects(f.billing.access.reserve(user,'a'.repeat(48),'mock'),{status:402});
  await f.billing.checkout(user,'starter');assert.equal(f.initialized.amount,'2900');assert.equal(f.initialized.currency,'USD');assert.equal(f.initialized.callback_url,'https://example.test/billing.html');
  await f.billing.webhook(...f.event());await f.billing.webhook(...f.event());
@@ -71,4 +71,23 @@ test('legacy purchased shared allowances keep their original terms after schema 
 test('invalid category configurations are rejected',()=>{
  const {validateAccess}=require('../billing-access');
  for(const limits of [{mock:6},{mock:6,learn:5},{mock:0,learn:12},{mock:6.5,learn:5.5}])assert.throws(()=>validateAccess({days:30,sessions:12,...limits}));
+});
+
+test('public live billing enforces purchase for accounts outside the former pilot and keeps users isolated',async t=>{
+ const f=await fixture(t),newUser={id:'new-student',email:'new@example.test'};
+ assert.doesNotThrow(()=>configuration({...env,BILLING_LIVE_USER_IDS:''}));
+ assert.throws(()=>f.billing.authorize(null),{status:401});
+ assert.throws(()=>f.billing.authorize({id:''}),{status:401});
+ assert.equal((await f.billing.status(newUser)).access.enforced,true);
+ await assert.rejects(f.billing.access.requireActive(newUser),{status:402});
+ await assert.rejects(f.billing.access.reserve(newUser,'9'.repeat(48),'mock'),{status:402});
+ await f.billing.checkout(newUser,'starter');
+ f.set({customer:{email:newUser.email}});
+ await f.billing.webhook(...f.event());
+ assert.equal((await f.billing.status(newUser)).access.remaining,12);
+ assert.equal((await f.billing.status(user)).access.active,false);
+ await f.billing.access.reserve(newUser,'9'.repeat(48),'mock');
+ await f.billing.access.commit(newUser,'9'.repeat(48));
+ assert.equal((await f.billing.status(newUser)).access.modes.mock.remaining,5);
+ await assert.rejects(f.billing.access.reserve(user,'8'.repeat(48),'mock'),{status:402});
 });
