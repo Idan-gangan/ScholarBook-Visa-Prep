@@ -167,7 +167,17 @@ function createBilling(pool,{env=process.env,request=fetch}={}){
     if((await pool.query(`SELECT reference FROM ${tables.payments} WHERE reference=$1`,[row.reference])).rows.length)return 'success';
     const payment=await api('/transaction/verify/'+encodeURIComponent(row.reference));
     const customerEmail=payment.customer?.email;
-    if(payment.domain!==config.mode||payment.reference!==row.reference||!Number.isSafeInteger(payment.amount)||payment.amount!==Number(row.amount)||payment.currency!==row.currency||typeof customerEmail!=='string'||customerEmail.trim().toLowerCase()!==row.email)throw fail(409,'Payment verification did not match this checkout.');
+    // When the merchant enables "Pass fees to customers", Paystack charges the
+    // customer the plan price plus its processing fee. Verify the *original*
+    // requested price AND the precise fee uplift, not merely an amount >= price.
+    // This preserves strict underpayment and cross-checkout protection.
+    const baseAmount=Number(row.amount);
+    const exactAmount=Number.isSafeInteger(payment.amount)&&payment.amount===baseAmount;
+    const passedFeeAmount=Number.isSafeInteger(payment.amount)&&
+      Number.isSafeInteger(payment.requested_amount)&&payment.requested_amount===baseAmount&&
+      Number.isSafeInteger(payment.fees)&&payment.fees>0&&
+      payment.amount===baseAmount+payment.fees;
+    if(payment.domain!==config.mode||payment.reference!==row.reference||!(exactAmount||passedFeeAmount)||payment.currency!==row.currency||typeof customerEmail!=='string'||customerEmail.trim().toLowerCase()!==row.email)throw fail(409,'Payment verification did not match this checkout.');
     if(payment.status!=='success')return payment.status;
     const paidAt=Date.parse(payment.paid_at);
     if(!Number.isFinite(paidAt))throw fail(502,'Payment date is unavailable.');

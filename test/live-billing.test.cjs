@@ -37,6 +37,25 @@ test('test events and mismatched provider values cannot grant live access',async
  for(const patch of [{domain:'test'},{amount:100},{currency:'NGN'},{customer:{email:'other@example.test'}}]){f.set(patch);await assert.rejects(f.billing.verify(user),{status:409});}
  assert.equal((await f.billing.access.status(user)).remaining,0);
 });
+test('live USD fee pass-through verifies original $29 plus exact Paystack $1.18 fee and grants access once',async t=>{
+ const f=await fixture(t);await f.billing.checkout(user,'starter');
+ // The Paystack dashboard shows USD 30.18 charged for a USD 29.00 plan.
+ // Verification must reject a forged uplift or a mismatched original amount.
+ for(const patch of [
+  {amount:3018},
+  {amount:3018,requested_amount:2900},
+  {amount:3018,requested_amount:2900,fees:117},
+  {amount:3018,requested_amount:2800,fees:218},
+  {amount:3018,requested_amount:2900,fees:118,customer:{email:'other@example.test'}},
+  {amount:3018,requested_amount:2900,fees:118,currency:'NGN'},
+  {amount:2899,requested_amount:2900,fees:-1}
+ ]){f.set(patch);await assert.rejects(f.billing.verify(user),{status:409});}
+ f.set({amount:3018,requested_amount:2900,fees:118});
+ await f.billing.verify(user);await f.billing.webhook(...f.event());
+ const access=await f.billing.access.status(user);
+ assert.equal(access.active,true);assert.equal(access.modes.mock.remaining,6);assert.equal(access.modes.learn.remaining,6);
+ assert.equal((await f.db.query('SELECT COUNT(*)::int AS n FROM paystack_live_payments')).rows[0].n,1);
+});
 test('refund before success remains on hold after verification and duplicate events',async t=>{
  const f=await fixture(t);await f.billing.checkout(user,'starter');
  await f.billing.webhook(...f.event('refund.processed'));await f.billing.webhook(...f.event());
