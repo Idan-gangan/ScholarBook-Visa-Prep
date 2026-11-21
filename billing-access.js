@@ -10,7 +10,7 @@ function validateAccess(value){
 // Live and test allowances use physically separate ledgers.
 function createAccess(pool,{enabled=false,users=new Set(),mode='test'}={}){
   const tables=tablesFor(mode);
-  const applies=user=>enabled&&users.has(user?.id);
+  const applies=user=>enabled&&typeof user?.id==='string'&&!!user.id&&(mode==='live'||users.has(user.id));
   async function init(){
     await pool.query(`CREATE TABLE IF NOT EXISTS ${tables.holds} (
       reference TEXT PRIMARY KEY REFERENCES ${tables.checkouts}(reference),
