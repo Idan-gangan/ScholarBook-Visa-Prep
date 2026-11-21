@@ -16,7 +16,7 @@ async function refresh(verify=false){
     document.querySelector('#refresh').onclick=()=>refresh(data.provider==='paystack');
     const access=data.access;
     const accessText=document.querySelector('#access');
-    accessText.textContent=access?.enforced?(access.active?`${access.modes?`${access.modes.mock.remaining} mock interviews and ${access.modes.learn.remaining} tutor sessions remaining`:`${access.remaining} of ${access.limit} shared sessions remaining`}. Expires ${new Date(access.expiresAt).toLocaleString()}.`:(access.trial?`${access.trial.remaining} of 2 free mock interviews remaining. Tutor sessions require a paid plan.`:'Choose a plan to activate your practice allowance.')):'No practice allowance is active.';
+    accessText.textContent=access?.sponsored?`Scholarbook Partner Access · ${access.modes.mock.remaining} mock interviews and ${access.modes.learn.remaining} tutor sessions remaining. Expires ${new Date(access.expiresAt).toLocaleString()}. No personal payment needed.`:access?.enforced?(access.active?`${access.modes?`${access.modes.mock.remaining} mock interviews and ${access.modes.learn.remaining} tutor sessions remaining`:`${access.remaining} of ${access.limit} shared sessions remaining`}. Expires ${new Date(access.expiresAt).toLocaleString()}.`:(access.trial?`${access.trial.remaining} of 2 free mock interviews remaining. Tutor sessions require a paid plan.`:'Choose a plan to activate your practice allowance.')):'No practice allowance is active.';
     const records=data.payments||data.subscriptions;
     const pending=(data.payments||[]).some(payment=>['reserved','initializing','open','uncertain'].includes(payment.status));
     if(recoverButton && data.provider==='paystack' && pending && !data.paymentReview && !access?.active){
@@ -32,8 +32,8 @@ async function refresh(verify=false){
         finally{recoverButton.disabled=false;}
       };
     }
-    message.textContent=records.length?records.map(s=>`${s.plan_id||'Unrecognized plan'}: ${s.status}${s.cancel_at_period_end?' (cancels at period end)':''}`).join('\n'):'Your access activates after your payment is verified.';
-    for(const plan of [...data.plans].sort((a,b)=>Number(b.id===selectedPlan)-Number(a.id===selectedPlan))){
+    message.textContent=access?.sponsored?'Your Scholarbook partner package is active and managed by VisaAtlas.':records.length?records.map(s=>`${s.plan_id||'Unrecognized plan'}: ${s.status}${s.cancel_at_period_end?' (cancels at period end)':''}`).join('\n'):'Your access activates after your payment is verified.';
+    if(!access?.sponsored)for(const plan of [...data.plans].sort((a,b)=>Number(b.id===selectedPlan)-Number(a.id===selectedPlan))){
       const button=document.createElement('button');button.dataset.plan=plan.id;if(plan.id===selectedPlan){button.classList.add('selected-plan');button.setAttribute('aria-label','Continue with selected '+plan.id+' plan');}button.textContent=`${plan.id === 'starter' ? 'Buy Starter' : plan.id === 'standard' ? 'Buy Standard' : plan.id} — ${new Intl.NumberFormat('en-US',{style:'currency',currency:plan.currency}).format(plan.amount/100)}${data.recurring===false?' (one payment)':'/month'}`;
       if(plan.id===selectedPlan)button.textContent='Selected: '+button.textContent;
       if(plan.access)button.textContent+=` · ${plan.access.mock!==undefined?`${plan.access.mock} mock interviews + ${plan.access.learn} tutor sessions`:`${plan.access.sessions} shared tutor/mock sessions`} over ${plan.access.days} days`;
