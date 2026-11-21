@@ -91,3 +91,35 @@ test('public live billing enforces purchase for accounts outside the former pilo
  assert.equal((await f.billing.status(newUser)).access.modes.mock.remaining,5);
  await assert.rejects(f.billing.access.reserve(user,'8'.repeat(48),'mock'),{status:402});
 });
+
+test('new registration trial gives exactly two mock starts, is idempotent, and never grants tutor or payment access',async t=>{
+ const f=await fixture(t),a=f.billing.access;
+ await a.grantTrial(f.pool,user.id);await a.grantTrial(f.pool,user.id);
+ assert.deepEqual((await a.status(user)).trial,{limit:2,used:0,remaining:2});
+ await assert.rejects(a.reserve(user,'a'.repeat(48),'learn'),{status:402});
+ await assert.rejects(a.requireActive(user),{status:402});
+ await assert.rejects(a.reserve({id:'other'},'a'.repeat(48),'mock'),{status:402});
+ for(const token of ['a'.repeat(48),'b'.repeat(48)]){
+  await a.reserve(user,token,'mock');await a.reserve(user,token,'mock');
+  await a.commit(user,token);await a.commit(user,token);await a.release(user,token);
+ }
+ assert.equal((await a.status(user)).trial.remaining,0);
+ await assert.rejects(a.reserve(user,'c'.repeat(48),'mock'),{status:402});
+ await a.grantTrial(f.pool,user.id);assert.equal((await a.status(user)).trial.remaining,0);
+ assert.equal((await f.billing.history({role:'owner'})).payments.length,0);
+ await f.billing.checkout(user,'starter');await f.billing.webhook(...f.event());
+ assert.equal((await a.status(user)).modes.mock.remaining,6);
+});
+test('trial failed starts are refunded, consumed starts are not; purchased allowance takes priority',async t=>{
+ const f=await fixture(t),a=f.billing.access,token='c'.repeat(48);
+ await a.grantTrial(f.pool,user.id);await a.reserve(user,token,'mock');await a.release(user,token);
+ assert.equal((await a.status(user)).trial.remaining,2);
+ await assert.rejects(a.reserve(user,token,'mock'),{status:409});
+ const pending='d'.repeat(48);await a.reserve(user,pending,'mock');
+ await f.billing.checkout(user,'starter');await f.billing.webhook(...f.event());
+ await a.commit(user,pending);assert.equal((await a.status(user)).remaining,12);
+ await a.reserve(user,'e'.repeat(48),'mock');await a.commit(user,'e'.repeat(48));
+ assert.equal((await a.status(user)).modes.mock.remaining,5);
+ await a.removeTrial(f.pool,user.id);
+ assert.equal((await f.db.query('SELECT * FROM mock_trial_usage')).rows.length,0);
+});

@@ -14,7 +14,7 @@ async function refresh(verify=false){
     document.querySelector('#refresh').onclick=()=>refresh(data.provider==='paystack');
     const access=data.access;
     const accessText=document.querySelector('#access');
-    accessText.textContent=access?.enforced?(access.active?`${access.modes?`${access.modes.mock.remaining} mock interviews and ${access.modes.learn.remaining} tutor sessions remaining`:`${access.remaining} of ${access.limit} shared sessions remaining`}. Expires ${new Date(access.expiresAt).toLocaleString()}.`:'Choose a plan to activate your practice allowance.'):'No practice allowance is active.';
+    accessText.textContent=access?.enforced?(access.active?`${access.modes?`${access.modes.mock.remaining} mock interviews and ${access.modes.learn.remaining} tutor sessions remaining`:`${access.remaining} of ${access.limit} shared sessions remaining`}. Expires ${new Date(access.expiresAt).toLocaleString()}.`:(access.trial?`${access.trial.remaining} of 2 free mock interviews remaining. Tutor sessions require a paid plan.`:'Choose a plan to activate your practice allowance.')):'No practice allowance is active.';
     const records=data.payments||data.subscriptions;
     message.textContent=records.length?records.map(s=>`${s.plan_id||'Unrecognized plan'}: ${s.status}${s.cancel_at_period_end?' (cancels at period end)':''}`).join('\n'):'Your access activates after your payment is verified.';
     for(const plan of [...data.plans].sort((a,b)=>Number(b.id===selectedPlan)-Number(a.id===selectedPlan))){

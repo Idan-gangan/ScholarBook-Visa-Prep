@@ -10,8 +10,10 @@ function validateAccess(value){
 // Live and test allowances use physically separate ledgers.
 function createAccess(pool,{enabled=false,users=new Set(),mode='test'}={}){
   const tables=tablesFor(mode);
+  const trial=require('./mock-trial').createMockTrial(pool,{enabled:enabled&&mode==='live'});
   const applies=user=>enabled&&typeof user?.id==='string'&&!!user.id&&(mode==='live'||users.has(user.id));
   async function init(){
+    await trial.init();
     await pool.query(`CREATE TABLE IF NOT EXISTS ${tables.holds} (
       reference TEXT PRIMARY KEY REFERENCES ${tables.checkouts}(reference),
       reason TEXT NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`);
@@ -45,7 +47,7 @@ function createAccess(pool,{enabled=false,users=new Set(),mode='test'}={}){
   async function status(user){
     if(!applies(user))return {enforced:false};
     const row=await active(user.id);
-    if(!row)return {enforced:true,active:false,remaining:0};
+    if(!row)return {enforced:true,active:false,remaining:0,trial:await trial.status(user.id)};
     const used=Number((await pool.query(`SELECT COUNT(*)::int AS used FROM ${tables.usage} WHERE reference=$1 AND state <> 'released'`,[row.reference])).rows[0].used);
     let modes;
     if(row.mode_limits){
@@ -64,7 +66,7 @@ function createAccess(pool,{enabled=false,users=new Set(),mode='test'}={}){
     try{
       await c.query('BEGIN');
       const row=await active(user.id,c,true);
-      if(!row)throw fail(402,'An active practice plan is required. Open the billing page.');
+      if(!row){await trial.reserve(c,user.id,token,mode);await c.query('COMMIT');return;}
       // Row locking serializes the last remaining session across processes.
       const previous=(await c.query(`SELECT user_id,reference,mode,state FROM ${tables.usage} WHERE token=$1`,[token])).rows[0];
       if(previous){
@@ -88,14 +90,15 @@ function createAccess(pool,{enabled=false,users=new Set(),mode='test'}={}){
     if(!applies(user))return;
     const result=await pool.query(`UPDATE ${tables.usage} SET state='consumed',updated_at=NOW()
       WHERE user_id=$1 AND token=$2 AND state IN ('reserved','consumed') RETURNING token`,[user.id,token]);
-    if(!result.rows.length)throw fail(409,'Practice reservation unavailable.');
+    if(!result.rows.length&&!await trial.commit(user.id,token))throw fail(409,'Practice reservation unavailable.');
   }
   async function release(user,token){
     if(!applies(user))return;
+    await trial.release(user.id,token);
     // Only the server's failed-start cleanup invokes this, after ending the call.
     // A browser ending a successful session never refunds its usage.
     await pool.query(`UPDATE ${tables.usage} SET state='released',updated_at=NOW() WHERE user_id=$1 AND token=$2 AND state='reserved'`,[user.id,token]);
   }
-  return {init,active,grant,status,requireActive,reserve,commit,release,applies};
+  return {init,active,grant,status,requireActive,reserve,commit,release,applies,grantTrial:trial.grant,removeTrial:trial.remove};
 }
 module.exports={createAccess,validateAccess};

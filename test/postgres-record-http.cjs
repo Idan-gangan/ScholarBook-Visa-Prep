@@ -16,7 +16,7 @@ test('record mode HTTP: registration, login, profile, learning, reviews, export,
   await pool.query('INSERT INTO user_credentials VALUES($1,$2,0)',['owner',await hashPassword(password)]);
   const client=await pool.connect();try{await store.migrate(client);}finally{client.release();}
   const net=require('node:net'),probe=net.createServer();await new Promise(r=>probe.listen(0,'127.0.0.1',r));const port=probe.address().port;await new Promise(r=>probe.close(r));
-  child=spawn(process.execPath,['--require','./test/fixtures/provider-stub.cjs','server.js'],{cwd:require('node:path').join(__dirname,'..'),env:{...process.env,DATABASE_URL:connection.href,RECORD_STORAGE:'enabled',MAX_CONCURRENT_VOICE:'20',PORT:String(port),COACH_EMAIL:'',COACH_PASSWORD:'',RESEND_API_KEY:'',OPENAI_API_KEY:'synthetic',AI_ENABLED:'true',VISAATLAS_SYNTHETIC_TEST:'1'},stdio:['ignore','pipe','pipe']});
+  child=spawn(process.execPath,['--require','./test/fixtures/provider-stub.cjs','server.js'],{cwd:require('node:path').join(__dirname,'..'),env:{...process.env,DATABASE_URL:connection.href,RECORD_STORAGE:'enabled',BILLING_PROVIDER:'paystack',BILLING_MODE:'live',BILLING_LIVE_USD_READY:'confirmed',PAYSTACK_SECRET_KEY:'sk_live_fixture',BILLING_ORIGIN:'https://example.test',MAX_CONCURRENT_VOICE:'20',PORT:String(port),COACH_EMAIL:'',COACH_PASSWORD:'',RESEND_API_KEY:'',OPENAI_API_KEY:'synthetic',AI_ENABLED:'true',VISAATLAS_SYNTHETIC_TEST:'1'},stdio:['ignore','pipe','pipe']});
   let log='';child.stdout.on('data',b=>log+=b);child.stderr.on('data',b=>log+=b);
   const base='http://127.0.0.1:'+port;
   for(let i=0;i<200;i++){if(child.exitCode!==null)throw Error('Test server exited: '+log);try{if((await fetch(base+'/healthz')).ok)break;}catch{}await new Promise(r=>setTimeout(r,50));if(i===199)throw Error('Startup timeout: '+log);}
@@ -26,6 +26,7 @@ test('record mode HTTP: registration, login, profile, learning, reviews, export,
   assert.equal((await call('/api/me',{cookie})).data.needsEmailVerification,true);
   for(const path of ['/api/my-profile','/api/athletes','/api/reports','/api/learning/study-purpose'])await call(path,{cookie,status:403});
   await adapter.mutate(async db=>{db.users.find(u=>u.id===uid).emailVerifiedAt=new Date().toISOString();});
+  assert.equal((await call('/api/voice-usage',{cookie})).data.access.trial.remaining,2);
   const profile=(await call('/api/my-profile',{cookie})).data;
   await call('/api/my-profile',{method:'PUT',cookie,body:{major:'Computer Science'}});
   assert.equal((await call('/api/my-profile',{cookie})).data.major,'Computer Science');
@@ -39,6 +40,7 @@ test('record mode HTTP: registration, login, profile, learning, reviews, export,
   assert.equal(voice.status,201,await voice.text());
   const sessionId=voice.headers.get('x-mock-session-id'),voiceToken=voice.headers.get('x-voice-token');
   assert.ok(sessionId);assert.ok(voiceToken);
+  assert.equal((await call('/api/voice-usage',{cookie})).data.access.trial.remaining,1);
   await call('/api/delete-account',{method:'POST',cookie,status:409,body:{currentPassword:password,confirmation:'DELETE'}});
   await call('/api/voice/end',{method:'POST',cookie,body:{token:voiceToken}});
   const transcript=[{role:'athlete',text:'Synthetic answer'}];
@@ -80,6 +82,8 @@ test('record mode HTTP: registration, login, profile, learning, reviews, export,
   await call('/api/my-profile',{cookie,status:401});
   const next=(await call('/api/login',{method:'POST',body:{email:'new@example.test',password:replacement}})).cookie;
   await call('/api/delete-account',{method:'POST',cookie:next,body:{currentPassword:replacement,confirmation:'DELETE'}});
+  assert.equal((await pool.query('SELECT * FROM mock_trial_accounts WHERE user_id=$1',[uid])).rows.length,0);
+  assert.equal((await pool.query('SELECT * FROM mock_trial_usage WHERE user_id=$1',[uid])).rows.length,0);
   await call('/api/my-profile',{cookie:next,status:401});
   assert.equal(await adapter.user(uid),null);assert.ok(await adapter.user('other'));
   assert.equal((await call('/api/reviews')).data.count,0);
@@ -91,6 +95,7 @@ test('record mode HTTP: registration, login, profile, learning, reviews, export,
       db.users.push({id:'batch-u'+i,name:'Synthetic',email:'batch'+i+'@example.test',role:'athlete',emailVerifiedAt:new Date().toISOString()});
       db.athletes.push({id:'batch-a'+i,userId:'batch-u'+i,name:'Synthetic',major:'Computer Science',country:'Nigeria',university:'Synthetic university',academicLevel:'Undergraduate',studyStatus:'In school',phoneCountry:'US',phone:'+12025550123',interviewCountry:'Nigeria',interviewCity:'Not booked yet',postGradPlan:'Return home',previousRefusal:'No',previousTravel:'No',previousAttempts:0,fundingSources:'Family'});
       await c.query('INSERT INTO user_credentials VALUES($1,$2,0)',['batch-u'+i,batchHash]);
+      await c.query('INSERT INTO mock_trial_accounts(user_id) VALUES($1)',['batch-u'+i]);
     }
   });
   const batch=[];

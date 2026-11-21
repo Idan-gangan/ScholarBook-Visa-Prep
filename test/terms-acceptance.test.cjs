@@ -5,10 +5,11 @@ const source=fs.readFileSync(path.join(__dirname,'../server.js'),'utf8');
 const version=source.match(/const TERMS_VERSION = "([^"]+)"/)[1];
 const route=source.slice(source.indexOf('    if(req.method==="POST" && url.pathname==="/api/register-athlete")'),source.indexOf('    if(req.method==="POST" && url.pathname==="/api/login")'));
 async function register(extra){
- const db={users:[],athletes:[]};let writes=0,hashes=0,response;
+ const db={users:[],athletes:[]};let writes=0,hashes=0,response;const trials=[];
  const body={ageBand:'18+',name:'Test Student',email:'test@example.test',password:'A sufficiently long password',...extra};
  const res={writeHead(status){response={status};},end(value){response.body=JSON.parse(value);}};
  await vm.runInNewContext('(async()=>{'+route+'})()',{
+ billing:{access:{grantTrial:async(client,id)=>trials.push(id)}},
  checkAge:require('../age-eligibility').checkAge,consumePermission:require('../age-eligibility').consumePermission,req:{method:'POST'},url:{pathname:'/api/register-athlete'},res,TERMS_VERSION:version,
  readBody:async()=>Buffer.from(JSON.stringify(body)),json:(_res,status,body)=>response={status,body},
  clean:(value,max=1000)=>String(value||'').trim().slice(0,max),validPassword:()=>true,
@@ -18,7 +19,7 @@ async function register(extra){
  stateError:(status,message)=>Object.assign(new Error(message),{status}),startSession:()=> 'session',
  emailVerification:{request:async()=>({message:'Check your email'})},sessionCookie:()=> 'cookie',
  });
- return {db,writes,hashes,response};
+ return {db,writes,hashes,response,trials};
 }
 test('registration rejects missing, false and non-boolean acceptance before any account writes',async()=>{
  for(const termsAccepted of [undefined,false,'true',1,{},[]]){
@@ -36,6 +37,7 @@ test('accepted registration saves the version and server time with the user, ign
  const before=Date.now();
  const result=await register({termsAccepted:true,termsVersion:version,acceptedAt:'1990-01-01',termsAcceptance:{version:'fake',acceptedAt:'1990-01-01'}});
  assert.equal(result.response.status,201);assert.equal(result.db.users.length,1);assert.equal(result.db.athletes.length,1);
+ assert.deepEqual(result.trials,[result.db.users[0].id]);
  const record=result.db.users[0].termsAcceptance;
  assert.equal(record.version,version);assert.equal(record.source,'self-registration');
  assert.ok(Date.parse(record.acceptedAt)>=before && Date.parse(record.acceptedAt)<=Date.now());
