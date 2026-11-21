@@ -95,10 +95,12 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
 <link rel="stylesheet" href="/student-profile-flow.css">
 <link rel="stylesheet" href="/owner.css">
 <link rel="stylesheet" href="/owner-command-center.css">
+<link rel="stylesheet" href="/owner-commercial.css">
 <link rel="stylesheet" href="/owner-student-analytics.css">
 <link rel="stylesheet" href="/owner-mobile-diagnostics.css">
 <script src="/student-profile-flow.js"></script>
 <script src="/owner-command-center.js"></script>
+<script src="/owner-commercial.js"></script>
 <script src="/owner-student-analytics.js"></script>
 <script src="/owner-mobile-diagnostics.js"></script>
 <link rel="stylesheet" href="/student.css">
@@ -349,6 +351,15 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
       <div id="ownerStats" class="owner-stats" aria-label="Owner workspace totals"></div>
        <div id="ownerAttention" class="owner-attention" aria-live="polite"></div>
        <div id="ownerInsights" class="owner-insights" aria-live="polite"></div>
+       <section class="owner-commercial" id="ownerCommercial" aria-labelledby="ownerCommercialTitle">
+         <div class="owner-commercial-head"><div><span class="owner-eyebrow">LIVE BUSINESS PERFORMANCE</span><h2 id="ownerCommercialTitle">Commercial overview</h2>
+           <p>Only verified Paystack charges from the live ledger. Distinguishes free practice, active plans and unresolved transactions. Not a cash-settlement or profit statement.</p></div>
+           <button class="btn secondary" type="button" onclick="loadOwnerCommercial()">Refresh payments</button></div>
+         <div id="ownerCommercialSummary" class="owner-commercial-grid" aria-label="Commercial metrics"></div>
+         <p id="ownerCommercialDetail" class="owner-commercial-detail"></p>
+         <p id="ownerCommercialStatus" class="owner-commercial-status" role="status" aria-live="polite">Refresh to load commercial metrics.</p>
+         <div class="owner-commercial-links"><a href="/owner-payments.html">Open verified payment history</a><a href="/api/owner/cost-export" target="_blank" rel="noopener">Export provider AI usage for reconciliation</a></div>
+       </section>
       <div class="owner-shortcuts"><button class="btn secondary" type="button" onclick="openOwnerStudentAnalytics()">Student analytics</button><button class="btn secondary" type="button" onclick="setOwnerTab('accounts')">Manage accounts</button><button class="btn secondary" type="button" onclick="setOwnerTab('assignments')">Staff assignments</button><button class="btn secondary" type="button" onclick="show('manager')">Student progress</button><button class="btn secondary" type="button" onclick="show('reports')">Readiness reports</button><a class="btn secondary" href="/review-moderation.html">Student reviews</a><a class="btn secondary" href="/owner-payments.html">Payments</a><span>Owner-only workspace · Existing session limits apply</span></div>
       <section class="owner-analytics" id="ownerStudentAnalytics" aria-labelledby="ownerStudentAnalyticsTitle">
         <div class="owner-analytics-heading"><div><span class="owner-eyebrow">STUDENT SUCCESS & USAGE</span><h2 id="ownerStudentAnalyticsTitle">Student analytics</h2><p>See saved practice activity, comparable mock-score improvements, follow-up opportunities and the AI usage we can actually measure.</p></div><button class="btn secondary" type="button" onclick="loadOwnerStudentAnalytics()">Refresh analytics</button></div>
@@ -615,6 +626,7 @@ function clearOwnerView(){
  for(const id of ['ownerStats','ownerAccounts','ownerAudit','ownerAssignments','ownerEditFields','ownerAttention','ownerInsights'])$(id).replaceChildren();
  window.clearOwnerMobileDiagnostics?.();
  window.clearOwnerStudentAnalytics?.();
+ window.clearOwnerCommercial?.();
  $('ownerStatus').textContent='';$('ownerRange').textContent='';
 }
 async function loadOwner(){
@@ -632,6 +644,7 @@ async function loadOwner(){
   renderOwnerDirectory();$('ownerStatus').textContent='';
   void loadOperations();
   void window.loadOwnerStudentAnalytics?.();
+  void window.loadOwnerCommercial?.();
  }catch(error){$('ownerStatus').textContent=error.message;}
 }
 function setOwnerTab(tab){

@@ -481,6 +481,16 @@ const server=http.createServer(async (req,res)=>{
         if(!billing.history)return json(res,404,{error:'Payment history unavailable for this provider.'});
         return json(res,200,await billing.history(u,{before:url.searchParams.get('before')||undefined}));
       }
+      if(req.method==='GET' && url.pathname==='/api/owner/commercial'){
+        const db=await loadDb({collections:['users','athletes']});
+        const summary=require('./owner-commercial').commercialOverview;
+        return json(res,200,await summary(pool,{
+          mode:process.env.BILLING_MODE||'disabled',
+          studentAccounts:(db.users||[]).filter(row=>row.role==='athlete').length,
+          studentProfiles:(db.athletes||[]).length,
+          newStudentProfiles7d:(db.athletes||[]).filter(row=>Number.isFinite(Date.parse(row.createdAt))&&Date.parse(row.createdAt)>=Date.now()-7*86400000&&Date.parse(row.createdAt)<=Date.now()+300000).length
+        }));
+      }
       if(req.method==='GET' && url.pathname==='/api/owner/cost-export'){
         const end=url.searchParams.get('end')||new Date().toISOString();
         const start=url.searchParams.get('start')||new Date(Date.now()-30*86400000).toISOString();
