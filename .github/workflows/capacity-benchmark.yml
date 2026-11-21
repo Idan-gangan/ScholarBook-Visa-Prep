@@ -1,0 +1,33 @@
+name: Synthetic capacity experiment
+on:
+  pull_request:
+    paths: ['scripts/capacity-benchmark.cjs', '.github/workflows/capacity-benchmark.yml']
+permissions:
+  contents: read
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: disposable-capacity-only
+          POSTGRES_DB: visaatlas_capacity_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --ignore-scripts --package-lock=false
+      - run: node --max-old-space-size=1024 scripts/capacity-benchmark.cjs
+        env:
+          TEST_DATABASE_URL: postgres://postgres:disposable-capacity-only@localhost:5432/visaatlas_capacity_test
+      - uses: actions/upload-artifact@v4
+        with:
+          name: synthetic-capacity-results
+          path: capacity-results.json
