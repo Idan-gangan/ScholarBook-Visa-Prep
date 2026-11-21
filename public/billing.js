@@ -48,7 +48,7 @@ async function refresh(verify=false){
         }catch(e){message.textContent=e.message;}finally{for(const b of plans.children)b.disabled=data.paymentReview===true || (access?.active===true && access.remaining>0);}
       };plans.append(button);
     }
-  }catch(e){document.querySelector('#billing-signin').hidden=e.status!==401;message.textContent=e.status===401?'Sign in or create an account to continue to checkout.':e.message;document.querySelector('#access').textContent='Your plan could not be loaded. Sign in and refresh, or contact support.';}
+  }catch(e){document.querySelector('#billing-signin').hidden=e.status!==401;message.textContent=e.status===401?'Sign in or create an account to continue to checkout.':e.message;document.querySelector('#access').textContent=e.status===401?'Sign in to see your free interviews and purchased plan.':'Your plan could not be loaded. Refresh or contact support.';}
 }
 document.querySelector('#refresh').onclick=()=>refresh();
 refresh();
