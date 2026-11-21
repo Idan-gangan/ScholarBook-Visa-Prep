@@ -17,7 +17,7 @@ const billing=require('./billing-provider').createBilling(pool);
 const recordStore=process.env.RECORD_STORAGE==='enabled'?require('./record-store').create(pool):null;
 
 // Update this version and the registration checkbox together when Terms change.
-const TERMS_VERSION = "2026-11-21";
+const TERMS_VERSION = "2026-11-21-trial2";
 const operations=require('./operations').createOperations(pool);
 const PORT = process.env.PORT || 3000;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
@@ -453,7 +453,7 @@ const server=http.createServer(async (req,res)=>{
       if(!body||body.confirmation!=='DELETE')return json(res,400,{error:'Type DELETE to confirm permanent account deletion.'});
       const saved=await credential(u.id);
       if(!saved||!await verifyPassword(body.currentPassword,saved.password_hash))return json(res,400,{error:'Current password is incorrect.'});
-      await mutateDb(async(db,client)=>{await require('./account-deletion').deleteStudentAccount(db,client,u.id,saved);await billing.access?.removeTrial?.(client,u.id);});
+      await mutateDb(async(db,client)=>{await require('./account-deletion').deleteStudentAccount(db,client,u.id,saved);await billing.access?.removeTrial?.(client,u.id,u.email);});
       for(const [token,session] of sessions)if(session.userId===u.id)sessions.delete(token);
       res.writeHead(200,{...RESPONSE_HEADERS,'Content-Type':'application/json','Cache-Control':'no-store','Set-Cookie':sessionCookie('',true)});
       return res.end(JSON.stringify({ok:true}));
