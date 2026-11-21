@@ -166,3 +166,5 @@
  #app.student-mode #studentPlanner{margin:14px 0;padding:15px}
  #app.student-mode #studentPlanner .history-heading h2{font-size:20px}
 }
+
+.student-plan-card{display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin:20px 0}.student-plan-card>div{flex:1 1 360px}.student-plan-card h2{font-size:24px;margin:8px 0}.student-plan-card p{line-height:1.65}.student-plan-card>a{min-height:44px;display:inline-flex;align-items:center}.student-plan-card>.btn{white-space:nowrap;text-decoration:none}@media(max-width:600px){.student-plan-card>.btn{width:100%;justify-content:center}.student-plan-card>div{flex-basis:100%}}

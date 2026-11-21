@@ -1,8 +1,9 @@
 'use strict';
 const message=document.querySelector('#message'), plans=document.querySelector('#plans');
-async function api(path,options){const r=await fetch(path,options);const data=await r.json();if(!r.ok)throw Error(data.error||'Billing is unavailable.');return data;}
+async function api(path,options){const r=await fetch(path,options);const data=await r.json();if(!r.ok)throw Object.assign(Error(data.error||'Billing is unavailable.'),{status:r.status});return data;}
 async function refresh(verify=false){
   plans.replaceChildren();
+  document.querySelector('#billing-signin').hidden=true;
   try{
     const data=await api(verify?'/api/billing/verify':'/api/billing/status',verify?{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}:undefined);
     if(data.mode!=='live')throw Error('Paid checkout is not open yet. No payment has been taken.');
@@ -26,7 +27,7 @@ async function refresh(verify=false){
         }catch(e){message.textContent=e.message;}finally{for(const b of plans.children)b.disabled=data.paymentReview===true || (access?.active===true && access.remaining>0);}
       };plans.append(button);
     }
-  }catch(e){message.textContent=e.message;document.querySelector('#access').textContent='Your plan could not be loaded. Sign in and refresh, or contact support.';}
+  }catch(e){document.querySelector('#billing-signin').hidden=e.status!==401;message.textContent=e.status===401?'Sign in or create an account to continue to checkout.':e.message;document.querySelector('#access').textContent='Your plan could not be loaded. Sign in and refresh, or contact support.';}
 }
 document.querySelector('#refresh').onclick=()=>refresh();
 refresh();
