@@ -132,8 +132,10 @@ function createPartnerAccess(pool,{enabled=false}={}){
   }
   async function removeUser(userId,client=pool){
     if(!enabled)return;
-    await client.query(`UPDATE partner_access_grants SET revoked_at=COALESCE(revoked_at,NOW())
-      WHERE user_id=$1 AND revoked_at IS NULL`,[userId]);
+    // Sponsored records are not payment-provider receipts; delete personal grant
+    // and usage rows during verified account deletion, inside the same transaction.
+    await client.query('DELETE FROM partner_access_usage WHERE user_id=$1',[userId]);
+    await client.query('DELETE FROM partner_access_grants WHERE user_id=$1',[userId]);
   }
   return {init,status,list,grant,revoke,reserve,commit,release,removeUser};
 }
