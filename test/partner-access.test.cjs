@@ -60,6 +60,8 @@ test('partner usage rejects wrong owners and modes and never spends another acco
  assert.equal((await f.p.status(student)).modes.mock.remaining,11);
  await f.p.removeUser(student.id);
  assert.equal(await f.p.status(student),null);
+ assert.equal((await f.db.query('SELECT COUNT(*)::int AS n FROM partner_access_grants')).rows[0].n,0);
+ assert.equal((await f.db.query('SELECT COUNT(*)::int AS n FROM partner_access_usage')).rows[0].n,0);
 });
 test('billing-provider integrates partner grant without Paystack rows or fake charges',async t=>{
  const db=new PGlite();t.after(()=>db.close());const query=(s,p)=>db.query(s,p),pool={query,connect:async()=>({query,release(){}})};
