@@ -6,9 +6,9 @@
  */
 const {tablesFor}=require('./billing-tables');
 const count=v=>Math.max(0,Number(v)||0);
-async function commercialOverview(pool,{mode='disabled',studentAccounts=0,studentProfiles=0}={}){
+async function commercialOverview(pool,{mode='disabled',studentAccounts=0,studentProfiles=0,newStudentProfiles7d=0}={}){
   const base={asOf:new Date().toISOString(),mode,studentAccounts:count(studentAccounts),
-    studentProfiles:count(studentProfiles),verifiedPayments:0,verifiedPayers:0,
+    studentProfiles:count(studentProfiles),newStudentProfiles7d:count(newStudentProfiles7d),verifiedPayments:0,verifiedPayers:0,
     verifiedUsdCents:0,verifiedUsd30dCents:0,activePaidAccounts:0,
     onHoldPayments:0,openCheckouts:0,starterPurchases:0,standardPurchases:0,
     trialAccounts:0,trialMockSessionsUsed:0,trialAccountsWithPayment:0,
