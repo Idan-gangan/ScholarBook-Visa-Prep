@@ -1,19 +1,39 @@
 'use strict';
+const {createHmac}=require('node:crypto');
 const fail=(status,message)=>Object.assign(new Error(message),{status,publicMessage:message});
 // Trial access is separate from verified payments and purchased allowances.
-function createMockTrial(pool,{enabled=false}={}){
+// Only Gmail has universally known dot/plus alias semantics; do not
+// assume other mail providers treat addresses as interchangeable.
+function trialEmailIdentity(email,secret){
+  if(typeof email!=='string'||!secret)return null;
+  const parts=email.trim().toLowerCase().split('@');
+  if(parts.length!==2||!parts[0]||!parts[1])return null;
+  let [local,domain]=parts;
+  if(domain==='gmail.com'||domain==='googlemail.com'){
+    domain='gmail.com';
+    local=local.split('+')[0].replace(/\./g,'');
+  }
+  return createHmac('sha256',secret).update(local+'@'+domain).digest('hex');
+}
+function createMockTrial(pool,{enabled=false,secret=''}={}){
   async function init(){
     if(!enabled)return;
     await pool.query(`CREATE TABLE IF NOT EXISTS mock_trial_accounts (
       user_id TEXT PRIMARY KEY,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`);
+    await pool.query('ALTER TABLE mock_trial_accounts ADD COLUMN IF NOT EXISTS identity_hash TEXT');
+    await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS mock_trial_identity_unique ON mock_trial_accounts(identity_hash) WHERE identity_hash IS NOT NULL');
     await pool.query(`CREATE TABLE IF NOT EXISTS mock_trial_usage (
       token TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES mock_trial_accounts(user_id),
       state TEXT NOT NULL CHECK(state IN ('reserved','consumed','released')),
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`);
     await pool.query('CREATE INDEX IF NOT EXISTS mock_trial_usage_user ON mock_trial_usage(user_id)');
   }
-  async function grant(client,userId){
-    if(enabled)await client.query('INSERT INTO mock_trial_accounts(user_id) VALUES($1) ON CONFLICT DO NOTHING',[userId]);
+  async function grant(client,userId,email){
+    if(!enabled)return;
+    const identity=trialEmailIdentity(email,secret);
+    // A verified mailbox may qualify for only one active trial. Aliases do not
+    // silently receive another allowance. This does not prove unique identity.
+    await client.query('INSERT INTO mock_trial_accounts(user_id,identity_hash) VALUES($1,$2) ON CONFLICT DO NOTHING',[userId,identity]);
   }
   async function status(userId){
     if(!enabled)return null;
@@ -49,4 +69,4 @@ function createMockTrial(pool,{enabled=false}={}){
   }
   return {init,grant,status,reserve,commit,release,remove};
 }
-module.exports={createMockTrial};
+module.exports={createMockTrial,trialEmailIdentity};
