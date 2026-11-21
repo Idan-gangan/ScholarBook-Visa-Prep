@@ -1,5 +1,9 @@
 'use strict';
 const message=document.querySelector('#message'), plans=document.querySelector('#plans');
+const requestedPlan=new URLSearchParams(location.search).get('plan');
+const selectedPlan=['starter','standard'].includes(requestedPlan)?requestedPlan:null;
+const signInLink=document.querySelector('#billing-signin a');
+if(selectedPlan)signInLink.href='/?signin=1&next=billing&plan='+selectedPlan;
 async function api(path,options){const r=await fetch(path,options);const data=await r.json();if(!r.ok)throw Object.assign(Error(data.error||'Billing is unavailable.'),{status:r.status});return data;}
 async function refresh(verify=false){
   plans.replaceChildren();
@@ -13,8 +17,9 @@ async function refresh(verify=false){
     accessText.textContent=access?.enforced?(access.active?`${access.modes?`${access.modes.mock.remaining} mock interviews and ${access.modes.learn.remaining} tutor sessions remaining`:`${access.remaining} of ${access.limit} shared sessions remaining`}. Expires ${new Date(access.expiresAt).toLocaleString()}.`:'Choose a plan to activate your practice allowance.'):'No practice allowance is active.';
     const records=data.payments||data.subscriptions;
     message.textContent=records.length?records.map(s=>`${s.plan_id||'Unrecognized plan'}: ${s.status}${s.cancel_at_period_end?' (cancels at period end)':''}`).join('\n'):'Your access activates after your payment is verified.';
-    for(const plan of data.plans){
-      const button=document.createElement('button');button.textContent=`${plan.id === 'starter' ? 'Buy Starter' : plan.id === 'standard' ? 'Buy Standard' : plan.id} — ${new Intl.NumberFormat('en-US',{style:'currency',currency:plan.currency}).format(plan.amount/100)}${data.recurring===false?' (one payment)':'/month'}`;
+    for(const plan of [...data.plans].sort((a,b)=>Number(b.id===selectedPlan)-Number(a.id===selectedPlan))){
+      const button=document.createElement('button');button.dataset.plan=plan.id;if(plan.id===selectedPlan){button.classList.add('selected-plan');button.setAttribute('aria-label','Continue with selected '+plan.id+' plan');}button.textContent=`${plan.id === 'starter' ? 'Buy Starter' : plan.id === 'standard' ? 'Buy Standard' : plan.id} — ${new Intl.NumberFormat('en-US',{style:'currency',currency:plan.currency}).format(plan.amount/100)}${data.recurring===false?' (one payment)':'/month'}`;
+      if(plan.id===selectedPlan)button.textContent='Selected: '+button.textContent;
       if(plan.access)button.textContent+=` · ${plan.access.mock!==undefined?`${plan.access.mock} mock interviews + ${plan.access.learn} tutor sessions`:`${plan.access.sessions} shared tutor/mock sessions`} over ${plan.access.days} days`;
       button.disabled=data.paymentReview===true || (access?.active===true && access.remaining>0);
       button.onclick=async()=>{
