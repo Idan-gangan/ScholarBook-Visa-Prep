@@ -1,5 +1,7 @@
 # VisaAtlas — launch campaign kit
 
+![Official VisaAtlas logo](https://visaatlasprep.com/favicon.png)
+
 **Status:** Prepared for owner approval and publication. This file does not post to external social accounts. The website already offers registration and two free mock interviews. Paid promotion waits for verified Paystack checkout + automatic entitlement activation. Use the existing official VisaAtlas mark from the website; never replace it with a generative approximation.
 
 ## Primary offer
