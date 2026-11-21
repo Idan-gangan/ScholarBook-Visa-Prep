@@ -18,8 +18,7 @@ for(const mode of ['test','live'])test(mode+': concurrent checkout, notification
     };
     const a=createBilling(pools[0],{env,request}),b=createBilling(pools[1],{env,request});await a.init();await b.init();
     if(mode==='live'){
-      const trialUser={id:'trial-user',email:'trial@example.test'};
-      await a.access.grantTrial(pools[0],trialUser.id);
+      const trialUser={id:'trial-user',email:'trial@example.test',role:'athlete'};
       const trialStarts=await Promise.allSettled(Array.from({length:12},(_,i)=>(i%2?a:b).access.reserve(trialUser,('f'+i.toString(16)).padStart(48,'0'),'mock')));
       assert.equal(trialStarts.filter(r=>r.status==='fulfilled').length,2);
       assert.equal((await b.access.status(trialUser)).trial.remaining,0);

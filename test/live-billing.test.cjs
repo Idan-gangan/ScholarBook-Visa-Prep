@@ -123,3 +123,26 @@ test('trial failed starts are refunded, consumed starts are not; purchased allow
  await a.removeTrial(f.pool,user.id);
  assert.equal((await f.db.query('SELECT * FROM mock_trial_usage')).rows.length,0);
 });
+
+
+test('existing students receive a one-time trial on status or direct start without resetting used sessions',async t=>{
+ const f=await fixture(t),a=f.billing.access,old={id:'old-student',role:'athlete'},direct={id:'direct-student',role:'athlete'};
+ assert.equal((await a.status(old)).trial.remaining,2);
+ for(const token of ['1'.repeat(48),'2'.repeat(48)]){
+  await a.reserve(old,token,'mock');await a.commit(old,token);
+ }
+ assert.equal((await a.status(old)).trial.remaining,0);
+ await a.init();assert.equal((await a.status(old)).trial.remaining,0);
+ await assert.rejects(a.reserve(old,'3'.repeat(48),'mock'),{status:402});
+ await a.reserve(direct,'4'.repeat(48),'mock');await a.commit(direct,'4'.repeat(48));
+ assert.equal((await a.status(direct)).trial.remaining,1);
+ await assert.rejects(a.reserve(direct,'5'.repeat(48),'learn'),{status:402});
+ for(const role of ['owner','coach'])assert.equal((await a.status({id:role,role})).trial,null);
+ assert.equal((await a.status({id:'paused',role:'athlete',accessSuspended:true})).trial,null);
+});
+test('existing paid students keep their full paid allowance when the trial is provisioned',async t=>{
+ const f=await fixture(t);await f.billing.checkout(user,'starter');await f.billing.webhook(...f.event());
+ const access=await f.billing.access.status({...user,role:'athlete'});
+ assert.equal(access.remaining,12);assert.equal(access.modes.mock.remaining,6);
+ assert.equal((await f.db.query('SELECT * FROM mock_trial_accounts WHERE user_id=$1',[user.id])).rows.length,1);
+});
