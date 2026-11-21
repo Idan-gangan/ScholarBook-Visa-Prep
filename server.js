@@ -487,7 +487,8 @@ const server=http.createServer(async (req,res)=>{
         return json(res,200,await summary(pool,{
           mode:process.env.BILLING_MODE||'disabled',
           studentAccounts:(db.users||[]).filter(row=>row.role==='athlete').length,
-          studentProfiles:(db.athletes||[]).length
+          studentProfiles:(db.athletes||[]).length,
+          newStudentProfiles7d:(db.athletes||[]).filter(row=>Number.isFinite(Date.parse(row.createdAt))&&Date.parse(row.createdAt)>=Date.now()-7*86400000&&Date.parse(row.createdAt)<=Date.now()+300000).length
         }));
       }
       if(req.method==='GET' && url.pathname==='/api/owner/cost-export'){
