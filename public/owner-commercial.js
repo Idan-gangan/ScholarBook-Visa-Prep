@@ -16,6 +16,7 @@ function paint(data){
  }
  summary.innerHTML=[
    card('Student accounts',number(data.studentAccounts),'Registered students, not unique people'),
+   card('New student profiles · 7 days',number(data.newStudentProfiles7d),'New profile records, not unique visitors'),
    card('Free trial accounts',number(data.trialAccounts),'Two mock interviews per eligible account'),
    card('Free mocks used',number(data.trialMockSessionsUsed),'Trial mock starts consumed'),
    card('Active paid accounts',number(data.activePaidAccounts),'Verified payments with unexpired access'),
