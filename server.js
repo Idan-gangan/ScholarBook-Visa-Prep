@@ -372,6 +372,7 @@ const server=http.createServer(async (req,res)=>{
       if(db.users.some(u=>normalizeEmail(u.email)===email))throw stateError(409,"An account with this email already exists.");
       const ageEligibility=consumePermission(db,body,email);
       await client.query('INSERT INTO user_credentials (user_id,password_hash) VALUES ($1,$2) ON CONFLICT (user_id) DO NOTHING',[userId,hash]);
+      await billing.access?.grantTrial?.(client,userId);
       db.users.push({id:userId,name:clean(body.name,120),email,role:"athlete",verificationRequired:true,ageEligibility,termsAcceptance:{version:TERMS_VERSION,acceptedAt:new Date().toISOString(),source:"self-registration"}});
       db.athletes.push({
         id:athleteId,userId,name:clean(body.name,120),email,
@@ -447,7 +448,7 @@ const server=http.createServer(async (req,res)=>{
       if(!body||body.confirmation!=='DELETE')return json(res,400,{error:'Type DELETE to confirm permanent account deletion.'});
       const saved=await credential(u.id);
       if(!saved||!await verifyPassword(body.currentPassword,saved.password_hash))return json(res,400,{error:'Current password is incorrect.'});
-      await mutateDb((db,client)=>require('./account-deletion').deleteStudentAccount(db,client,u.id,saved));
+      await mutateDb(async(db,client)=>{await require('./account-deletion').deleteStudentAccount(db,client,u.id,saved);await billing.access?.removeTrial?.(client,u.id);});
       for(const [token,session] of sessions)if(session.userId===u.id)sessions.delete(token);
       res.writeHead(200,{...RESPONSE_HEADERS,'Content-Type':'application/json','Cache-Control':'no-store','Set-Cookie':sessionCookie('',true)});
       return res.end(JSON.stringify({ok:true}));

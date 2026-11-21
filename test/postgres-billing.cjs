@@ -17,6 +17,13 @@ for(const mode of ['test','live'])test(mode+': concurrent checkout, notification
       return {ok:true,json:async()=>({status:true,data:{reference:body.reference,domain:mode,amount:mode==='live'?2900:10000,currency:mode==='live'?'USD':'NGN',customer:{email:user.email},status:'success',paid_at:new Date().toISOString()}})};
     };
     const a=createBilling(pools[0],{env,request}),b=createBilling(pools[1],{env,request});await a.init();await b.init();
+    if(mode==='live'){
+      const trialUser={id:'trial-user',email:'trial@example.test'};
+      await a.access.grantTrial(pools[0],trialUser.id);
+      const trialStarts=await Promise.allSettled(Array.from({length:12},(_,i)=>(i%2?a:b).access.reserve(trialUser,('f'+i.toString(16)).padStart(48,'0'),'mock')));
+      assert.equal(trialStarts.filter(r=>r.status==='fulfilled').length,2);
+      assert.equal((await b.access.status(trialUser)).trial.remaining,0);
+    }
     const checkouts=await Promise.allSettled(Array.from({length:12},(_,i)=>(i%2?a:b).checkout(user,mode==='live'?'starter':'test')));
     assert.ok(checkouts.some(r=>r.status==='fulfilled'));assert.equal(initializations,1);
     assert.equal((await pools[0].query(`SELECT * FROM paystack_${mode}_checkouts`)).rows.length,1);
