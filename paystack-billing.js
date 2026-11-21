@@ -49,7 +49,7 @@ function checkoutUrl(value){
 function createBilling(pool,{env=process.env,request=fetch}={}){
   const config=configuration(env);
   const tables=tablesFor(config?.mode||'test');
-  const access=createAccess(pool,{enabled:!!config?.testAccess,users:config?.users||new Set(),mode:config?.mode||'test'});
+  const access=createAccess(pool,{enabled:!!config?.testAccess,users:config?.users||new Set(),mode:config?.mode||'test',trialSecret:env.TRIAL_IDENTITY_SECRET||config?.secret||''});
   async function init(){
     if(!config)return;
     await pool.query(`CREATE TABLE IF NOT EXISTS ${tables.checkouts} (
@@ -176,8 +176,7 @@ function createBilling(pool,{env=process.env,request=fetch}={}){
       await c.query('BEGIN');
       const current=(await c.query(`SELECT * FROM ${tables.checkouts} WHERE reference=$1 FOR UPDATE`,[row.reference])).rows[0];
       // An old hosted link may receive a late payment after a recovery.
-      const replaced=current?.state==='closed' &&
-        (await c.query(`SELECT 1 FROM ${tables.checkouts} WHERE user_id=$1 AND reference<>$2 LIMIT 1`,[row.user_id,row.reference])).rows.length>0;
+      const replaced=current?.state==='closed';
       await c.query(`INSERT INTO ${tables.payments}(reference,paid_at) VALUES($1,$2) ON CONFLICT DO NOTHING`,[row.reference,new Date(paidAt).toISOString()]);
       await c.query(`UPDATE ${tables.checkouts} SET state='paid',updated_at=NOW() WHERE reference=$1`,[row.reference]);
       if(replaced)await c.query(`INSERT INTO ${tables.holds}(reference,reason) VALUES($1,$2) ON CONFLICT DO NOTHING`,
