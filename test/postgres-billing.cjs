@@ -22,6 +22,12 @@ for(const mode of ['test','live'])test(mode+': concurrent checkout, notification
       const trialStarts=await Promise.allSettled(Array.from({length:12},(_,i)=>(i%2?a:b).access.reserve(trialUser,('f'+i.toString(16)).padStart(48,'0'),'mock')));
       assert.equal(trialStarts.filter(r=>r.status==='fulfilled').length,2);
       assert.equal((await b.access.status(trialUser)).trial.remaining,0);
+      await pools[0].query("UPDATE mock_trial_daily SET starts=99 WHERE day=(NOW() AT TIME ZONE 'UTC')::date");
+      const many=await Promise.allSettled(Array.from({length:8},(_,i)=>(i%2?a:b).access.reserve(
+        {id:'budget-'+i,email:'budget-'+i+'@example.test',role:'athlete'},('e'+i).padStart(48,'0'),'mock')));
+      assert.equal(many.filter(r=>r.status==='fulfilled').length,1);
+      assert.equal(many.filter(r=>r.status==='rejected'&&r.reason.status===429).length,7);
+      assert.equal((await pools[0].query('SELECT starts FROM mock_trial_daily')).rows[0].starts,100);
     }
     const checkouts=await Promise.allSettled(Array.from({length:12},(_,i)=>(i%2?a:b).checkout(user,mode==='live'?'starter':'test')));
     assert.ok(checkouts.some(r=>r.status==='fulfilled'));assert.equal(initializations,1);

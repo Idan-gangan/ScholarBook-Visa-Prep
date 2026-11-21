@@ -90,3 +90,26 @@ test('hashed Gmail variants share one active trial, without storing plain addres
  assert.notEqual(trialEmailIdentity('alex+test@outlook.com','private-test-secret'),
    trialEmailIdentity('alex@outlook.com','private-test-secret'));
 });
+test('deleted accounts cannot reclaim a trial during the suppression period',async t=>{
+ const db=new PGlite();t.after(()=>db.close());const pool={query:(s,p)=>db.query(s,p)};
+ const trial=createMockTrial(pool,{enabled:true,secret:'fixture'});await trial.init();
+ await trial.grant(pool,'original','a.b+visa@gmail.com');
+ await trial.remove(pool,'original','a.b+visa@gmail.com');
+ await trial.grant(pool,'replacement','ab@gmail.com');
+ assert.equal(await trial.status('replacement'),null);
+ const retired=(await db.query('SELECT * FROM mock_trial_retired')).rows;
+ assert.equal(retired.length,1);assert.match(retired[0].identity_hash,/^[a-f0-9]{64}$/);
+ await db.query("UPDATE mock_trial_retired SET expires_at=NOW()-INTERVAL '1 day'");
+ await trial.grant(pool,'after-retention','ab@gmail.com');
+ assert.equal((await trial.status('after-retention')).remaining,2);
+});
+test('daily free-start budget is durable across deletion and does not spend personal allowance on rejection',async t=>{
+ const db=new PGlite();t.after(()=>db.close());const pool={query:(s,p)=>db.query(s,p)};
+ const trial=createMockTrial(pool,{enabled:true,secret:'fixture',dailyLimit:1});await trial.init();
+ await trial.grant(pool,'one','one@example.test');await trial.grant(pool,'two','two@example.test');
+ await trial.reserve(pool,'one','first','mock');await trial.release('one','first');
+ await trial.remove(pool,'one','one@example.test');
+ await assert.rejects(trial.reserve(pool,'two','second','mock'),{status:429});
+ assert.equal((await trial.status('two')).remaining,2);
+ assert.equal((await db.query('SELECT starts FROM mock_trial_daily')).rows[0].starts,1);
+});

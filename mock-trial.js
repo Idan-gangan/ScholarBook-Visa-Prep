@@ -15,7 +15,8 @@ function trialEmailIdentity(email,secret){
   }
   return createHmac('sha256',secret).update(local+'@'+domain).digest('hex');
 }
-function createMockTrial(pool,{enabled=false,secret=''}={}){
+function createMockTrial(pool,{enabled=false,secret='',dailyLimit=100}={}){
+  if(!Number.isSafeInteger(dailyLimit)||dailyLimit<1)throw Error('Invalid daily trial limit');
   async function init(){
     if(!enabled)return;
     await pool.query(`CREATE TABLE IF NOT EXISTS mock_trial_accounts (
@@ -27,10 +28,20 @@ function createMockTrial(pool,{enabled=false,secret=''}={}){
       state TEXT NOT NULL CHECK(state IN ('reserved','consumed','released')),
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`);
     await pool.query('CREATE INDEX IF NOT EXISTS mock_trial_usage_user ON mock_trial_usage(user_id)');
+    await pool.query(`CREATE TABLE IF NOT EXISTS mock_trial_retired (
+      identity_hash TEXT PRIMARY KEY, expires_at TIMESTAMPTZ NOT NULL)`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS mock_trial_daily (
+      day DATE PRIMARY KEY, starts INTEGER NOT NULL CHECK(starts>=0))`);
   }
   async function grant(client,userId,email){
     if(!enabled)return;
     const identity=trialEmailIdentity(email,secret);
+    // Expiry cleanup is lazy, on later grant requests. No raw email is retained here.
+    await client.query('DELETE FROM mock_trial_retired WHERE expires_at<NOW()');
+    if(identity){
+      await client.query('SELECT pg_advisory_xact_lock(hashtext($1))',['trial-identity:'+identity]);
+      if((await client.query('SELECT 1 FROM mock_trial_retired WHERE identity_hash=$1 AND expires_at>NOW()',[identity])).rows.length)return;
+    }
     // A verified mailbox may qualify for only one active trial. Aliases do not
     // silently receive another allowance. This does not prove unique identity.
     await client.query('INSERT INTO mock_trial_accounts(user_id,identity_hash) VALUES($1,$2) ON CONFLICT DO NOTHING',[userId,identity]);
@@ -53,6 +64,12 @@ function createMockTrial(pool,{enabled=false,secret=''}={}){
     }
     const used=Number((await client.query("SELECT COUNT(*)::int AS used FROM mock_trial_usage WHERE user_id=$1 AND state<>'released'",[userId])).rows[0].used);
     if(used>=2)throw fail(402,'You have used your two free mock interviews. Choose a plan to keep practising.');
+    // Atomic global start budget survives account deletion and app restarts.
+    // Failed starts still count toward this abuse budget, but release their personal allowance.
+    await client.query("DELETE FROM mock_trial_daily WHERE day < (NOW() AT TIME ZONE 'UTC')::date-30");
+    const budget=await client.query(`INSERT INTO mock_trial_daily(day,starts) VALUES((NOW() AT TIME ZONE 'UTC')::date,1)
+      ON CONFLICT(day) DO UPDATE SET starts=mock_trial_daily.starts+1 WHERE mock_trial_daily.starts<$1 RETURNING starts`,[dailyLimit]);
+    if(!budget.rows.length)throw fail(429,'Free interview capacity is full for today. Please try again tomorrow. Your remaining trial sessions are unchanged.');
     await client.query("INSERT INTO mock_trial_usage(token,user_id,state) VALUES($1,$2,'reserved')",[token,userId]);
   }
   async function commit(userId,token){
@@ -62,8 +79,15 @@ function createMockTrial(pool,{enabled=false,secret=''}={}){
   async function release(userId,token){
     if(enabled)await pool.query("UPDATE mock_trial_usage SET state='released' WHERE user_id=$1 AND token=$2 AND state='reserved'",[userId,token]);
   }
-  async function remove(client,userId){
+  async function remove(client,userId,email){
     if(!enabled)return;
+    const account=(await client.query('SELECT identity_hash FROM mock_trial_accounts WHERE user_id=$1 FOR UPDATE',[userId])).rows[0];
+    const identity=account?.identity_hash||trialEmailIdentity(email,secret);
+    if(identity){
+      await client.query('SELECT pg_advisory_xact_lock(hashtext($1))',['trial-identity:'+identity]);
+      await client.query(`INSERT INTO mock_trial_retired(identity_hash,expires_at) VALUES($1,NOW()+INTERVAL '180 days')
+        ON CONFLICT(identity_hash) DO UPDATE SET expires_at=EXCLUDED.expires_at`,[identity]);
+    }
     await client.query('DELETE FROM mock_trial_usage WHERE user_id=$1',[userId]);
     await client.query('DELETE FROM mock_trial_accounts WHERE user_id=$1',[userId]);
   }

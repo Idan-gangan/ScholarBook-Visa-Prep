@@ -104,10 +104,10 @@ test('unverified users cannot spend voice or evaluation allowance; me never expo
 });
 test('short signup creates an unverified student even when email delivery is unavailable',async()=>{
  const h=harness();
- const result=await h.request('POST','/api/register-athlete',{ageBand:'18+',termsAccepted:true,termsVersion:'2026-11-21',name:'New Student',email:'new@example.test',password:'long test password for signup',role:'owner',emailVerifiedAt:'fake'},false);
+ const result=await h.request('POST','/api/register-athlete',{ageBand:'18+',termsAccepted:true,termsVersion:'2026-11-21-trial2',name:'New Student',email:'new@example.test',password:'long test password for signup',role:'owner',emailVerifiedAt:'fake'},false);
  assert.equal(result.status,201);assert.match(result.headers['Set-Cookie'],/sb_session=/);
  const user=h.db.users.find(u=>u.email==='new@example.test');
- assert.equal(user.termsAcceptance.version,'2026-11-21');assert.ok(Number.isFinite(Date.parse(user.termsAcceptance.acceptedAt)));
+ assert.equal(user.termsAcceptance.version,'2026-11-21-trial2');assert.ok(Number.isFinite(Date.parse(user.termsAcceptance.acceptedAt)));
  assert.equal(user.role,'athlete');assert.equal(user.verificationRequired,true);assert.equal(user.emailVerifiedAt,undefined);
  assert.equal(h.db.athletes.find(a=>a.userId===user.id).profileStatus,'Incomplete');
  assert.equal((await h.request('POST','/api/resend-verification',{},false)).status,401);
@@ -301,7 +301,7 @@ test('assigned staff access is preserved while unrelated roles cannot write anot
 });
 test('student registration permits no sport and retains student-only privileges',async()=>{
  const h=harness({id:'u1',role:'athlete',email:'existing@example.test'});
- const result=await h.request('POST','/api/register-athlete',{ageBand:'18+',termsAccepted:true,termsVersion:'2026-11-21',name:'New Student',email:'new@example.test',password:'example-password',country:'Nigeria',university:'Example University',major:'Biology',role:'coach'},false);
+ const result=await h.request('POST','/api/register-athlete',{ageBand:'18+',termsAccepted:true,termsVersion:'2026-11-21-trial2',name:'New Student',email:'new@example.test',password:'example-password',country:'Nigeria',university:'Example University',major:'Biology',role:'coach'},false);
  assert.equal(result.status,201);
  assert.equal(h.db.users.at(-1).role,'athlete');
  assert.equal(h.db.athletes.at(-1).sport,'');
@@ -421,7 +421,7 @@ test('slow evaluation preserves intervening profile save and rejects overlap',as
  assert.equal((await first).status,200);assert.equal(h.db.athletes[0].mocks,1);assert.equal(h.db.athletes[0].major,'Updated while evaluating');
 });
 test('concurrent duplicate registrations create only one account and credential',async()=>{
- const h=harness();const body={ageBand:'18+',termsAccepted:true,termsVersion:'2026-11-21',name:'Student',email:'new@example.test',password:'a-long-test-password',country:'Nigeria',university:'Example',major:'Biology'};
+ const h=harness();const body={ageBand:'18+',termsAccepted:true,termsVersion:'2026-11-21-trial2',name:'Student',email:'new@example.test',password:'a-long-test-password',country:'Nigeria',university:'Example',major:'Biology'};
  const responses=await Promise.all([h.request('POST','/api/register-athlete',body,false),h.request('POST','/api/register-athlete',body,false)]);
  assert.deepEqual(responses.map(r=>r.status).sort(),[201,409]);assert.equal(h.db.users.filter(u=>u.email===body.email).length,1);assert.equal(h.credentials.size,2);
 });
@@ -674,7 +674,7 @@ test('PDF exports require access to the report student and use private download 
  });
 test('registration API rejects underage or undeclared age and unapproved teens without credentials',async()=>{
  for(const ageBand of [undefined,'under13','13-17']){
- const h=harness();const result=await h.request('POST','/api/register-athlete',{name:'Test',email:'new@example.test',password:'a sufficiently long password',termsAccepted:true,termsVersion:'2026-11-21',ageBand},false);
+ const h=harness();const result=await h.request('POST','/api/register-athlete',{name:'Test',email:'new@example.test',password:'a sufficiently long password',termsAccepted:true,termsVersion:'2026-11-21-trial2',ageBand},false);
  assert.equal(result.status,ageBand===undefined?400:403);assert.equal(h.db.users.length,1);assert.equal(h.credentials.size,1);
  }
 });
