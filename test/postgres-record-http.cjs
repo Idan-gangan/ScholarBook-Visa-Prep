@@ -95,6 +95,7 @@ test('record mode HTTP: registration, login, profile, learning, reviews, export,
       db.users.push({id:'batch-u'+i,name:'Synthetic',email:'batch'+i+'@example.test',role:'athlete',emailVerifiedAt:new Date().toISOString()});
       db.athletes.push({id:'batch-a'+i,userId:'batch-u'+i,name:'Synthetic',major:'Computer Science',country:'Nigeria',university:'Synthetic university',academicLevel:'Undergraduate',studyStatus:'In school',phoneCountry:'US',phone:'+12025550123',interviewCountry:'Nigeria',interviewCity:'Not booked yet',postGradPlan:'Return home',previousRefusal:'No',previousTravel:'No',previousAttempts:0,fundingSources:'Family'});
       await c.query('INSERT INTO user_credentials VALUES($1,$2,0)',['batch-u'+i,batchHash]);
+      await c.query('INSERT INTO mock_trial_accounts(user_id) VALUES($1)',['batch-u'+i]);
     }
   });
   const batch=[];
