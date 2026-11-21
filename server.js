@@ -1013,7 +1013,8 @@ Start with the opening guidance in INTERVIEW DESIGN below.`;
     interrupt_response:false
   }
 },
-          output:{voice:"marin"}
+          // Match the fixed male mock-interviewer portrait; tutor has no portrait.
+          output:{voice:mode==="mock"?"cedar":"marin"}
         }
       }));
 
