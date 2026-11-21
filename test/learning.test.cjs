@@ -349,6 +349,7 @@ test('tutor gets teaching instructions and saved context, never mock-only instru
  assert.equal((await h.request('POST','/api/realtime-session?athleteId=s1&mode=learn&lesson=study-purpose','v=0\r\noffer')).status,200);
  const session=h.calls[0].session;
  assert.equal(session.max_output_tokens,1024);
+ assert.equal(session.audio.output.voice,'marin');
  assert.match(session.instructions,/35–65 words/);
  assert.match(session.instructions,/EXPLAIN → EXAMPLE → OPTIONAL PRACTICE → FEEDBACK/);
  assert.match(session.instructions,/Stay on that point for this feedback turn/);
@@ -370,7 +371,7 @@ test('incomplete profile blocks mock before spending; learning remains accessibl
 });
 test('mock role stays separate and unknown lesson/mode makes no API call',async()=>{
  const h=harness();for(const query of ['mode=other','mode=learn&lesson=missing'])assert.equal((await h.request('POST','/api/realtime-session?athleteId=s1&'+query,'v=0\r\noffer')).status,400);
- assert.equal(h.calls.length,0);await h.request('POST','/api/realtime-session?athleteId=s1','v=0\r\noffer');assert.match(h.calls[0].session.instructions,/Do not coach during the interview/);
+ assert.equal(h.calls.length,0);await h.request('POST','/api/realtime-session?athleteId=s1','v=0\r\noffer');assert.match(h.calls[0].session.instructions,/Do not coach during the interview/);assert.equal(h.calls[0].session.audio.output.voice,'cedar');
 });
 test('staff can coach a student while unrelated roles cannot access their learning',async()=>{
  const h=harness({id:'staff',role:'coach'});h.db.athletes[0].staffIds=['staff'];
