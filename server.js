@@ -240,6 +240,10 @@ function outputText(resp){
 const server=http.createServer(async (req,res)=>{
   try{
     const url=new URL(req.url, `http://${req.headers.host}`);
+    if(['/owner-partners.html','/owner-partners.js'].includes(url.pathname)){
+      const viewer=await getUser(req);
+      if(!viewer||!isOwner(viewer))return json(res,403,{error:'Owner access required.'});
+    }
     res.once?.('finish',()=>{void operations.record(url.pathname,res.statusCode);});
     if(url.pathname==='/api/billing/webhook' && req.method==='POST'){
       await billing.webhook(await readBody(req,256*1024),req.headers);
