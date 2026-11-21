@@ -949,7 +949,7 @@ Use only information in the supplied profile and transcript. Do not reward inven
       }
       const sdp=(await readBody(req)).toString();
       if(!sdp.startsWith('v=0') || sdp.length>64000)return json(res,400,{error:'Invalid voice connection offer.'});
-      const voiceToken=await mutateDb(async (current,client)=>{
+      const {voiceToken,interviewer}=await mutateDb(async (current,client)=>{
         if(!current.users.some(user=>user.id===u.id&&!user.accessSuspended)||!canAccessStudent(u,current.athletes.find(a=>a.id===athlete.id)))throw stateError(403,'This account or student is no longer available.');
         // This runs under the shared state lock. Count pending starts and tracked
         // calls together so concurrent processes cannot overbook the last slot.
@@ -958,7 +958,9 @@ Use only information in the supplied profile and transcript. Do not reward inven
           UNION SELECT user_id FROM voice_call_limits WHERE user_id IS NOT NULL
         ) AS active_voice_users`);
         if(active.rows[0].total>=MAX_CONCURRENT_VOICE)throw stateError(429,'All interview and tutor slots are currently in use. Please try again shortly.');
-        return voiceLimits.acquire(u.id,client);
+        const voiceToken=await voiceLimits.acquire(u.id,client);
+        const last=current.users.find(user=>user.id===u.id).lastMockInterviewer;
+        return {voiceToken,interviewer:last==='male'?'female':'male'};
       },{userId:u.id,athleteId:athlete.id});
       if(!voiceToken)return json(res,429,{error:'End your current voice session before starting another. After a recent start, wait 10 seconds and try again.'});
       let voiceDelivered=false;
@@ -1013,8 +1015,8 @@ Start with the opening guidance in INTERVIEW DESIGN below.`;
     interrupt_response:false
   }
 },
-          // Match the fixed male mock-interviewer portrait; tutor has no portrait.
-          output:{voice:mode==="mock"?"cedar":"marin"}
+          // Select the portrait and voice from the same server-owned interviewer.
+          output:{voice:mode==="mock"&&interviewer==="male"?"cedar":"marin"}
         }
       }));
 
@@ -1045,10 +1047,11 @@ Start with the opening guidance in INTERVIEW DESIGN below.`;
         mockSessionId='mock_'+crypto.randomBytes(16).toString('hex');
         await mutateDb(async(current)=>{
           if(!current.users.some(user=>user.id===u.id&&!user.accessSuspended)||!canAccessStudent(u,current.athletes.find(a=>a.id===athlete.id)))throw stateError(403,'This account or student is no longer available.');
+          current.users.find(user=>user.id===u.id).lastMockInterviewer=interviewer;
           current.mockSessions??=[];
           // Retain unreported sessions for 30 days. Existing reports remain available.
           current.mockSessions=current.mockSessions.filter(x=>Date.parse(x.createdAt)>Date.now()-30*86400000);
-          current.mockSessions.push({id:mockSessionId,userId:u.id,athleteId:athlete.id,createdAt:new Date().toISOString(),difficulty,practiceLanguage,feedbackLanguage,plan:interviewPlan,evaluationVersion:3,profile:interviewDesign.profileSnapshot(athlete)});
+          current.mockSessions.push({id:mockSessionId,interviewer,userId:u.id,athleteId:athlete.id,createdAt:new Date().toISOString(),difficulty,practiceLanguage,feedbackLanguage,plan:interviewPlan,evaluationVersion:3,profile:interviewDesign.profileSnapshot(athlete)});
         },{userId:u.id,athleteId:athlete.id});
       }
       await operations.costs.voiceStart(u.id,voiceToken,mode,mockSessionId,athlete.id);
@@ -1058,7 +1061,7 @@ Start with the opening guidance in INTERVIEW DESIGN below.`;
       catch{console.warn('[cost] VOICE_OBSERVER_UNAVAILABLE');}
       if(res.destroyed)return;
       await billing.access?.commit(u,voiceToken);
-      res.writeHead(rr.status,{"X-Voice-Token":voiceToken,"Content-Type":"application/sdp","Cache-Control":"no-store","X-Voice-Limit-Seconds":String(seconds),...(mockSessionId?{'X-Mock-Session-Id':mockSessionId}:{}),...(practiceSessionId?{'X-Practice-Session-Id':practiceSessionId}:{})});
+      res.writeHead(rr.status,{"X-Voice-Token":voiceToken,"Content-Type":"application/sdp","Cache-Control":"no-store","X-Voice-Limit-Seconds":String(seconds),...(mockSessionId?{'X-Mock-Session-Id':mockSessionId,'X-Interviewer':interviewer}:{}),...(practiceSessionId?{'X-Practice-Session-Id':practiceSessionId}:{})});
       res.end(answer);
       voiceDelivered=true;
       return;

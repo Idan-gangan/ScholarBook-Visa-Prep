@@ -316,10 +316,10 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
           </div>
           <h2 style="margin-bottom:4px">AI mock interviewer</h2>
           <div id="interviewerStage" class="interviewer-stage" data-state="idle">
-            <img src="/assets/ai-interviewer.webp" alt="Fictional AI interviewer portrait" width="640" height="640">
+            <img id="interviewerPortrait" src="/assets/ai-interviewer.webp" alt="Fictional AI interviewer portrait" width="640" height="640">
             <div class="interviewer-caption"><span id="interviewerActivity" role="status">Ready when you are</span><span class="interviewer-wave" aria-hidden="true"><i></i><i></i><i></i><i></i></span></div>
           </div>
-          <p class="small muted">AI practice with a still portrait, not a real consular officer. Microphone only; no camera or video recording.</p>
+          <p class="small muted">Male and female AI interviewers alternate between sessions, each with a matching voice and still portrait. Not a real consular officer. Microphone only; no camera or video recording.</p>
           <p id="mockInterviewInstructions" class="muted">Answer naturally after each question. Pause when you finish; the interviewer will respond automatically.</p>
           <details id="mockTranscriptDisclosure" class="mock-transcript-disclosure" open><summary>Live interview transcript</summary><div id="transcript" dir="auto" class="transcript"></div></details>
         </div>
@@ -1021,6 +1021,11 @@ function addLine(role,text,mode=voiceScreen){
 }
 // Voice lifecycle: the client alone requests responses. Keep input muted until
 // both response generation and WebRTC output playback have finished.
+function setInterviewerPortrait(id){
+ const female=id==='female',portrait=$('interviewerPortrait');
+ portrait.src=female?'/assets/ai-interviewer-female.webp':'/assets/ai-interviewer.webp';
+ portrait.alt='Fictional '+(female?'female':'male')+' AI interviewer portrait';
+}
 let voice=null, voiceScreen="mock", learningTranscript=[], mockStudentId=null;
 function interruptVoice(v){
  if(voice===v)stopVoice('Voice was interrupted. When you return, tap Start to begin a new session.');
@@ -1169,7 +1174,10 @@ async function startVoice(mode="mock",consented=false){
     v.serverToken=r.ok?r.headers.get('X-Voice-Token'):null;
     if(voice!==v){if(r.ok&&v.serverToken)endServerVoice(v.serverToken);return;}
     if(!r.ok){let message=answer;try{message=JSON.parse(answer).error||answer}catch{}if(r.status===401 && message==="Unauthorized"){returnToSignIn();return}throw new Error(message)}
-    if(mode==='mock')mockSessionId=r.headers.get('X-Mock-Session-Id');
+    if(mode==='mock'){
+      mockSessionId=r.headers.get('X-Mock-Session-Id');
+      setInterviewerPortrait(r.headers.get('X-Interviewer'));
+    }
     v.practiceSessionId=r.headers.get('X-Practice-Session-Id');
     const seconds=Number(r.headers.get('X-Voice-Limit-Seconds'));
     if(!Number.isFinite(seconds)||seconds<=0)throw new Error('Voice session limit is missing. Please refresh and try again.');
