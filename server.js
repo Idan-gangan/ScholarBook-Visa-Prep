@@ -17,7 +17,7 @@ const billing=require('./billing-provider').createBilling(pool);
 const recordStore=process.env.RECORD_STORAGE==='enabled'?require('./record-store').create(pool):null;
 
 // Update this version and the registration checkbox together when Terms change.
-const TERMS_VERSION = "2026-11-20";
+const TERMS_VERSION = "2026-11-21";
 const operations=require('./operations').createOperations(pool);
 const PORT = process.env.PORT || 3000;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
@@ -377,7 +377,7 @@ const server=http.createServer(async (req,res)=>{
       if(db.users.some(u=>normalizeEmail(u.email)===email))throw stateError(409,"An account with this email already exists.");
       const ageEligibility=consumePermission(db,body,email);
       await client.query('INSERT INTO user_credentials (user_id,password_hash) VALUES ($1,$2) ON CONFLICT (user_id) DO NOTHING',[userId,hash]);
-      await billing.access?.grantTrial?.(client,userId);
+      await billing.access?.grantTrial?.(client,userId,email);
       db.users.push({id:userId,name:clean(body.name,120),email,role:"athlete",verificationRequired:true,ageEligibility,termsAcceptance:{version:TERMS_VERSION,acceptedAt:new Date().toISOString(),source:"self-registration"}});
       db.athletes.push({
         id:athleteId,userId,name:clean(body.name,120),email,
