@@ -202,7 +202,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
    <div class="field"><label for="r_password">Password</label><input id="r_password" type="password" autocomplete="new-password" minlength="15" maxlength="128" placeholder="At least 15 characters" required></div>
    <p class="small muted">Create your account to get 2 free mock interviews with feedback reports. No card needed. Verify your email before starting.</p>
    <div class="registration-terms small">
-    <input id="r_terms" type="checkbox" required data-terms-version="2026-10-25" aria-describedby="r_privacy_notice">
+    <input id="r_terms" type="checkbox" required data-terms-version="2026-11-21" aria-describedby="r_privacy_notice">
     <label for="r_terms">I agree to the <a href="/terms.html" target="_blank" rel="noopener">Terms of Use</a>.</label>
    </div>
    <p id="r_privacy_notice" class="small muted">Read our <a href="/privacy.html" target="_blank" rel="noopener">Privacy Policy</a> to learn how we handle your information. Policy links open in a new tab.</p>
@@ -251,7 +251,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
         <div id="learn_voiceLimitNotice" class="small muted" role="status" aria-live="polite"></div>
         <p id="lessonVoiceUsage" class="small muted" role="status"></p>
         <p class="small muted">Voice lessons last up to 8 minutes. Your plan determines your session allowance. Reading and notes remain available.</p>
-        <div class="lesson-actions"><button class="btn primary" id="learn_startBtn" onclick="startLearningTutor()">Start voice lesson</button><button class="btn danger" id="learn_stopBtn" onclick="stopVoice()" disabled>End lesson conversation</button></div>
+        <button class="btn secondary" type="button" id="learn_micTestBtn" onclick="testMicrophone('learn')">Test microphone before starting</button><p class="small muted" id="learn_micTestStatus" role="status" aria-live="polite">Optional: speak a few words to check your microphone locally. No practice session will be used.</p><div class="lesson-actions"><button class="btn primary" id="learn_startBtn" onclick="startLearningTutor()">Start voice lesson</button><button class="btn danger" id="learn_stopBtn" onclick="stopVoice()" disabled>End lesson conversation</button></div>
         <div id="learn_transcript" dir="auto" class="lesson-transcript" aria-label="Tutor conversation"></div>
         <p class="small muted">Your conversation is for learning, with no readiness score. Save the points you want to keep in your notes; the regular lesson conversation itself is not saved. In a spoken retry, you can choose to save an answer transcript and comparison with your report.</p>
       </div>
@@ -310,7 +310,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
           <p class="small muted">Up to 8 minutes per interview.</p>
           <p id="mockVoiceUsage" class="small muted" role="status"></p>
           <div id="voiceLimitNotice" class="small muted" role="status" aria-live="polite"></div>
-          <div class="interview-controls">
+          <button class="btn secondary" type="button" id="micTestBtn" onclick="testMicrophone('mock')">Test microphone before starting</button><p class="small muted" id="micTestStatus" role="status" aria-live="polite">Optional microphone check. No practice session will be used.</p><div class="interview-controls">
             <button class="btn primary" id="startBtn" onclick="startVoice()">Start voice interview <span aria-hidden="true">→</span></button>
             <button class="btn danger" id="stopBtn" onclick="endInterviewAndGenerate()" disabled>End Interview</button>
           </div>
@@ -1018,6 +1018,41 @@ function addLine(role,text,mode=voiceScreen){
  const content=document.createElement("span");content.dir="auto";content.style.unicodeBidi="plaintext";content.textContent=text;
  div.append(label,content);
  const box=$(mode==="learn"?"learn_transcript":"transcript");box.appendChild(div);box.scrollTop=box.scrollHeight;
+}
+// This microphone self-test is local: no OpenAI session, audio recording or usage charge.
+async function testMicrophone(mode='mock'){
+ const status=$(mode==='learn'?'learn_micTestStatus':'micTestStatus');
+ const button=$(mode==='learn'?'learn_micTestBtn':'micTestBtn');
+ if(voice){status.textContent='End your current voice session before testing the microphone.';return;}
+ if(!navigator.mediaDevices?.getUserMedia){status.textContent='Microphone access is unavailable. Use HTTPS and a supported browser.';return;}
+ button.disabled=true;status.textContent='Allow microphone access, then speak a few words…';
+ let mic=null,context=null,source=null;
+ try{
+  mic=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}});
+  const track=mic.getAudioTracks()[0];
+  if(!track||track.readyState!=='live')throw Error('No active microphone was found.');
+  const AudioContextType=window.AudioContext||window.webkitAudioContext;
+  if(!AudioContextType){status.textContent='Microphone permission works. Sound-level testing is unavailable in this browser.';return;}
+  context=new AudioContextType();
+  if(context.state==='suspended')await context.resume();
+  source=context.createMediaStreamSource(mic);
+  const analyser=context.createAnalyser();analyser.fftSize=1024;source.connect(analyser);
+  const samples=new Uint8Array(analyser.fftSize);let maximum=0;
+  for(let sample=0;sample<8;sample++){
+   await new Promise(resolve=>setTimeout(resolve,180));
+   if(track.readyState!=='live')throw Error('The microphone was disconnected.');
+   analyser.getByteTimeDomainData(samples);
+   for(const value of samples)maximum=Math.max(maximum,Math.abs(value-128));
+  }
+  status.textContent=maximum>5?'Microphone connected and your voice was detected. You can start.':'Microphone connected, but speech was not detected. Check your input, speak closer and test again.';
+ }catch(error){
+  status.textContent=error?.name==='NotAllowedError'?'Microphone access was denied. Allow permission in your browser and try again.':'Microphone check failed: '+(error?.message||'Check device permissions.');
+ }finally{
+  source?.disconnect();
+  if(mic)for(const track of mic.getTracks())track.stop();
+  if(context)await context.close().catch(()=>{});
+  button.disabled=false;
+ }
 }
 // Voice lifecycle: the client alone requests responses. Keep input muted until
 // both response generation and WebRTC output playback have finished.

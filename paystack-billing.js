@@ -49,7 +49,7 @@ function checkoutUrl(value){
 function createBilling(pool,{env=process.env,request=fetch}={}){
   const config=configuration(env);
   const tables=tablesFor(config?.mode||'test');
-  const access=createAccess(pool,{enabled:!!config?.testAccess,users:config?.users||new Set(),mode:config?.mode||'test'});
+  const access=createAccess(pool,{enabled:!!config?.testAccess,users:config?.users||new Set(),mode:config?.mode||'test',trialSecret:env.TRIAL_IDENTITY_SECRET||config?.secret||''});
   async function init(){
     if(!config)return;
     await pool.query(`CREATE TABLE IF NOT EXISTS ${tables.checkouts} (
@@ -60,7 +60,10 @@ function createBilling(pool,{env=process.env,request=fetch}={}){
     // Keep the reference unique/FK target; allow a later purchase after expiry.
     await pool.query(`ALTER TABLE ${tables.checkouts} ADD COLUMN IF NOT EXISTS access_snapshot JSONB`);
     await pool.query(`ALTER TABLE ${tables.checkouts} DROP CONSTRAINT IF EXISTS ${tables.checkouts}_pkey`);
-    await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS ${tables.pending} ON ${tables.checkouts}(user_id) WHERE state <> 'paid'`);
+    // Keep failed checkout records without blocking a replacement.
+    await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS ${tables.pending}_active ON ${tables.checkouts}(user_id)
+      WHERE state IN ('reserved','initializing','open','uncertain')`);
+    await pool.query(`DROP INDEX IF EXISTS ${tables.pending}`);
     await pool.query(`CREATE TABLE IF NOT EXISTS ${tables.payments} (
       reference TEXT PRIMARY KEY REFERENCES ${tables.checkouts}(reference),
       paid_at TIMESTAMPTZ NOT NULL, verified_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`);
@@ -108,7 +111,7 @@ function createBilling(pool,{env=process.env,request=fetch}={}){
       if((await c.query(`SELECT 1 FROM ${tables.holds} h JOIN ${tables.checkouts} c USING(reference) WHERE c.user_id=$1 LIMIT 1`,[user.id])).rows.length)throw fail(409,'A payment needs review. Please contact support before purchasing again.');
       const active=await access.active(user.id,c);
       if(active && Number((await c.query(`SELECT COUNT(*)::int AS n FROM ${tables.usage} WHERE reference=$1 AND state <> 'released'`,[active.reference])).rows[0].n)<Number(active.session_limit))throw fail(409,'Your plan still has available sessions. Buy again after using them or after expiry.');
-      row=(await c.query(`SELECT * FROM ${tables.checkouts} WHERE user_id=$1 AND state <> 'paid'`,[user.id])).rows[0];
+      row=(await c.query(`SELECT * FROM ${tables.checkouts} WHERE user_id=$1 AND state IN ('reserved','initializing','open','uncertain')`,[user.id])).rows[0];
       if(!row){
         // Checkout-only mode retains the original one-payment-per-account policy.
         if(!config.testAccess && (await c.query(`SELECT 1 FROM ${tables.checkouts} WHERE user_id=$1 AND state='paid'`,[user.id])).rows.length)throw fail(409,'This checkout is already paid.');
@@ -138,23 +141,50 @@ function createBilling(pool,{env=process.env,request=fetch}={}){
       throw error;
     }
   }
+  async function recover(user){
+    authorize(user);
+    const row=(await pool.query(`SELECT * FROM ${tables.checkouts} WHERE user_id=$1
+      AND state IN ('reserved','initializing','open','uncertain') ORDER BY created_at DESC LIMIT 1`,[user.id])).rows[0];
+    if(!row)return {retry:true};
+    // Never replace an in-flight or uninitialized reference that Paystack may accept.
+    if(['reserved','initializing'].includes(row.state))throw fail(409,'Checkout is still starting. Refresh payment status shortly; contact support if it remains stuck.');
+    const providerStatus=await verifyRow(row);
+    if(providerStatus==='success')return {retry:false,verified:true};
+    if(!['failed','abandoned'].includes(providerStatus))throw fail(409,'Payment is still pending or cannot be safely closed. Use the existing checkout or contact support.');
+    const c=await pool.connect();
+    try{
+      await c.query('BEGIN');
+      await c.query('SELECT pg_advisory_xact_lock(hashtext($1))',['billing:'+user.id]);
+      const current=(await c.query(`SELECT * FROM ${tables.checkouts} WHERE reference=$1 FOR UPDATE`,[row.reference])).rows[0];
+      if(!current||!['open','uncertain'].includes(current.state))throw fail(409,'Checkout changed. Refresh your payment status.');
+      if((await c.query(`SELECT 1 FROM ${tables.payments} WHERE reference=$1`,[row.reference])).rows.length)throw fail(409,'A payment was just verified. Refresh your plan.');
+      await c.query(`UPDATE ${tables.checkouts} SET state='closed',updated_at=NOW() WHERE reference=$1`,[row.reference]);
+      await c.query('COMMIT');
+    }catch(error){await c.query('ROLLBACK');throw error;}finally{c.release();}
+    return {retry:true};
+  }
   async function verifyRow(row){
-    if((await pool.query(`SELECT reference FROM ${tables.payments} WHERE reference=$1`,[row.reference])).rows.length)return;
+    if((await pool.query(`SELECT reference FROM ${tables.payments} WHERE reference=$1`,[row.reference])).rows.length)return 'success';
     const payment=await api('/transaction/verify/'+encodeURIComponent(row.reference));
     const customerEmail=payment.customer?.email;
     if(payment.domain!==config.mode||payment.reference!==row.reference||!Number.isSafeInteger(payment.amount)||payment.amount!==Number(row.amount)||payment.currency!==row.currency||typeof customerEmail!=='string'||customerEmail.trim().toLowerCase()!==row.email)throw fail(409,'Payment verification did not match this checkout.');
-    if(payment.status!=='success')return;
+    if(payment.status!=='success')return payment.status;
     const paidAt=Date.parse(payment.paid_at);
     if(!Number.isFinite(paidAt))throw fail(502,'Payment date is unavailable.');
     const c=await pool.connect();
     try{
       await c.query('BEGIN');
-      await c.query(`SELECT user_id FROM ${tables.checkouts} WHERE reference=$1 FOR UPDATE`,[row.reference]);
+      const current=(await c.query(`SELECT * FROM ${tables.checkouts} WHERE reference=$1 FOR UPDATE`,[row.reference])).rows[0];
+      // An old hosted link may receive a late payment after a recovery.
+      const replaced=current?.state==='closed';
       await c.query(`INSERT INTO ${tables.payments}(reference,paid_at) VALUES($1,$2) ON CONFLICT DO NOTHING`,[row.reference,new Date(paidAt).toISOString()]);
       await c.query(`UPDATE ${tables.checkouts} SET state='paid',updated_at=NOW() WHERE reference=$1`,[row.reference]);
-      await access.grant(c,row,new Date(paidAt).toISOString());
+      if(replaced)await c.query(`INSERT INTO ${tables.holds}(reference,reason) VALUES($1,$2) ON CONFLICT DO NOTHING`,
+        [row.reference,'late_payment_after_checkout_recovery']);
+      else await access.grant(c,row,new Date(paidAt).toISOString());
       await c.query('COMMIT');
     }catch(e){await c.query('ROLLBACK');throw e;}finally{c.release();}
+    return 'success';
   }
   async function verify(user){
     authorize(user);
@@ -201,6 +231,6 @@ function createBilling(pool,{env=process.env,request=fetch}={}){
       ORDER BY c.created_at DESC,c.reference DESC LIMIT 51`,[before||null])).rows;
     return {mode:config.mode,payments:rows.slice(0,50).map(r=>({...r,amount:Number(r.amount)})),next:rows.length>50?rows[49].reference:null};
   }
-  return {init,authorize,origin,status,checkout,verify,webhook,access,history};
+  return {init,authorize,origin,status,checkout,recover,verify,webhook,access,history};
 }
 module.exports={createBilling,configuration,signatureValid,checkoutUrl};

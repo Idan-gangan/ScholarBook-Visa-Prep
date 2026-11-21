@@ -8,9 +8,9 @@ function validateAccess(value){
   }
 }
 // Live and test allowances use physically separate ledgers.
-function createAccess(pool,{enabled=false,users=new Set(),mode='test'}={}){
+function createAccess(pool,{enabled=false,users=new Set(),mode='test',trialSecret=''}={}){
   const tables=tablesFor(mode);
-  const trial=require('./mock-trial').createMockTrial(pool,{enabled:enabled&&mode==='live'});
+  const trial=require('./mock-trial').createMockTrial(pool,{enabled:enabled&&mode==='live',secret:trialSecret});
   const applies=user=>enabled&&typeof user?.id==='string'&&!!user.id&&(mode==='live'||users.has(user.id));
   async function init(){
     await trial.init();
@@ -47,7 +47,7 @@ function createAccess(pool,{enabled=false,users=new Set(),mode='test'}={}){
   async function ensureTrial(user,client=pool){
     // Existing student accounts receive the same one-time allowance as new registrations.
     // The insert never resets reservations or completed sessions.
-    if(user.role==='athlete'&&!user.accessSuspended)await trial.grant(client,user.id);
+    if(user.role==='athlete'&&!user.accessSuspended)await trial.grant(client,user.id,user.email);
   }
   async function status(user){
     if(!applies(user))return {enforced:false};
