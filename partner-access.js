@@ -130,9 +130,9 @@ function createPartnerAccess(pool,{enabled=false}={}){
       WHERE user_id=$1 AND token=$2 AND state='reserved' RETURNING token`,[user.id,token]);
     return !!result.rows.length;
   }
-  async function removeUser(userId){
+  async function removeUser(userId,client=pool){
     if(!enabled)return;
-    await pool.query(`UPDATE partner_access_grants SET revoked_at=COALESCE(revoked_at,NOW())
+    await client.query(`UPDATE partner_access_grants SET revoked_at=COALESCE(revoked_at,NOW())
       WHERE user_id=$1 AND revoked_at IS NULL`,[userId]);
   }
   return {init,status,list,grant,revoke,reserve,commit,release,removeUser};
