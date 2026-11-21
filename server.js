@@ -17,7 +17,7 @@ const billing=require('./billing-provider').createBilling(pool);
 const recordStore=process.env.RECORD_STORAGE==='enabled'?require('./record-store').create(pool):null;
 
 // Update this version and the registration checkbox together when Terms change.
-const TERMS_VERSION = "2026-10-25";
+const TERMS_VERSION = "2026-11-20";
 const operations=require('./operations').createOperations(pool);
 const PORT = process.env.PORT || 3000;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
@@ -245,16 +245,21 @@ const server=http.createServer(async (req,res)=>{
       await billing.webhook(await readBody(req,256*1024),req.headers);
       return json(res,200,{received:true});
     }
-    if(['/api/billing/status','/api/billing/checkout','/api/billing/verify'].includes(url.pathname)){
+    if(['/api/billing/status','/api/billing/checkout','/api/billing/verify','/api/billing/recover'].includes(url.pathname)){
       const u=await requireUser(req,res);if(!u)return;
       billing.authorize(u);
       if(needsVerification(u))return json(res,403,{error:'Verify your email before opening checkout.'});
       if(req.method==='GET' && url.pathname==='/api/billing/status')return json(res,200,await billing.status(u));
-      if(req.method!=='POST' || !['/api/billing/checkout','/api/billing/verify'].includes(url.pathname))return json(res,405,{error:'Method not allowed.'});
+      if(req.method!=='POST' || !['/api/billing/checkout','/api/billing/verify','/api/billing/recover'].includes(url.pathname))return json(res,405,{error:'Method not allowed.'});
       billing.origin(req.headers.origin);
       if(!allowAuth('billing:'+u.id))return json(res,429,{error:'Please wait before trying again.'});
       if(!(req.headers['content-type']||'').startsWith('application/json'))return json(res,415,{error:'JSON required.'});
       let body;try{body=JSON.parse((await readBody(req,4096)).toString());}catch(e){if(e.status===413)throw e;return json(res,400,{error:'Invalid request.'});}
+      if(url.pathname==='/api/billing/recover'){
+        if(!billing.recover)return json(res,404,{error:'Recovery route unavailable.'});
+        if(!body || typeof body!=='object' || Array.isArray(body) || Object.keys(body).length)return json(res,400,{error:'No payment reference is accepted from the browser.'});
+        return json(res,200,await billing.recover(u));
+      }
       if(url.pathname==='/api/billing/verify'){
         if(!billing.verify)return json(res,404,{error:'Verification route unavailable.'});
         if(!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).length)return json(res,400,{error:'No payment reference is accepted from the browser.'});
