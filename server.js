@@ -477,6 +477,40 @@ const server=http.createServer(async (req,res)=>{
     if(url.pathname.startsWith('/api/owner/')){
       const u=await requireUser(req,res); if(!u)return;
       if(!isOwner(u))return json(res,403,{error:'Owner access required.'});
+      // Private sponsored access is granted by the Owner, never by checkout, role changes, or public registration.
+      if(req.method==='GET' && url.pathname==='/api/owner/partners'){
+        const db=await loadDb({collections:['users']});
+        return json(res,200,{partner:'Scholarbook',package:{days:30,mock:12,learn:8},
+          users:(db.users||[]).filter(x=>x.role==='athlete'&&!x.accessSuspended&&!!x.emailVerifiedAt)
+            .map(x=>({id:x.id,name:x.name,email:x.email})),
+          grants:await billing.partnerAccess.list()});
+      }
+      if(req.method==='POST' && ['/api/owner/partners/grant','/api/owner/partners/revoke'].includes(url.pathname)){
+        billing.origin(req.headers.origin);
+        if(!allowAuth('owner-partners:'+u.id))return json(res,429,{error:'Too many attempts. Try again shortly.'});
+        if(!(req.headers['content-type']||'').toLowerCase().startsWith('application/json'))return json(res,415,{error:'JSON required.'});
+        let body;try{body=JSON.parse((await readBody(req,4096)).toString());}catch(e){if(e.status===413)throw e;return json(res,400,{error:'Invalid JSON.'});}
+        if(!body||typeof body!=='object'||Array.isArray(body))return json(res,400,{error:'Invalid request.'});
+        const isGrant=url.pathname.endsWith('/grant');
+        const allowed=isGrant?['userId','invoiceReference','currentPassword']:['grantId','confirmation','currentPassword'];
+        if(Object.keys(body).some(k=>!allowed.includes(k)))return json(res,400,{error:'Invalid request fields.'});
+        const saved=await credential(u.id);
+        if(!saved||typeof body.currentPassword!=='string'||!await verifyPassword(body.currentPassword,saved.password_hash))
+          return json(res,403,{error:'Your current Owner password is required.'});
+        const currentOwner=await getUser(req);
+        if(!currentOwner||!isOwner(currentOwner))return json(res,403,{error:'Owner access required.'});
+        if(isGrant){
+          const db=await loadDb({collections:['users']});
+          const target=db.users.find(x=>x.id===body.userId);
+          if(!target||target.role!=='athlete'||target.accessSuspended||!target.emailVerifiedAt)
+            return json(res,400,{error:'Select a verified Student account.'});
+          const currentAccess=(await billing.status(target)).access;
+          if(currentAccess?.active)return json(res,409,{error:'This student already has an active practice package.'});
+          return json(res,200,{ok:true,grant:await billing.partnerAccess.grant({user:target,actorId:u.id,invoiceReference:body.invoiceReference})});
+        }
+        if(body.confirmation!=='REVOKE')return json(res,400,{error:'Type REVOKE to confirm this action.'});
+        return json(res,200,{ok:true,grant:await billing.partnerAccess.revoke({grantId:body.grantId,actorId:u.id})});
+      }
       if(req.method==='GET' && url.pathname==='/api/owner/payments'){
         if(!billing.history)return json(res,404,{error:'Payment history unavailable for this provider.'});
         return json(res,200,await billing.history(u,{before:url.searchParams.get('before')||undefined}));
