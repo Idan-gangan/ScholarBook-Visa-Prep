@@ -66,9 +66,15 @@ holds block later starts. Failed hangups retry, so eight minutes is not a hard
 upper bound on provider spend during an outage.
 
 Uncertain initialization is retained, never replaced blindly with another charge.
-The customer can refresh verification or contact support. Recovery of an
-unrecoverable checkout and abandoned voice reservations remains operator-managed.
-Never delete a reference or release usage without checking provider state first.
+The customer can refresh verification or contact support. A new recovery action
+checks Paystack's verified transaction status before closing an `open` or `uncertain`
+checkout and permits selecting another plan only if Paystack reports `failed` or
+`abandoned`. Pending, processing, ambiguous, and in-flight initialization are
+not cleared. Old references remain in the payment ledger; a late successful
+payment after checkout closure is recorded and placed on hold for owner review,
+not automatically granted as a second entitlement. Abandoned voice reservations
+and irrecoverable transactions remain operator-managed. Never delete a reference
+or release usage without checking provider state first.
 
 Disabling `BILLING_MODE` also disables billing admission enforcement; it is NOT a
 safe paid-access emergency switch. Pause AI with `AI_ENABLED=false` when necessary
@@ -90,3 +96,13 @@ settlement eligibility, refund terms, or a verified live transaction. Those are
 launch dependencies, not implied by passing tests.
 
 Separate allowances are immutable checkout snapshots. Existing shared allowances retain their original terms. Reading modules consumes no voice allowance. Repurchase is available after both allowances are exhausted or the plan expires; exhausting only one category does not permit repurchase. Sandbox plans may opt into separate limits using access.mock and access.learn, whose sum must equal access.sessions.
+
+## Release-gate checks added November 21, 2026
+
+- New and legacy accounts display two no-card mock interviews; Gmail aliases receive a single hashed trial identity for new grants. This is only one abuse-control layer, not full person-level or bot prevention. Historical NULL identities are not backfilled. Account deletion removes the hash under current implementation, so additional controls may be needed for repeat signups.
+- Registration requires the November 21 Terms version; privacy and Terms describe hosted Paystack data handling. Owner and qualified legal review are still required.
+- Tutor and mock pages offer an optional browser-local microphone test; test Safari on iPhone with permission granted, denied, headphones, interruptions, background noise, and screen lock. Passing unit tests does not establish real Realtime audio quality.
+- Run the GitHub PR test workflow, `npm run test:billing`, `node --test test/*.test.cjs`, and disposable PostgreSQL integration; explicitly test unsuccessful, abandoned, pending and late payment webhooks before merging.
+- Production uses the Render `scholarbook-visa-prep-db` PostgreSQL service; database availability has been verified by read-only query, but managed backup recovery point and restore success are NOT verified. Confirm recovery and alert destinations with the owner before opening broad access.
+- A temporary free staging PostgreSQL database expires November 27, 2026; preserve needed test evidence and plan a replacement, without touching production data.
+- No real live Paystack transaction, settlement, or automatic entitlement grant has been verified by these source and database checks. Authorize exactly one controlled real payment after staging succeeds; compare Paystack transaction, verified amount/currency, billing ledger, entitlement, owner history, and session quota before marketing paid plans.
