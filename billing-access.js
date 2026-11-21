@@ -44,8 +44,14 @@ function createAccess(pool,{enabled=false,users=new Set(),mode='test'}={}){
       VALUES($1,$2,$3,$4::timestamptz,$4::timestamptz+($5 * INTERVAL '24 hours'),$6,$7)
       ON CONFLICT(reference) DO NOTHING`,[row.reference,row.user_id,row.plan_id,paidAt,row.access_snapshot.days,row.access_snapshot.sessions,row.access_snapshot.mock===undefined?null:JSON.stringify({mock:row.access_snapshot.mock,learn:row.access_snapshot.learn})]);
   }
+  async function ensureTrial(user,client=pool){
+    // Existing student accounts receive the same one-time allowance as new registrations.
+    // The insert never resets reservations or completed sessions.
+    if(user.role==='athlete'&&!user.accessSuspended)await trial.grant(client,user.id);
+  }
   async function status(user){
     if(!applies(user))return {enforced:false};
+    await ensureTrial(user);
     const row=await active(user.id);
     if(!row)return {enforced:true,active:false,remaining:0,trial:await trial.status(user.id)};
     const used=Number((await pool.query(`SELECT COUNT(*)::int AS used FROM ${tables.usage} WHERE reference=$1 AND state <> 'released'`,[row.reference])).rows[0].used);
@@ -65,6 +71,7 @@ function createAccess(pool,{enabled=false,users=new Set(),mode='test'}={}){
     const c=await pool.connect();
     try{
       await c.query('BEGIN');
+      await ensureTrial(user,c);
       const row=await active(user.id,c,true);
       if(!row){await trial.reserve(c,user.id,token,mode);await c.query('COMMIT');return;}
       // Row locking serializes the last remaining session across processes.
