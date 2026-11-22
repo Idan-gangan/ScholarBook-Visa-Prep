@@ -3,7 +3,7 @@ const crypto=require('node:crypto');
 const err=(status,message)=>Object.assign(new Error(message),{status,publicMessage:message});
 const digest=x=>crypto.createHash('sha256').update(x).digest('hex');
 const TOKEN=/^[a-f0-9]{64}$/,ID=/^sevis_[a-f0-9]{32}$/,EMAIL=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const MAX_I20=4*1024*1024,MAX_PASSPORT=3*1024*1024,MAX_CASES=100;
+const MAX_I20=4*1024*1024,MAX_PASSPORT=3*1024*1024,MAX_CASES=100,MAX_STORED=40;
 const field=(v,n)=>typeof v==='string'&&v.trim().length>0&&v.trim().length<=n?v.trim():null;
 const email=v=>typeof v==='string'&&v.length<=254?v.trim().toLowerCase():'';
 function decodeFile(doc,kind){
@@ -110,6 +110,8 @@ function createSevisIntake(pool,{env=process.env}={}){
    await c.query('BEGIN');
    const invite=(await c.query('SELECT id,client_email FROM sevis_intake_invites WHERE token_hash=$1 AND used_at IS NULL AND revoked_at IS NULL AND expires_at>NOW() FOR UPDATE',[digest(token)])).rows[0];
    if(!invite)throw err(404,'This secure link has expired, was used, or is invalid.');
+   const existing=Number((await c.query('SELECT COUNT(*)::int AS n FROM sevis_intake_submissions')).rows[0].n);
+   if(existing>=MAX_STORED)throw err(503,'Secure document storage is temporarily full. Please contact VisaAtlas Support.');
    const details=validateDetails(body,invite.client_email);
    const i20=decodeFile(body.i20,'i20'),passport=decodeFile(body.passport,'passport');
    const id='sevis_'+crypto.randomBytes(16).toString('hex');
