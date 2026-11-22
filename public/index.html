@@ -1413,7 +1413,14 @@ async function refreshVoiceUsage(){
    if(access?.enforced){const link=document.createElement('a');link.href=data.billingPage==='/billing.html'?'/billing.html':'/billing-test.html';link.textContent=' View plan';$(id).append(link);}
   }
   const planSummary=document.querySelector('#studentPlanSummary'),planLink=document.querySelector('#studentPlanLink');
-  if(planSummary&&planLink){const access=data.access;planSummary.textContent=access?.enforced&&access.active?(access.modes?access.modes.mock.remaining+' mock interviews · '+access.modes.learn.remaining+' tutor sessions remaining':'Your plan has '+access.remaining+' sessions remaining'):(access?.trial?access.trial.remaining+' of 2 free mock interviews remaining. No card needed.':'Choose Starter or Standard to begin voice practice.');planLink.textContent=access?.active?'Manage my plan':'Choose a plan';}
+  if(planSummary&&planLink){
+   const access=data.access,sponsored=access?.active&&access.sponsored===true;
+   planSummary.textContent=access?.enforced&&access.active?(access.modes?access.modes.mock.remaining+' mock interviews · '+access.modes.learn.remaining+' tutor sessions remaining':'Your plan has '+access.remaining+' sessions remaining'):(access?.trial?access.trial.remaining+' of 2 free mock interviews remaining. No card needed.':'Choose Starter or Standard to begin voice practice.');
+   const planHeading=document.querySelector('#student-plan-heading'),planDetails=document.querySelector('#studentPlanDetails');
+   if(planHeading)planHeading.textContent=sponsored?'Scholarbook Partner Access':'Keep your preparation moving.';
+   if(planDetails)planDetails.textContent=sponsored?'Sponsored by Scholarbook · No personal payment required · Expires '+new Date(access.expiresAt).toLocaleDateString():'Starter US$29 · Standard US$49 · No automatic renewal';
+   planLink.textContent=sponsored?'View sponsored access':access?.active?'Manage my plan':'Choose a plan';
+  }
   $('reportUsage').textContent=data.reports.unlimited?'One feedback report is included with each mock interview.':data.reports.remaining+' new reports left today.';
  }catch(error){if(me && version===sessionVersion){for(const id of ['learningVoiceUsage','lessonVoiceUsage','mockVoiceUsage','reportUsage'])$(id).textContent='Practice allowance could not be loaded. Try refreshing the page.';}}
 }
