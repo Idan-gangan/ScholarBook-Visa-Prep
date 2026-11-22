@@ -1189,6 +1189,10 @@ Start with the opening guidance in INTERVIEW DESIGN below.`;
 initDb().then(()=>sevisIntake.init()).then(()=>passwordRecovery.init()).then(()=>voiceLimits.init()).then(()=>evaluationLimits.init()).then(()=>operations.init()).then(()=>billing.init()).then(() => {
   voiceLimits.start();
   passwordRecovery.start();
+  if(sevisIntake.enabled){
+    const cleanup=setInterval(()=>{void sevisIntake.purge().catch(()=>console.error('[sevis-intake] CLEANUP_FAILED'));},6*60*60*1000);
+    cleanup.unref?.();
+  }
   server.listen(PORT, () => console.log(`VisaAtlas demo running on http://localhost:${PORT}`));
 }).catch(err => {
   console.error("Database initialization failed:", err);
