@@ -5,7 +5,7 @@ const {PGlite}=require('@electric-sql/pglite');
 const {createSevisIntake,decodeFile,validateDetails}=require('../sevis-intake');
 const key=crypto.randomBytes(32).toString('hex');
 const pdf=Buffer.from('%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF');
-const jpeg=Buffer.from([255,216,255,224,1,2,3,255,217]);
+const jpeg=Buffer.from([255,216,255,224,...Array(32).fill(42),255,217]);
 const baseDetails=(token,email)=>({token,email,surname:'Onyia',givenName:'Jeffrey Miracle',
  sevisId:'N0038074737',dob:'2006-05-03',school:'Cumberland University',phone:'+2348012345678',
  address:{line1:'1 Example Avenue',line2:'',city:'Abuja',state:'FCT',postal:'900001',country:'Nigeria'},
