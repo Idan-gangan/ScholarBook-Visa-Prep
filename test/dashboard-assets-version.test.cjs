@@ -16,5 +16,5 @@ test('student dashboard script and stylesheet assets share one release version',
 test('server ignores query parameters in static asset path and requests revalidation',()=>{
   const server=fs.readFileSync(path.join(__dirname,'../server.js'),'utf8');
   assert.match(server,/let rel=req\.url\.split\("\?"\)\[0\]/);
-  assert.match(server,/Cache-Control":recovery\?'no-store':'no-cache'/);
+  assert.match(server,/Cache-Control":recovery\|\|sevisPage\?'no-store':'no-cache'/);
 });

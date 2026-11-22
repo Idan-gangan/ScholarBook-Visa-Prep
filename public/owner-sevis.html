@@ -1,0 +1,47 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer">
+<title>SEVIS Intake Cases · VisaAtlas Owner</title>
+<style>
+:root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#12243e;background:#f4f7fd}
+*{box-sizing:border-box}body{margin:0}main{max-width:1050px;padding:20px;margin:auto}
+header{background:white;border-bottom:1px solid #dce5f1;padding:16px 24px;display:flex;justify-content:space-between;gap:12px;align-items:center}
+.brand{display:flex;align-items:center;gap:10px;color:#12243e;font-weight:800;font-size:20px;text-decoration:none}
+.brand img{width:38px;height:38px}h1{font-size:clamp(26px,5vw,36px)}
+h2{margin-top:0}.muted{color:#586881}.small{font-size:13px;line-height:1.6}.eyebrow{font-size:12px;font-weight:800;letter-spacing:.13em;color:#2157aa}
+section{background:white;border-radius:17px;border:1px solid #dce5f1;padding:24px;margin:18px 0}
+label{display:block;font-size:14px;font-weight:700;margin:12px 0 5px}
+input,button{box-sizing:border-box;border-radius:10px;font:inherit;padding:13px}
+input{width:100%;border:1px solid #b4c2d4;color:#112842}input:focus{outline:3px solid #aad3ff}
+button{background:#1d53ac;color:white;border:0;font-weight:750;cursor:pointer;min-height:44px}
+button[disabled]{background:#9caec8}
+button.danger{background:#a82c40}
+.grid{display:grid;grid-template-columns:2fr 2fr auto;gap:12px;align-items:end}
+.item{padding:18px;background:#f9fbff;border:1px solid #dce5f1;border-radius:13px;margin:12px 0;display:grid;grid-template-columns:1fr auto;gap:14px}
+.actions{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px}
+strong{overflow-wrap:anywhere}button.smallbtn{font-size:13px;min-height:40px;padding:9px 11px}
+.details{padding:15px;border:1px solid #dce5f1;background:#eff5ff;border-radius:13px;margin-top:14px;overflow-wrap:anywhere}
+dl{display:grid;grid-template-columns:minmax(105px,1fr) 2fr;gap:9px 14px}dt{color:#51617a;font-weight:600}dd{margin:0;overflow-wrap:anywhere}
+.status{font-weight:700;margin:10px 0;min-height:22px;overflow-wrap:anywhere}
+#linkBox{display:none}#inviteLink{font-size:13px;word-break:break-all}
+@media(max-width:680px){main{padding:14px}section{padding:18px}.grid{grid-template-columns:1fr}.item{display:block}
+.actions{margin-top:14px;justify-content:flex-start}.actions button{flex:1 1 45%}dl{grid-template-columns:1fr}dd{margin:-8px 0 4px}header{padding:14px}}
+</style></head><body>
+<header><a href="/" class="brand"><img src="/favicon.png" alt="VisaAtlas logo">VisaAtlas · Owner</a><a href="/">Dashboard</a></header>
+<main><span class="eyebrow">PRIVATE CLIENT INTAKE</span><h1>SEVIS I-901 Requests</h1>
+<p class="muted">Issue secure invitations for individual clients and review their submitted Form I-20 and passport biodata page. Document access is restricted to the VisaAtlas Owner and requires password confirmation.</p>
+<section><h2>Issue a secure student link</h2><p class="small">A private one-use link expires after 7 days. Share it directly with the intended student. Never post it publicly. Students do not need a VisaAtlas login to complete their invited intake.</p>
+<div class="grid">
+<div><label for="inviteEmail">Student email address</label><input id="inviteEmail" type="email" placeholder="student@example.com" maxlength="254"></div>
+<div><label for="ownerPassword">Your current Owner password</label><input id="ownerPassword" type="password" autocomplete="current-password" placeholder="Required for sensitive actions"></div>
+<button type="button" id="create">Create private link</button>
+</div>
+<p class="status" id="status" role="status" aria-live="polite">Checking secure intake configuration…</p>
+<div class="details" id="linkBox"><strong>Copy this one-time link now</strong>
+<p id="inviteLink"></p><button id="copy" type="button">Copy student link</button>
+<p class="small">The secure link is shown only once. If lost, revoke the invitation and generate a new link.</p></div>
+</section>
+<section><div style="display:flex;justify-content:space-between;align-items:center;gap:12px"><h2>Client requests</h2><button id="refresh" type="button">Refresh</button></div>
+<p class="small">Submitted documents are retained for up to 30 days, then automatically removed during scheduled cleanup. Delete completed cases earlier when no longer required.</p>
+<div id="requests" aria-live="polite"><p>Loading…</p></div></section>
+<section id="detailsSection" hidden><h2>Submitted client information</h2><p class="small">Review against the applicant's current I-20 and passport before using the government payment system. Download only onto a secured company-managed device.</p><div id="details" class="details"></div></section>
+</main><script src="/owner-sevis.js"></script></body></html>
