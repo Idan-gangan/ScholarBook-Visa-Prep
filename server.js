@@ -13,6 +13,7 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 const billing=require('./billing-provider').createBilling(pool);
+const sevisIntake=require('./sevis-intake').createSevisIntake(pool);
 
 const recordStore=process.env.RECORD_STORAGE==='enabled'?require('./record-store').create(pool):null;
 
@@ -221,7 +222,8 @@ function serveStatic(req,res){
     res.writeHead(404); return res.end("Not found");
   }
   const recovery=/^(password-recovery|verify-email|guardian-permission)\./.test(path.basename(file));
-  res.writeHead(200,{...RESPONSE_HEADERS,"Content-Type":contentType(file),"Cache-Control":recovery?'no-store':'no-cache',...(recovery?{'Referrer-Policy':'no-referrer'}:{})}); fs.createReadStream(file).pipe(res);
+   const sevisPage=/^(sevis-intake|owner-sevis)\./.test(path.basename(file));
+  res.writeHead(200,{...RESPONSE_HEADERS,"Content-Type":contentType(file),"Cache-Control":recovery||sevisPage?'no-store':'no-cache',...((recovery||sevisPage)?{'Referrer-Policy':'no-referrer'}:{}),...(sevisPage?{'Content-Security-Policy':"default-src 'none'; base-uri 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'"}:{})}); fs.createReadStream(file).pipe(res);
 }
 function makeId(prefix){ return prefix+"_"+crypto.randomBytes(6).toString("hex"); }
 function clean(v,max=200){ return String(v??"").trim().slice(0,max); }
@@ -240,11 +242,28 @@ function outputText(resp){
 const server=http.createServer(async (req,res)=>{
   try{
     const url=new URL(req.url, `http://${req.headers.host}`);
-    if(['/owner-partners.html','/owner-partners.js'].includes(url.pathname)){
+    if(['/owner-partners.html','/owner-partners.js','/owner-sevis.html','/owner-sevis.js'].includes(url.pathname)){
       const viewer=await getUser(req);
       if(!viewer||!isOwner(viewer))return json(res,403,{error:'Owner access required.'});
     }
     res.once?.('finish',()=>{void operations.record(url.pathname,res.statusCode);});
+    // Public intake requires an unguessable, owner-issued one-use invitation;
+    // the token lives in the browser URL fragment, never the HTTP URL.
+    if(url.pathname==='/api/sevis/intake/check'||url.pathname==='/api/sevis/intake/submit'){
+      if(req.method!=='POST')return json(res,405,{error:'Method not allowed.'});
+      sevisIntake.checkOrigin(req.headers.origin);
+      if((req.headers['content-type']||'').split(';')[0].trim().toLowerCase()!=='application/json')
+        return json(res,415,{error:'JSON required.'});
+      if(!allowAuth('sevis-intake-global'))return json(res,429,{error:'Too many requests. Please try again later.'});
+      let body;
+      try{body=JSON.parse((await readBody(req,url.pathname.endsWith('/submit')?11*1024*1024:2048)).toString()||'{}');}
+      catch(e){if(e.status===413)throw e;return json(res,400,{error:'Invalid information.'});}
+      if(url.pathname.endsWith('/check')){
+        if(!body||Object.keys(body).length!==1)return json(res,400,{error:'Invalid request.'});
+        return json(res,200,await sevisIntake.check(body.token));
+      }
+      return json(res,200,await sevisIntake.submit(body));
+    }
     if(url.pathname==='/api/billing/webhook' && req.method==='POST'){
       await billing.webhook(await readBody(req,256*1024),req.headers);
       return json(res,200,{received:true});
@@ -481,6 +500,42 @@ const server=http.createServer(async (req,res)=>{
     if(url.pathname.startsWith('/api/owner/')){
       const u=await requireUser(req,res); if(!u)return;
       if(!isOwner(u))return json(res,403,{error:'Owner access required.'});
+      // SEVIS identity documents are visible to the Owner only, with a fresh password
+      // for invitation creation, PII inspection, each download, and deletion.
+      if(url.pathname==='/api/owner/sevis/list'&&req.method==='GET')
+        return json(res,200,{enabled:sevisIntake.enabled,cases:sevisIntake.enabled?await sevisIntake.ownerList():[]});
+      if(url.pathname.startsWith('/api/owner/sevis/')){
+        if(req.method!=='POST')return json(res,405,{error:'Method not allowed.'});
+        sevisIntake.checkOrigin(req.headers.origin);
+        if(!allowAuth('owner-sevis:'+u.id))return json(res,429,{error:'Too many requests. Try again later.'});
+        if((req.headers['content-type']||'').split(';')[0].trim().toLowerCase()!=='application/json')
+          return json(res,415,{error:'JSON required.'});
+        let body;try{body=JSON.parse((await readBody(req,4096)).toString()||'{}');}
+        catch(e){if(e.status===413)throw e;return json(res,400,{error:'Invalid request.'});}
+        if(!body||typeof body!=='object'||Array.isArray(body))return json(res,400,{error:'Invalid request.'});
+        const operation=url.pathname.split('/').pop();
+        const fields={invite:['clientEmail','currentPassword'],details:['caseId','currentPassword'],
+          file:['caseId','which','currentPassword'],delete:['caseId','confirmation','currentPassword'],
+          revoke:['inviteId','confirmation','currentPassword']};
+        if(!fields[operation]||Object.keys(body).some(k=>!fields[operation].includes(k)))
+          return json(res,400,{error:'Invalid request.'});
+        const saved=await credential(u.id);
+        if(!saved||typeof body.currentPassword!=='string'||!await verifyPassword(body.currentPassword,saved.password_hash))
+          return json(res,403,{error:'Current Owner password is required.'});
+        const currentOwner=await getUser(req);
+        if(!currentOwner||!isOwner(currentOwner))return json(res,403,{error:'Owner access required.'});
+        if(operation==='invite')return json(res,200,await sevisIntake.createInvite({clientEmail:body.clientEmail,ownerId:u.id}));
+        if(operation==='details')return json(res,200,{details:await sevisIntake.ownerDetails(body.caseId)});
+        if(operation==='file'){
+          const doc=await sevisIntake.ownerFile(body.caseId,body.which);
+          res.writeHead(200,{...RESPONSE_HEADERS,'Content-Type':doc.type,'Cache-Control':'no-store',
+            'Referrer-Policy':'no-referrer','Content-Disposition':'attachment; filename="'+doc.filename+'"',
+            'Content-Security-Policy':'sandbox','Content-Length':doc.content.length});
+          return res.end(doc.content);
+        }
+        if(body.confirmation!=='DELETE')return json(res,400,{error:'Type DELETE to confirm this action.'});
+        return json(res,200,operation==='revoke'?await sevisIntake.ownerRevoke(body.inviteId):await sevisIntake.ownerDelete(body.caseId));
+      }
       // Private sponsored access is granted by the Owner, never by checkout, role changes, or public registration.
       if(req.method==='GET' && url.pathname==='/api/owner/partners'){
         const db=await loadDb({collections:['users']});
@@ -1131,7 +1186,7 @@ Start with the opening guidance in INTERVIEW DESIGN below.`;
     return json(res,500,{error:"Server error"});
   }
 });
-initDb().then(()=>passwordRecovery.init()).then(()=>voiceLimits.init()).then(()=>evaluationLimits.init()).then(()=>operations.init()).then(()=>billing.init()).then(() => {
+initDb().then(()=>sevisIntake.init()).then(()=>passwordRecovery.init()).then(()=>voiceLimits.init()).then(()=>evaluationLimits.init()).then(()=>operations.init()).then(()=>billing.init()).then(() => {
   voiceLimits.start();
   passwordRecovery.start();
   server.listen(PORT, () => console.log(`VisaAtlas demo running on http://localhost:${PORT}`));
