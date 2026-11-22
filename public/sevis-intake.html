@@ -1,0 +1,68 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer">
+<title>Secure SEVIS I-901 Student Information · VisaAtlas</title>
+<style>
+:root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#12243e;background:#f4f7fd}
+*{box-sizing:border-box}body{margin:0}main{max-width:820px;padding:20px;margin:0 auto}
+header{background:white;border-bottom:1px solid #dbe4f1;padding:16px 22px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.brand{display:flex;align-items:center;gap:10px;font-size:22px;font-weight:800;color:#11263f;text-decoration:none}
+.brand img{width:40px;height:40px;object-fit:contain}
+header a.help{color:#194a9e;font-weight:650}h1{font-size:clamp(27px,5vw,40px);line-height:1.17;margin:14px 0}
+h2{margin:0 0 10px;font-size:20px}.eyebrow{color:#1c57a2;font-size:12px;font-weight:800;letter-spacing:.15em}
+.lead{line-height:1.6;color:#516078;max-width:700px}
+section{background:white;border-radius:18px;padding:24px;margin:20px 0;border:1px solid #d9e2ef;box-shadow:0 2px 8px rgba(12,34,64,.03)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:15px}
+label{display:block;font-weight:670;font-size:14px;margin:16px 0 6px}
+input,select,textarea{font:inherit;border:1px solid #b5c4d7;border-radius:10px;padding:13px 12px;background:#fff;color:#12243e;width:100%;max-width:100%}
+input:focus,textarea:focus{outline:3px solid #8dc3ff;border-color:#2057bd}input[type=file]{padding:12px}
+input[readonly]{background:#edf2f8}.full{grid-column:1 / -1}
+.notice{border-left:4px solid #2557b3;padding:13px 16px;background:#eaf1fb;border-radius:9px;color:#203b65;font-size:14px;line-height:1.55}
+.check{display:flex;gap:10px;align-items:flex-start;margin:12px 0;line-height:1.5;font-size:14px}
+.check input{margin:4px 0 0;flex:0 0 19px;width:19px;height:19px}
+button{border:0;border-radius:11px;background:#1652b9;color:white;padding:15px 22px;font:inherit;font-weight:750;cursor:pointer;min-height:52px}
+button:disabled{background:#8c9fbd;cursor:not-allowed}
+.small{font-size:13px;color:#56657b;line-height:1.5}a{color:#194a9e}
+#status{margin-top:14px;min-height:24px;font-weight:600;overflow-wrap:anywhere}
+#form,#done{display:none}#done{text-align:center}#done p{line-height:1.7}
+@media(max-width:590px){main{padding:14px}section{padding:18px}.grid{grid-template-columns:1fr}.full{grid-column:auto}button{width:100%}header{padding:12px 16px}}
+</style></head><body>
+<header><a href="/" class="brand"><img src="/favicon.png" alt="VisaAtlas logo">VisaAtlas</a><a class="help" href="mailto:support@visaatlasprep.com">Need help?</a></header>
+<main><span class="eyebrow">PRIVATE STUDENT INFORMATION REQUEST</span>
+<h1>SEVIS I-901 Payment Assistance</h1>
+<p class="lead">Complete your details exactly as shown on your current Form I-20. Upload the full Form I-20 and a clear image of your passport biodata page. Only students with a private VisaAtlas invitation can submit this form.</p>
+<div class="notice">VisaAtlas is an independent education support company, not a U.S. government agency. This form does not make your SEVIS payment. Do not enter bank cards, passwords or additional passport pages here.</div>
+<p id="status" role="status" aria-live="polite">Checking your private invitation…</p>
+<form id="form" novalidate>
+<section><h2>1 · Student information</h2>
+<div class="grid">
+<div><label for="surname">Surname / primary name (I-20) *</label><input id="surname" maxlength="100" autocomplete="family-name" required></div>
+<div><label for="givenName">Given name(s) (I-20) *</label><input id="givenName" maxlength="130" autocomplete="given-name" required></div>
+<div><label for="dob">Date of birth *</label><input id="dob" type="date" required></div>
+<div><label for="sevisId">SEVIS ID *</label><input id="sevisId" maxlength="11" placeholder="N0123456789" pattern="N[0-9]{10}" autocapitalize="characters" required></div>
+<div class="full"><label for="school">University / school name (I-20) *</label><input id="school" maxlength="170" autocomplete="organization" required></div>
+<div><label for="email">Email address *</label><input id="email" type="email" readonly></div>
+<div><label for="phone">Phone number with country code *</label><input id="phone" type="tel" maxlength="35" placeholder="+234 ..." required></div>
+</div></section>
+<section><h2>2 · Current mailing address</h2><p class="small">Enter your real current address, not the address of your university unless you live there.</p>
+<div class="grid">
+<div class="full"><label for="line1">House number and street address *</label><input id="line1" maxlength="160" autocomplete="address-line1" required></div>
+<div class="full"><label for="line2">Apartment / additional address (optional)</label><input id="line2" maxlength="160" autocomplete="address-line2"></div>
+<div><label for="city">City / town *</label><input id="city" maxlength="100" autocomplete="address-level2" required></div>
+<div><label for="state">State / province *</label><input id="state" maxlength="100" autocomplete="address-level1" required></div>
+<div><label for="postal">Postal / ZIP code (if applicable)</label><input id="postal" maxlength="25" autocomplete="postal-code"></div>
+<div><label for="country">Country *</label><input id="country" maxlength="100" autocomplete="country-name" required></div>
+</div></section>
+<section><h2>3 · Required documents</h2>
+<div class="grid">
+<div><label for="i20">Complete Form I-20 (PDF, up to 4 MB) *</label><input type="file" id="i20" accept=".pdf,application/pdf" required></div>
+<div><label for="passport">Passport biodata page (JPG or PNG, up to 3 MB) *</label><input type="file" id="passport" accept=".jpg,.jpeg,.png,image/jpeg,image/png" required></div>
+</div><p class="small">Images must clearly show the entire passport biodata page. File contents are encrypted before storage and are retrievable only through the restricted Owner workflow.</p></section>
+<section><h2>4 · Review and send</h2>
+<p class="small">Your information and files are collected only to arrange your SEVIS I-901 payment assistance. Submitted files are automatically removed from the VisaAtlas intake system after 30 days; you may request earlier deletion at <a href="mailto:support@visaatlasprep.com">support@visaatlasprep.com</a>. See the <a href="/privacy.html" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.</p>
+<label class="check"><input id="isAdult" type="checkbox" required><span>I am at least 18 years old. For a younger student, a parent or guardian should contact VisaAtlas Support.</span></label>
+<label class="check"><input id="consent" type="checkbox" required><span>I confirm these are my accurate details, and I authorize VisaAtlas to collect and securely handle the information and documents for SEVIS I-901 payment assistance. *</span></label>
+<button id="submit" type="submit">Submit securely to VisaAtlas</button><p class="small">This form cannot be edited after submission. Review all fields before sending.</p>
+</section></form>
+<section id="done"><h2>Documents received</h2><p>Your information was submitted to VisaAtlas securely. We will review the details and contact you through your email. This acknowledgement is not an official SEVIS payment confirmation.</p><p id="reference" class="small"></p></section>
+</main><script src="/sevis-intake.js"></script></body></html>
