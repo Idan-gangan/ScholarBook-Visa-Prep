@@ -104,3 +104,16 @@ test('date editor and checklist remain accessible behind a collapsed planning se
  assert.match(html,/id="plannedInterviewDate"/);
  assert.match(html,/id="checklistDetails"/);
 });
+
+test('Scholarbook-sponsored home plan hides retail pricing until entitlement loads and after activation',()=>{
+ const dashboard=fs.readFileSync(path.join(__dirname,'../public/student-dashboard-v2.js'),'utf8');
+ const home=fs.readFileSync(path.join(__dirname,'../public/index.html'),'utf8');
+ assert.match(dashboard,/id="studentPlanDetails"[^>]*>Loading your practice access/);
+ assert.doesNotMatch(dashboard,/Starter US\$29 · Standard US\$49/);
+ assert.match(home,/sponsored=access\?\.active&&access\.sponsored===true/);
+ assert.match(home,/Scholarbook Partner Access/);
+ assert.match(home,/Sponsored by Scholarbook · No personal payment required/);
+ assert.match(home,/planDetails\.textContent=sponsored\?/);
+ assert.match(home,/View sponsored access/);
+ assert.match(home,/Starter US\$29 · Standard US\$49 · No automatic renewal/);
+});
