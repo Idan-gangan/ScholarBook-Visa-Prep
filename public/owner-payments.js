@@ -26,6 +26,12 @@ async function load(append=false){
     const data=await response.json();if(!response.ok)throw Error(data.error||'Unable to load payments.');
     mode=data.mode;
     document.querySelector('#paymentNotice').textContent=mode==='live'?'Verified live payments are shown here. Payment verification is not confirmation of bank payout.':'Sandbox records only. These are simulated payments, not revenue or bank payouts.';
+    if(data.recovery){
+      const {sent,recovered,cents}=data.recovery;
+      const amount=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(Number(cents)/100);
+      document.querySelector('#paymentNotice').textContent+=
+        ' Checkout reminders sent: '+sent+'. Verified same-plan sales within seven days of a reminder: '+recovered+' ('+amount+').';
+    }
     for(const row of data.payments)list.append(render(row));
     cursor=data.next;more.hidden=!cursor;
     status.textContent=data.mode==='disabled'?'Billing is disabled.':list.children.length?`${list.children.length} ${mode==='live'?'live':'test'} payment records shown.`:'No payments recorded yet.';

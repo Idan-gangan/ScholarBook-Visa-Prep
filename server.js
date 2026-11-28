@@ -1189,6 +1189,15 @@ Start with the opening guidance in INTERVIEW DESIGN below.`;
 initDb().then(()=>sevisIntake.init()).then(()=>passwordRecovery.init()).then(()=>voiceLimits.init()).then(()=>evaluationLimits.init()).then(()=>operations.init()).then(()=>billing.init()).then(() => {
   voiceLimits.start();
   passwordRecovery.start();
+  if(process.env.BILLING_MODE==='live' && billing.processReminders){
+    const timer=setInterval(()=>billing.processReminders(async ({id,email})=>{
+      const user=recordStore?await recordStore.user(id):(await loadDb({collections:['users']})).users.find(u=>u.id===id);
+      return !user || user.role!=='athlete' || user.accessSuspended || normalizeEmail(user.email)!==email ||
+        !!(await billing.partnerAccess.status(user));
+    })
+      .catch(()=>console.error('[checkout-reminders] Poll failed')),5*60*1000);
+    timer.unref();
+  }
   if(sevisIntake.enabled){
     const cleanup=setInterval(()=>{void sevisIntake.purge().catch(()=>console.error('[sevis-intake] CLEANUP_FAILED'));},6*60*60*1000);
     cleanup.unref?.();

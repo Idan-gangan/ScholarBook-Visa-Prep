@@ -1,6 +1,7 @@
 'use strict';
 const {randomBytes,createHmac,timingSafeEqual}=require('node:crypto');
 const {createAccess,validateAccess}=require('./billing-access');
+const reminders=require('./checkout-reminders');
 const {tablesFor}=require('./billing-tables');
 const fail=(status,message)=>Object.assign(new Error(message),{status,publicMessage:message});
 function configuration(env){
@@ -68,6 +69,7 @@ function createBilling(pool,{env=process.env,request=fetch}={}){
       reference TEXT PRIMARY KEY REFERENCES ${tables.checkouts}(reference),
       paid_at TIMESTAMPTZ NOT NULL, verified_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`);
     await access.init();
+    if(config.mode==='live')await reminders.init(pool);
   }
   function authorize(user){
     if(!config)throw fail(404,'Billing is disabled.');
@@ -239,8 +241,18 @@ function createBilling(pool,{env=process.env,request=fetch}={}){
       LEFT JOIN ${tables.holds} h USING(reference)
       WHERE ($1::text IS NULL OR (c.created_at,c.reference)<(SELECT created_at,reference FROM ${tables.checkouts} WHERE reference=$1))
       ORDER BY c.created_at DESC,c.reference DESC LIMIT 51`,[before||null])).rows;
-    return {mode:config.mode,payments:rows.slice(0,50).map(r=>({...r,amount:Number(r.amount)})),next:rows.length>50?rows[49].reference:null};
+    return {mode:config.mode,recovery:config.mode==='live'?await reminders.summary(pool):undefined,payments:rows.slice(0,50).map(r=>({...r,amount:Number(r.amount)})),next:rows.length>50?rows[49].reference:null};
   }
-  return {init,authorize,origin,status,checkout,recover,verify,webhook,access,history};
+  async function processReminders(skipAccount){
+    if(config?.mode!=='live')return;
+    const status=async row=>{
+      const payment=await api('/transaction/verify/'+encodeURIComponent(row.reference));
+      if(payment.domain!==config.mode||payment.reference!==row.reference)return;
+      if(payment.status==='success')return verifyRow(row);
+      return payment.status;
+    };
+    await reminders.run(pool,{env,origin:config.origin,status,skipAccount,request});
+  }
+  return {init,authorize,origin,status,checkout,recover,verify,webhook,access,history,processReminders};
 }
 module.exports={createBilling,configuration,signatureValid,checkoutUrl};
