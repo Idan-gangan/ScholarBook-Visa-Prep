@@ -29,14 +29,14 @@ function fixture(){
      if(store.failSave&&opt.method==='PUT')return {ok:false,json:async()=>({error:'Save failed'})};
      const id=route.split('/').at(-1);
      if(opt.method==='PUT')store.moduleProgress[id]={...JSON.parse(opt.body),updatedAt:'2026-09-27'};
-     data={progress:store.moduleProgress[id]||{}};
+     data={progress:store.moduleProgress[id]||{},content:require('../lesson-delivery').content(student,id)};
    }else if(route==='/api/realtime-session')return {ok:true,headers:{get:()=> '480'},text:async()=> 'answer'};
    else throw new Error('Unexpected route '+route);
    return {ok:true,json:async()=>structuredClone(data)};
  }});
  ctx.requestVoiceConsent=(mode,agree)=>agree();
  vm.runInContext(html.match(/<script>([\s\S]*?)<\/script>/)[1].replace('boot().catch(()=>{if(new URLSearchParams(location.search).get("signin")==="1")backToLogin()});',''),ctx);
- activeFixtures.push(ctx);return {elements,store,ctx,run:code=>vm.runInContext(code,ctx)};
+ activeFixtures.push(ctx);return {elements,store,ctx,student,run:code=>vm.runInContext(code,ctx)};
 }
 test('unmetered accounts show session limits without promising unlimited paid usage',async()=>{
  const f=fixture();f.store.usage={learn:{unlimited:true,limit:null,remaining:null},mock:{unlimited:true,limit:null,remaining:null},reports:{unlimited:true,limit:null,remaining:null}};
@@ -295,10 +295,10 @@ test('lesson cards show a profile-specific structure and example as safe text',a
  assert.match(f.elements.get('moduleExample').textContent,/Example University/);
  assert.match(f.elements.get('moduleExample').textContent,/Biology/);
  assert.ok(f.elements.get('moduleStructure').textContent.length>0);
- f.run(`athletes=[{id:'s1',academicLevel:'PhD',university:'<img src=x>',major:'Water systems'}];renderCourse()`);
+ Object.assign(f.student,{academicLevel:'PhD',university:'<img src=x>',major:'Water systems'});await f.run('loadLesson()');
  assert.match(f.elements.get('moduleExample').textContent,/PhD in Water systems/);
  assert.equal(f.elements.get('moduleExample').innerHTML,'');
- f.run(`athletes=[{id:'s1',academicLevel:'High school',university:'Secondary School'}];renderCourse()`);
+ Object.assign(f.student,{academicLevel:'High school',university:'Secondary School'});await f.run('loadLesson()');
  assert.match(f.elements.get('moduleExample').textContent,/secondary education/);
  assert.doesNotMatch(f.elements.get('moduleExample').textContent,/Water systems|PhD/);
 });

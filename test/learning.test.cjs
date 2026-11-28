@@ -834,3 +834,21 @@ test('owner payment history route excludes anonymous, student and staff requests
  assert.equal((await owner.request('GET','/api/owner/payments',undefined,false)).status,401);
  assert.equal((await owner.request('GET','/api/owner/payments')).status,200);
 });
+
+test('live written lessons preserve prior notes across upgrade and expiry',async()=>{
+ let active=false;
+ const h=harness({id:'u1',role:'athlete'},{BILLING_MODE:'live'},{access:{status:async()=>({active})}});
+ const base='/api/learning/',suffix='?athleteId=s1';
+ const first=await h.request('GET',base+'study-purpose'+suffix);
+ assert.ok(first.body.content.en.guidance.intro);
+ const path=base+'funding'+suffix;
+ assert.equal((await h.request('GET',path)).body.content,null);
+ assert.equal((await h.request('PUT',path,{draftAnswer:'before'})).status,402);
+ active=true;
+ assert.ok((await h.request('GET',path)).body.content.fr.guidance.intro);
+ assert.equal((await h.request('PUT',path,{draftAnswer:'my prior answer'})).status,200);
+ active=false;
+ const expired=await h.request('GET',path);
+ assert.equal(expired.body.progress.draftAnswer,'my prior answer');
+ assert.equal(expired.body.locked,true);
+});

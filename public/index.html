@@ -117,7 +117,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
       <span class="welcome-tag">U.S. F-1 VISA INTERVIEW PREPARATION</span>
       <h1>Your ambitions.<br>Your story.<br><em>Prepare to share it.</em></h1>
       <p>Learn how to explain your study plans, practise with an AI tutor, and build confidence through realistic voice mock interviews—with feedback to guide your next step.</p>
-      <div class="welcome-actions"><button class="btn primary" onclick="showRegistration()">Try 2 free mock interviews <span class="button-arrow" aria-hidden="true">→</span></button><a class="btn secondary home-link-button" href="#pricing">Choose a plan</a></div>
+      <div class="welcome-actions"><button class="btn primary" onclick="showRegistration()">Try 1 free mock interview <span class="button-arrow" aria-hidden="true">→</span></button><a class="btn secondary home-link-button" href="#pricing">Choose a plan</a></div>
       <p class="small">For high school, undergraduate, master’s, and PhD students—including student-athletes.</p>
       <div class="hero-path" aria-label="Your preparation journey"><span>01 <b>Learn</b></span><span>02 <b>Practise</b></span><span>03 <b>Improve</b></span></div>
     </section>
@@ -138,7 +138,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
     </div></section>
     <section class="home-section home-audience" id="who-its-for"><span class="home-eyebrow">YOUR PATH BELONGS HERE</span><h2>Different journeys.<br>Thoughtful preparation for each.</h2><div class="home-audience-tags"><span>High school</span><span>Undergraduate</span><span>Master’s</span><span>PhD</span><span>Student-athletes</span></div><p>Whether you’re explaining a scholarship, a new field of study, or your next application after a denial, your preparation should reflect your circumstances. Student-athletes can include their sporting journey while keeping their education at the centre.</p></section>
     <section class="home-section home-pricing" id="pricing" aria-labelledby="pricing-heading">
-      <div class="pricing-intro"><span class="home-eyebrow">INVEST IN YOUR PREPARATION</span><h2 id="pricing-heading">Your next step.<br>A clearer, more confident you.</h2><p>Start with 2 free mock interviews when you register—no card needed. Then choose a plan for 30 days of focused preparation.</p></div>
+      <div class="pricing-intro"><span class="home-eyebrow">INVEST IN YOUR PREPARATION</span><h2 id="pricing-heading">Your next step.<br>A clearer, more confident you.</h2><p>Start with 1 free mock interview when you register—no card needed. Then choose a plan for 30 days of focused preparation.</p></div>
       <div class="pricing-promise"><span>One payment</span><span>30-day access</span><span>No automatic renewal</span></div>
       <div class="home-pricing-grid">
         <article class="home-price-card"><div class="price-card-top"><span class="price-label">BUILD YOUR FOUNDATION</span><h3>Starter</h3><p>Focused practice to get you interview-ready.</p></div><p class="home-price"><strong><span>US$</span>29</strong><span>one payment for 30 days</span></p><div class="price-allowance"><div><strong>6</strong><span>mock interviews</span></div><div><strong>6</strong><span>AI tutor sessions</span></div></div><ul><li>Personalised feedback after each mock</li><li>Voice sessions up to 8 minutes</li><li>Practice shaped by your study profile</li></ul><a class="btn secondary home-link-button" href="/billing.html?plan=starter" aria-label="Choose Starter, 29 US dollars">Choose Starter <span aria-hidden="true">→</span></a><p class="price-footnote">12 voice sessions in total</p></article>
@@ -202,7 +202,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
     <p id="guardianRequestStatus" role="status" aria-live="polite"></p>
    </div>
    <div class="field"><label for="r_password">Password</label><input id="r_password" type="password" autocomplete="new-password" minlength="15" maxlength="128" placeholder="At least 15 characters" required></div>
-   <p class="small muted">Create your account to get 2 free mock interviews with feedback reports. No card needed. Verify your email before starting.</p>
+   <p class="small muted">Create your account to get one free written module and one mock interview with a readiness report. No card needed. Verify your email before starting.</p>
    <div class="registration-terms small">
     <input id="r_terms" type="checkbox" required data-terms-version="2026-11-21-trial2" aria-describedby="r_privacy_notice">
     <label for="r_terms">I agree to the <a href="/terms.html" target="_blank" rel="noopener">Terms of Use</a>.</label>
@@ -235,6 +235,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
       <div id="learningOverview"><h2 class="course-section-title">Choose a module</h2><p class="small muted">Completion tracks your learning, not visa approval or interview readiness.</p>
       <p id="learningVoiceUsage" class="small muted" role="status"></p>
       <div id="moduleCards" class="module-grid" aria-label="Learning modules"></div></div>
+      <div id="courseUpgrade" class="card hidden"><h3>Continue your interview preparation</h3><p>Your free account includes the first written module and one mock interview with feedback. Choose a plan for all six modules, AI voice tutoring and additional interviews.</p><a class="btn primary" href="/billing.html">Upgrade your plan</a><p>Your saved answers and reports stay in your account.</p><button class="btn" onclick="closeLearningModule()">Back to modules</button></div>
       <div id="lessonDetails" class="hidden">
       <button class="btn secondary" onclick="closeLearningModule()">← Back to all modules</button>
       <div id="practiceFocus" class="card hidden"><h3>Focused practice</h3><p id="practiceFocusText"></p><div id="spokenRetryReview"></div><p class="muted small">Start the voice lesson below. Your tutor will explain this point and give an example before inviting you to practise.</p><button class="btn secondary" onclick="clearReportPractice()">Return to regular lesson</button></div><div id="activeLesson" class="lesson-heading lesson-block"><div><p class="small muted" id="moduleNumber">MODULE 1</p><h2 id="moduleTitle">Your study plans</h2><p id="moduleSummary"></p></div><span id="lessonBadge" class="pill blue">Not completed</span></div>
@@ -440,7 +441,7 @@ function returnToSignIn(message=sessionMessage){
  sessionVersion++;
  if(voice)stopVoice('Session ended. Please sign in again.');
  $('dailyPractice').classList.add('hidden');$('dailyPractice').replaceChildren();me=null;athletes=[];reports=[];transcript=[];learningTranscript=[];mockStudentId=null;mockSessionId=null;
- lessonOpen=false;$('lessonDetails').classList.add('hidden');lessonPractice=null;renderPracticeFocus();courseSaved={};activeLessonId="study-purpose";$("moduleCards").replaceChildren();$("courseProgress").textContent="";lessonVersion++;lessonStudentId=null;lessonDirty=false;lessonCompleted=false;
+ courseDelivery={};lessonOpen=false;$('lessonDetails').classList.add('hidden');lessonPractice=null;renderPracticeFocus();courseSaved={};activeLessonId="study-purpose";$("moduleCards").replaceChildren();$("courseProgress").textContent="";lessonVersion++;lessonStudentId=null;lessonDirty=false;lessonCompleted=false;
  clearPasswordForm();$('exportPassword').value='';$('exportStatus').textContent='';$('operationsTable').replaceChildren();$('costDiagnostics').replaceChildren();$('operationsStatus').textContent='';
  $('deleteAccountDialog').close();clearDeleteAccountForm();
  for(const id of ['verificationPassword','verificationNewEmail'])$(id).value='';
@@ -1346,6 +1347,7 @@ function learningLanguage(){return $('tutorLanguage').value||'en'}
 function learningText(value){return window.VisaAtlasWritten?.text(learningLanguage(),value)??value}
 function translateLearning(){window.VisaAtlasWritten?.translateDOM($('learning'),learningLanguage())}
 $('tutorLanguage').addEventListener('change',()=>{if(voice)return;renderCourse();translateLearning()});
+let courseDelivery={};
 let activeLessonId="study-purpose", courseSaved={}, lessonPractice=null, lessonOpen=false, courseLoadState="loading";
 function renderCourse(){
  const curriculum=window.VisaAtlasWritten?.lessons(learningLanguage())||window.VisaAtlasCurriculum;
@@ -1367,7 +1369,7 @@ function renderCourse(){
   const number=document.createElement("span");number.className="small muted";number.textContent="MODULE "+(i+1);
   const title=document.createElement("strong");title.textContent=m.title;
   const summary=document.createElement("span");summary.textContent=m.summary;
-  const state=document.createElement("span");state.className="small";state.textContent=courseSaved[m.id]?.completed?"Completed":courseSaved[m.id]?.updatedAt?"In progress":"Not started";
+  const state=document.createElement("span");state.className="small";state.textContent=courseDelivery[m.id]?.locked?"Upgrade to open":courseSaved[m.id]?.completed?"Completed":courseSaved[m.id]?.updatedAt?"In progress":"Not started";
   const icon=document.createElement('span');icon.className='module-icon';icon.textContent=String(i+1).padStart(2,'0');icon.setAttribute('aria-hidden','true');
   button.append(icon,number,title,summary,state);button.onclick=()=>selectLearningModule(m.id);button.disabled=lessonSaving || lessonLoading;
   $("moduleCards").appendChild(button);
@@ -1376,14 +1378,19 @@ function renderCourse(){
  $("moduleTitle").textContent=module.title;$("moduleNumber").textContent="MODULE "+(curriculum.indexOf(module)+1);
  $("moduleSummary").textContent=module.summary;
  const student=athletes.find(a=>a.id===lessonStudentId)||{};
- const guidance=window.VisaAtlasWritten?.forStudent(learningLanguage(),student,module.id)||window.VisaAtlasCurriculum.forStudent(student,module.id);
+ const record=courseDelivery[module.id];
+ const body=record?.content?.[learningLanguage()]||record?.content?.en;
+ $("courseUpgrade").classList.toggle("hidden",!(lessonOpen && record?.locked));
+ $("lessonDetails").classList.toggle("hidden",!lessonOpen || !body);
+ if(!body){translateLearning();return;}
+ const guidance=body.guidance;
  $("moduleIntro").textContent=guidance.intro;$("moduleStructure").textContent=guidance.structure;
  $("moduleExample").textContent=guidance.example;$("moduleExampleNotice").textContent=guidance.exampleNotice;
  const path=window.VisaAtlasCurriculum.resolveLevel(student.academicLevel);
  for(const [id,values] of [["modulePoints",guidance.points],["moduleQuestions",guidance.questions]]){
   $(id).replaceChildren();values.forEach(value=>{if(path==="high-school" && id==="modulePoints" && /For graduate study/.test(value))return;const li=document.createElement("li");li.textContent=value;$(id).appendChild(li)});
  }
- const prompts=learningLanguage()==='en' && path==="high-school" && module.id==="academic-journey"?["What grade and subjects are you studying now?","What recent results and school experiences are relevant?","Why is this school the next step for you?"]:module.prompts;
+ const prompts=learningLanguage()==='en' && path==="high-school" && module.id==="academic-journey"?["What grade and subjects are you studying now?","What recent results and school experiences are relevant?","Why is this school the next step for you?"]:body.prompts;
  prompts.forEach((prompt,i)=>{const field=lessonFields[i];document.querySelector('label[for="learn_'+field+'"]').textContent=prompt;$("learn_draftAnswer").placeholder=learningText("An answer, a useful point, or something to check later.");$("learn_"+field).placeholder=learningText("Use your actual facts; note anything you need to check.")});
  $("continueLearningBtn").disabled=lessonSaving || lessonLoading || !lessonStudentId;
  $("completeLessonBtn").textContent=activeLessonId===curriculum.at(-1).id?'Complete module & go to mock interview →':'Complete module & continue →';
@@ -1409,13 +1416,13 @@ async function refreshVoiceUsage(){
   const data=await api('/api/voice-usage');
   if(!me||version!==sessionVersion)return;
   for(const [id,mode,label] of [['learningVoiceUsage','learn','tutoring starts'],['lessonVoiceUsage','learn','tutoring starts'],['mockVoiceUsage','mock','mock interviews']]){
-   const usage=data[mode],access=data.access;$(id).textContent=access?.enforced?(access.active?(access.modes?access.modes[mode].remaining+' of '+access.modes[mode].limit+' '+(mode==='mock'?'mock interview':'tutor')+' sessions remaining.':access.remaining+' of '+access.limit+' shared tutor/mock sessions remaining.'):(mode==='mock'&&access.trial?access.trial.remaining+' of 2 free mock interviews remaining.':'A paid plan is required for '+(mode==='mock'?'more mock interviews.':'tutor sessions.'))):(usage.unlimited?'Session time limits apply.':usage.remaining+' of '+usage.limit+' '+label+' left today.');
+   const usage=data[mode],access=data.access;$(id).textContent=access?.enforced?(access.active?(access.modes?access.modes[mode].remaining+' of '+access.modes[mode].limit+' '+(mode==='mock'?'mock interview':'tutor')+' sessions remaining.':access.remaining+' of '+access.limit+' shared tutor/mock sessions remaining.'):(mode==='mock'&&access.trial?access.trial.remaining+' of 1 free mock interview remaining.':'A paid plan is required for '+(mode==='mock'?'more mock interviews.':'tutor sessions.'))):(usage.unlimited?'Session time limits apply.':usage.remaining+' of '+usage.limit+' '+label+' left today.');
    if(access?.enforced){const link=document.createElement('a');link.href=data.billingPage==='/billing.html'?'/billing.html':'/billing-test.html';link.textContent=' View plan';$(id).append(link);}
   }
   const planSummary=document.querySelector('#studentPlanSummary'),planLink=document.querySelector('#studentPlanLink');
   if(planSummary&&planLink){
    const access=data.access,sponsored=access?.active&&access.sponsored===true;
-   planSummary.textContent=access?.enforced&&access.active?(access.modes?access.modes.mock.remaining+' mock interviews · '+access.modes.learn.remaining+' tutor sessions remaining':'Your plan has '+access.remaining+' sessions remaining'):(access?.trial?access.trial.remaining+' of 2 free mock interviews remaining. No card needed.':'Choose Starter or Standard to begin voice practice.');
+   planSummary.textContent=access?.enforced&&access.active?(access.modes?access.modes.mock.remaining+' mock interviews · '+access.modes.learn.remaining+' tutor sessions remaining':'Your plan has '+access.remaining+' sessions remaining'):(access?.trial?access.trial.remaining+' of 1 free mock interview remaining. No card needed.':'Choose Starter or Standard to begin voice practice.');
    const planHeading=document.querySelector('#student-plan-heading'),planDetails=document.querySelector('#studentPlanDetails');
    if(planHeading)planHeading.textContent=sponsored?'Scholarbook Partner Access':'Keep your preparation moving.';
    if(planDetails)planDetails.textContent=sponsored?'Sponsored by Scholarbook · No personal payment required · Expires '+new Date(access.expiresAt).toLocaleDateString():'Starter US$29 · Standard US$49 · No automatic renewal';
@@ -1441,7 +1448,7 @@ async function changeLearningStudent(){
  if(voice)stopVoice();lessonPractice=null;lessonOpen=false;courseSaved={};activeLessonId="study-purpose";await loadLesson();
 }
 async function loadLesson(){
- $('optionalNotes').open=false;courseLoadState='loading';
+ courseDelivery={};$('lessonDetails').classList.add('hidden');$('courseUpgrade').classList.add('hidden');$('optionalNotes').open=false;courseLoadState='loading';
  const version=++lessonVersion;lessonStudentId=$("learn_athleteSelect").value;lessonDirty=false;lessonCompleted=false;lessonLoading=true;
  if(lessonPractice && (lessonPractice.studentId!==lessonStudentId || lessonPractice.lessonId!==activeLessonId))lessonPractice=null;
  renderPracticeFocus();
@@ -1450,7 +1457,10 @@ async function loadLesson(){
  lessonControls(true);$("retryLessonBtn").classList.add("hidden");lessonFields.forEach(field=>$("learn_"+field).disabled=true);$("learn_reflected").disabled=true;setLessonStatus("Loading your notes…");
  if(!lessonStudentId){lessonLoading=false;courseSaved={};renderCourse();setLessonStatus("A student profile is needed to save notes or start a lesson.");return}
  try{
-   const entries=await Promise.all(curriculum.map(async module=>[module.id,(await api("/api/learning/"+module.id+"?athleteId="+encodeURIComponent(lessonStudentId))).progress]));
+   const records=await Promise.all(curriculum.map(async module=>[module.id,await api("/api/learning/"+module.id+"?athleteId="+encodeURIComponent(lessonStudentId))]));
+   if(version!==lessonVersion)return;
+   courseDelivery=Object.fromEntries(records);
+   const entries=records.map(([id,record])=>[id,record.progress]);
    const data={progress:Object.fromEntries(entries)[activeLessonId]};
    if(version!==lessonVersion)return;
    courseSaved=Object.fromEntries(entries);courseLoadState="ready";

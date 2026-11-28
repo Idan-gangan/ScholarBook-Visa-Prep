@@ -221,6 +221,13 @@ function serveStatic(req,res){
   if(!file.startsWith(PUBLIC) || !fs.existsSync(file) || fs.statSync(file).isDirectory()){
     res.writeHead(404); return res.end("Not found");
   }
+  const delivery=require('./lesson-delivery');
+  const relative=path.relative(PUBLIC,file);
+  if(relative.startsWith('locales/')){res.writeHead(404);return res.end();}
+  if(relative==='curriculum.js'||relative==='written-catalogs.js'){
+    res.writeHead(200,{...RESPONSE_HEADERS,'Content-Type':'application/javascript','Cache-Control':'no-cache'});
+    return res.end(relative==='curriculum.js'?delivery.publicCourse:delivery.publicTranslations);
+  }
   const recovery=/^(password-recovery|verify-email|guardian-permission)\./.test(path.basename(file));
    const sevisPage=/^(sevis-intake|owner-sevis)\./.test(path.basename(file));
   res.writeHead(200,{...RESPONSE_HEADERS,"Content-Type":contentType(file),"Cache-Control":recovery||sevisPage?'no-store':'no-cache',...((recovery||sevisPage)?{'Referrer-Policy':'no-referrer'}:{}),...(sevisPage?{'Content-Security-Policy':"default-src 'none'; base-uri 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'"}:{})}); fs.createReadStream(file).pipe(res);
@@ -601,6 +608,17 @@ const server=http.createServer(async (req,res)=>{
           students:db.athletes||[],users:db.users||[],reports:db.reports||[],
           mockSessions:db.mockSessions||[],learning:learningRows,costs:costData
         });
+        if(process.env.BILLING_MODE==='live' && (process.env.BILLING_PROVIDER||'paystack')==='paystack'){
+          const owners=new Map(db.athletes.map(s=>[s.id,s.userId]));
+          const records=await require('./owner-student-access').studentAccess(pool,[...new Set(owners.values())]);
+          const priced=await pool.query(`SELECT s.student_key,SUM(e.cost_usd) AS usd FROM ai_provider_events e
+            JOIN ai_cost_samples s USING(sample_key) WHERE s.student_key IS NOT NULL AND e.cost_usd IS NOT NULL GROUP BY s.student_key`);
+          const totals=new Map(priced.rows.map(r=>[r.student_key,r.usd]));
+          for(const row of analytics.students){
+            row.access=records.get(owners.get(row.studentId));
+            row.recordedCost=totals.get(ownerStudentAnalytics.studentKey(row.studentId))??null;
+          }
+        }
         analytics.costTrackingAvailable=costAvailable;
         if(!costAvailable)analytics.notes.costs='Cost attribution is temporarily unavailable. No cost estimate should be treated as zero.';
         return json(res,200,analytics);
@@ -982,9 +1000,12 @@ Use only information in the supplied profile and transcript. Do not reward inven
       const db=await loadDb({userId:u.id,athleteId:url.searchParams.get("athleteId")});
       const student=db.athletes.find(a=>a.id===url.searchParams.get("athleteId"));
       if(!canAccessStudent(u,student)) return json(res,403,{error:"You cannot access this student's learning."});
+      const premium=lessonId!==LESSON_ID && u.role==='athlete';
+      const locked=premium && process.env.BILLING_MODE==='live' && !(await billing.access?.status(u))?.active;
+      if(locked && req.method==='PUT')return json(res,402,{error:'Upgrade your plan to continue this module.'});
       if(req.method === "GET"){
         const result=await pool.query("SELECT data FROM learning_progress WHERE student_id=$1 AND lesson_id=$2",[student.id,lessonId]);
-        return json(res,200,{progress:result.rows[0]?.data || {}});
+        return json(res,200,{progress:result.rows[0]?.data || {},locked,content:locked?null:require('./lesson-delivery').content(student,lessonId)});
       }
       let progress;
       try{progress=normalizeProgress(JSON.parse((await readBody(req)).toString()||"{}"))}

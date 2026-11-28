@@ -79,9 +79,9 @@ test('hashed Gmail variants share one active trial, without storing plain addres
  await trial.grant(pool,'user-one','John.Smith+visa@gmail.com');
  await trial.grant(pool,'user-two','johnsmith@googlemail.com');
  await trial.grant(pool,'user-three','another@gmail.com');
- assert.equal((await trial.status('user-one')).remaining,2);
+ assert.equal((await trial.status('user-one')).remaining,1);
  assert.equal(await trial.status('user-two'),null);
- assert.equal((await trial.status('user-three')).remaining,2);
+ assert.equal((await trial.status('user-three')).remaining,1);
  const accounts=(await db.query('SELECT identity_hash FROM mock_trial_accounts')).rows;
  assert.equal(accounts.length,2);
  assert.ok(accounts.every(r=>/^[a-f0-9]{64}$/.test(r.identity_hash)));
@@ -101,7 +101,7 @@ test('deleted accounts cannot reclaim a trial during the suppression period',asy
  assert.equal(retired.length,1);assert.match(retired[0].identity_hash,/^[a-f0-9]{64}$/);
  await db.query("UPDATE mock_trial_retired SET expires_at=NOW()-INTERVAL '1 day'");
  await trial.grant(pool,'after-retention','ab@gmail.com');
- assert.equal((await trial.status('after-retention')).remaining,2);
+ assert.equal((await trial.status('after-retention')).remaining,1);
 });
 test('daily free-start budget is durable across deletion and does not spend personal allowance on rejection',async t=>{
  const db=new PGlite();t.after(()=>db.close());const pool={query:(s,p)=>db.query(s,p)};
@@ -110,7 +110,7 @@ test('daily free-start budget is durable across deletion and does not spend pers
  await trial.reserve(pool,'one','first','mock');await trial.release('one','first');
  await trial.remove(pool,'one','one@example.test');
  await assert.rejects(trial.reserve(pool,'two','second','mock'),{status:429});
- assert.equal((await trial.status('two')).remaining,2);
+ assert.equal((await trial.status('two')).remaining,1);
  assert.equal((await db.query('SELECT starts FROM mock_trial_daily')).rows[0].starts,1);
 });
 
@@ -149,4 +149,25 @@ test('reminders skip pending, paid and historical checkouts and attribute one ve
  await f.pool.query("UPDATE paystack_live_checkouts SET reminder_eligible_at=now()-interval '1 hour'");
  await reminders.run(f.pool,options);
  assert.equal(messages.length,1);
+});
+
+test('owner access overview separates verified payment, partner grant and free mock usage',async t=>{
+ const f=await fixture(t);
+ const partner=require('../partner-access').createPartnerAccess(f.pool,{enabled:true});
+ await partner.init();
+ const get=()=>require('../owner-student-access').studentAccess(f.pool,[student.id,'sponsored']);
+ await f.billing.access.grantTrial(f.pool,student.id);
+ let rows=await get();
+ assert.equal(rows.get(student.id).mocks_remaining,1);
+ await f.billing.checkout(student,'starter');
+ const ref=[...f.provider.keys()][0];
+ f.provider.get(ref).status='success';
+ await f.billing.verify(student);
+ await f.pool.query("INSERT INTO partner_access_grants VALUES ('grant','scholarbook','sponsored',now(),now()+interval '30 days',12,8,'test','owner',now(),NULL,NULL)");
+ rows=await get();
+ assert.equal(rows.get(student.id).account_type,'Paid');
+ assert.equal(rows.get(student.id).payment_status,'Verified');
+ assert.equal(rows.get(student.id).mocks_remaining,6);
+ assert.equal(rows.get('sponsored').account_type,'Partner');
+ assert.equal(rows.get('sponsored').payment_status,'No payment recorded');
 });
