@@ -113,3 +113,40 @@ test('daily free-start budget is durable across deletion and does not spend pers
  assert.equal((await trial.status('two')).remaining,2);
  assert.equal((await db.query('SELECT starts FROM mock_trial_daily')).rows[0].starts,1);
 });
+
+test('reminders skip pending, paid and historical checkouts and attribute one verified retry',async t=>{
+ const f=await fixture(t);
+ const reminders=require('../checkout-reminders');
+ const messages=[];
+ let providerStatus='pending';
+ const options={origin:env.BILLING_ORIGIN,env:{RESEND_FROM:'support@example.test',RESEND_API_KEY:'fixture'},
+   status:async()=>providerStatus,skipAccount:async()=>false,
+   request:async(url,opts)=>{messages.push(JSON.parse(opts.body));return {ok:true};}};
+ await f.billing.checkout(student,'starter');
+ const ref=[...f.provider.keys()][0];
+ const due=()=>f.pool.query("UPDATE paystack_live_checkouts SET reminder_eligible_at=now()-interval '1 hour' WHERE reference=$1",[ref]);
+ await due();
+ await reminders.run(f.pool,options);
+ assert.equal(messages.length,0);
+ providerStatus='abandoned';
+ await f.pool.query('UPDATE paystack_live_checkouts SET reminder_eligible_at=NULL');
+ await reminders.run(f.pool,options);
+ assert.equal(messages.length,0);
+ await due();
+ await reminders.run(f.pool,options);
+ await due();
+ await reminders.run(f.pool,options);
+ assert.equal(messages.length,1);
+ assert.deepEqual(messages[0].to,[student.email]);
+ assert.ok(messages[0].text.includes(env.BILLING_ORIGIN+'/billing.html'));
+ f.provider.get(ref).status='abandoned';
+ await f.billing.recover(student);
+ await f.billing.checkout(student,'starter');
+ const latest=[...f.provider.values()].at(-1);
+ latest.status='success';latest.paid_at=new Date().toISOString();
+ await f.billing.verify(student);
+ assert.deepEqual(await reminders.summary(f.pool),{sent:1,recovered:1,cents:2900});
+ await f.pool.query("UPDATE paystack_live_checkouts SET reminder_eligible_at=now()-interval '1 hour'");
+ await reminders.run(f.pool,options);
+ assert.equal(messages.length,1);
+});
