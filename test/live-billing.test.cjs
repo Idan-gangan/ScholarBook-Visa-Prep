@@ -111,14 +111,14 @@ test('public live billing enforces purchase for accounts outside the former pilo
  await assert.rejects(f.billing.access.reserve(user,'8'.repeat(48),'mock'),{status:402});
 });
 
-test('new registration trial gives exactly two mock starts, is idempotent, and never grants tutor or payment access',async t=>{
+test('new registration trial gives one mock start, is idempotent, and never grants tutor or payment access',async t=>{
  const f=await fixture(t),a=f.billing.access;
  await a.grantTrial(f.pool,user.id);await a.grantTrial(f.pool,user.id);
- assert.deepEqual((await a.status(user)).trial,{limit:2,used:0,remaining:2});
+ assert.deepEqual((await a.status(user)).trial,{limit:1,used:0,remaining:1});
  await assert.rejects(a.reserve(user,'a'.repeat(48),'learn'),{status:402});
  await assert.rejects(a.requireActive(user),{status:402});
  await assert.rejects(a.reserve({id:'other'},'a'.repeat(48),'mock'),{status:402});
- for(const token of ['a'.repeat(48),'b'.repeat(48)]){
+ for(const token of ['a'.repeat(48)]){
   await a.reserve(user,token,'mock');await a.reserve(user,token,'mock');
   await a.commit(user,token);await a.commit(user,token);await a.release(user,token);
  }
@@ -132,7 +132,7 @@ test('new registration trial gives exactly two mock starts, is idempotent, and n
 test('trial failed starts are refunded, consumed starts are not; purchased allowance takes priority',async t=>{
  const f=await fixture(t),a=f.billing.access,token='c'.repeat(48);
  await a.grantTrial(f.pool,user.id);await a.reserve(user,token,'mock');await a.release(user,token);
- assert.equal((await a.status(user)).trial.remaining,2);
+ assert.equal((await a.status(user)).trial.remaining,1);
  await assert.rejects(a.reserve(user,token,'mock'),{status:409});
  const pending='d'.repeat(48);await a.reserve(user,pending,'mock');
  await f.billing.checkout(user,'starter');await f.billing.webhook(...f.event());
@@ -146,15 +146,15 @@ test('trial failed starts are refunded, consumed starts are not; purchased allow
 
 test('existing students receive a one-time trial on status or direct start without resetting used sessions',async t=>{
  const f=await fixture(t),a=f.billing.access,old={id:'old-student',role:'athlete'},direct={id:'direct-student',role:'athlete'};
- assert.equal((await a.status(old)).trial.remaining,2);
- for(const token of ['1'.repeat(48),'2'.repeat(48)]){
+ assert.equal((await a.status(old)).trial.remaining,1);
+ for(const token of ['1'.repeat(48)]){
   await a.reserve(old,token,'mock');await a.commit(old,token);
  }
  assert.equal((await a.status(old)).trial.remaining,0);
  await a.init();assert.equal((await a.status(old)).trial.remaining,0);
  await assert.rejects(a.reserve(old,'3'.repeat(48),'mock'),{status:402});
  await a.reserve(direct,'4'.repeat(48),'mock');await a.commit(direct,'4'.repeat(48));
- assert.equal((await a.status(direct)).trial.remaining,1);
+ assert.equal((await a.status(direct)).trial.remaining,0);
  await assert.rejects(a.reserve(direct,'5'.repeat(48),'learn'),{status:402});
  for(const role of ['owner','coach'])assert.equal((await a.status({id:role,role})).trial,null);
  assert.equal((await a.status({id:'paused',role:'athlete',accessSuspended:true})).trial,null);

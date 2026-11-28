@@ -26,7 +26,7 @@ test('record mode HTTP: registration, login, profile, learning, reviews, export,
   assert.equal((await call('/api/me',{cookie})).data.needsEmailVerification,true);
   for(const path of ['/api/my-profile','/api/athletes','/api/reports','/api/learning/study-purpose'])await call(path,{cookie,status:403});
   await adapter.mutate(async db=>{db.users.find(u=>u.id===uid).emailVerifiedAt=new Date().toISOString();});
-  assert.equal((await call('/api/voice-usage',{cookie})).data.access.trial.remaining,2);
+  assert.equal((await call('/api/voice-usage',{cookie})).data.access.trial.remaining,1);
   const profile=(await call('/api/my-profile',{cookie})).data;
   await call('/api/my-profile',{method:'PUT',cookie,body:{major:'Computer Science'}});
   assert.equal((await call('/api/my-profile',{cookie})).data.major,'Computer Science');

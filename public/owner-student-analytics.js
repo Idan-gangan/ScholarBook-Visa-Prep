@@ -61,7 +61,12 @@
        '<div class="owner-analytics-person"><div><h3>'+safe(s.name)+'</h3><p>'+safe(s.email)+'</p></div><span class="owner-analytics-state '+status[1]+'">'+safe(status[0])+'</span></div>'+
        '<div class="owner-analytics-metrics">'+
          metric('Last recorded practice',date(s.lastRecordedActivity))+
-         metric('Learning modules completed',num(s.completedModules)+' / 6')+
+         (s.access?metric('Account type',s.access.account_type)+metric('Latest payment',s.access.payment_status)+
+           metric('Recorded AI cost · all retained student-linked events',s.recordedCost==null?'No priced records':'$'+Number(s.recordedCost).toFixed(4))+
+           metric('Tutor sessions used · latest package',num(s.access.tutor_used))+
+           metric('Mock interviews remaining',s.access.mocks_remaining??'Trial eligibility pending')+
+           metric('Package expiration',s.access.expires_at?date(s.access.expires_at):'—'):'')+
+         metric('Written modules completed',num(s.completedModules)+' / 6')+
          metric('Mock sessions started',num(s.mockStarts))+
          metric('Readiness reports',num(s.reports))+
          metric('Latest complete mock score',score)+

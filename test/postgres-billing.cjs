@@ -20,7 +20,7 @@ for(const mode of ['test','live'])test(mode+': concurrent checkout, notification
     if(mode==='live'){
       const trialUser={id:'trial-user',email:'trial@example.test',role:'athlete'};
       const trialStarts=await Promise.allSettled(Array.from({length:12},(_,i)=>(i%2?a:b).access.reserve(trialUser,('f'+i.toString(16)).padStart(48,'0'),'mock')));
-      assert.equal(trialStarts.filter(r=>r.status==='fulfilled').length,2);
+      assert.equal(trialStarts.filter(r=>r.status==='fulfilled').length,1);
       assert.equal((await b.access.status(trialUser)).trial.remaining,0);
       await pools[0].query("UPDATE mock_trial_daily SET starts=99 WHERE day=(NOW() AT TIME ZONE 'UTC')::date");
       const many=await Promise.allSettled(Array.from({length:8},(_,i)=>(i%2?a:b).access.reserve(
