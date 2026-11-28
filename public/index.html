@@ -117,7 +117,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
       <span class="welcome-tag">U.S. F-1 VISA INTERVIEW PREPARATION</span>
       <h1>Your ambitions.<br>Your story.<br><em>Prepare to share it.</em></h1>
       <p>Learn how to explain your study plans, practise with an AI tutor, and build confidence through realistic voice mock interviews—with feedback to guide your next step.</p>
-      <div class="welcome-actions"><button class="btn primary" onclick="showRegistration()">Try 2 free mock interviews <span class="button-arrow" aria-hidden="true">→</span></button><a class="btn secondary home-link-button" href="#pricing">Choose a plan</a></div>
+      <div class="welcome-actions"><button class="btn primary" onclick="showRegistration()">Try 1 free mock interview <span class="button-arrow" aria-hidden="true">→</span></button><a class="btn secondary home-link-button" href="#pricing">Choose a plan</a></div>
       <p class="small">For high school, undergraduate, master’s, and PhD students—including student-athletes.</p>
       <div class="hero-path" aria-label="Your preparation journey"><span>01 <b>Learn</b></span><span>02 <b>Practise</b></span><span>03 <b>Improve</b></span></div>
     </section>
@@ -138,7 +138,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
     </div></section>
     <section class="home-section home-audience" id="who-its-for"><span class="home-eyebrow">YOUR PATH BELONGS HERE</span><h2>Different journeys.<br>Thoughtful preparation for each.</h2><div class="home-audience-tags"><span>High school</span><span>Undergraduate</span><span>Master’s</span><span>PhD</span><span>Student-athletes</span></div><p>Whether you’re explaining a scholarship, a new field of study, or your next application after a denial, your preparation should reflect your circumstances. Student-athletes can include their sporting journey while keeping their education at the centre.</p></section>
     <section class="home-section home-pricing" id="pricing" aria-labelledby="pricing-heading">
-      <div class="pricing-intro"><span class="home-eyebrow">INVEST IN YOUR PREPARATION</span><h2 id="pricing-heading">Your next step.<br>A clearer, more confident you.</h2><p>Start with 2 free mock interviews when you register—no card needed. Then choose a plan for 30 days of focused preparation.</p></div>
+      <div class="pricing-intro"><span class="home-eyebrow">INVEST IN YOUR PREPARATION</span><h2 id="pricing-heading">Your next step.<br>A clearer, more confident you.</h2><p>Start with 1 free mock interview when you register—no card needed. Then choose a plan for 30 days of focused preparation.</p></div>
       <div class="pricing-promise"><span>One payment</span><span>30-day access</span><span>No automatic renewal</span></div>
       <div class="home-pricing-grid">
         <article class="home-price-card"><div class="price-card-top"><span class="price-label">BUILD YOUR FOUNDATION</span><h3>Starter</h3><p>Focused practice to get you interview-ready.</p></div><p class="home-price"><strong><span>US$</span>29</strong><span>one payment for 30 days</span></p><div class="price-allowance"><div><strong>6</strong><span>mock interviews</span></div><div><strong>6</strong><span>AI tutor sessions</span></div></div><ul><li>Personalised feedback after each mock</li><li>Voice sessions up to 8 minutes</li><li>Practice shaped by your study profile</li></ul><a class="btn secondary home-link-button" href="/billing.html?plan=starter" aria-label="Choose Starter, 29 US dollars">Choose Starter <span aria-hidden="true">→</span></a><p class="price-footnote">12 voice sessions in total</p></article>
@@ -202,7 +202,7 @@ button,input,select,textarea{font:inherit}.hidden{display:none!important}.btn{bo
     <p id="guardianRequestStatus" role="status" aria-live="polite"></p>
    </div>
    <div class="field"><label for="r_password">Password</label><input id="r_password" type="password" autocomplete="new-password" minlength="15" maxlength="128" placeholder="At least 15 characters" required></div>
-   <p class="small muted">Create your account to get 2 free mock interviews with feedback reports. No card needed. Verify your email before starting.</p>
+   <p class="small muted">Create your account to get 1 free mock interview with feedback reports. No card needed. Verify your email before starting.</p>
    <div class="registration-terms small">
     <input id="r_terms" type="checkbox" required data-terms-version="2026-11-21-trial2" aria-describedby="r_privacy_notice">
     <label for="r_terms">I agree to the <a href="/terms.html" target="_blank" rel="noopener">Terms of Use</a>.</label>
@@ -1409,13 +1409,13 @@ async function refreshVoiceUsage(){
   const data=await api('/api/voice-usage');
   if(!me||version!==sessionVersion)return;
   for(const [id,mode,label] of [['learningVoiceUsage','learn','tutoring starts'],['lessonVoiceUsage','learn','tutoring starts'],['mockVoiceUsage','mock','mock interviews']]){
-   const usage=data[mode],access=data.access;$(id).textContent=access?.enforced?(access.active?(access.modes?access.modes[mode].remaining+' of '+access.modes[mode].limit+' '+(mode==='mock'?'mock interview':'tutor')+' sessions remaining.':access.remaining+' of '+access.limit+' shared tutor/mock sessions remaining.'):(mode==='mock'&&access.trial?access.trial.remaining+' of 2 free mock interviews remaining.':'A paid plan is required for '+(mode==='mock'?'more mock interviews.':'tutor sessions.'))):(usage.unlimited?'Session time limits apply.':usage.remaining+' of '+usage.limit+' '+label+' left today.');
+   const usage=data[mode],access=data.access;$(id).textContent=access?.enforced?(access.active?(access.modes?access.modes[mode].remaining+' of '+access.modes[mode].limit+' '+(mode==='mock'?'mock interview':'tutor')+' sessions remaining.':access.remaining+' of '+access.limit+' shared tutor/mock sessions remaining.'):(mode==='mock'&&access.trial?access.trial.remaining+' of 1 free mock interview remaining.':'A paid plan is required for '+(mode==='mock'?'more mock interviews.':'tutor sessions.'))):(usage.unlimited?'Session time limits apply.':usage.remaining+' of '+usage.limit+' '+label+' left today.');
    if(access?.enforced){const link=document.createElement('a');link.href=data.billingPage==='/billing.html'?'/billing.html':'/billing-test.html';link.textContent=' View plan';$(id).append(link);}
   }
   const planSummary=document.querySelector('#studentPlanSummary'),planLink=document.querySelector('#studentPlanLink');
   if(planSummary&&planLink){
    const access=data.access,sponsored=access?.active&&access.sponsored===true;
-   planSummary.textContent=access?.enforced&&access.active?(access.modes?access.modes.mock.remaining+' mock interviews · '+access.modes.learn.remaining+' tutor sessions remaining':'Your plan has '+access.remaining+' sessions remaining'):(access?.trial?access.trial.remaining+' of 2 free mock interviews remaining. No card needed.':'Choose Starter or Standard to begin voice practice.');
+   planSummary.textContent=access?.enforced&&access.active?(access.modes?access.modes.mock.remaining+' mock interviews · '+access.modes.learn.remaining+' tutor sessions remaining':'Your plan has '+access.remaining+' sessions remaining'):(access?.trial?access.trial.remaining+' of 1 free mock interview remaining. No card needed.':'Choose Starter or Standard to begin voice practice.');
    const planHeading=document.querySelector('#student-plan-heading'),planDetails=document.querySelector('#studentPlanDetails');
    if(planHeading)planHeading.textContent=sponsored?'Scholarbook Partner Access':'Keep your preparation moving.';
    if(planDetails)planDetails.textContent=sponsored?'Sponsored by Scholarbook · No personal payment required · Expires '+new Date(access.expiresAt).toLocaleDateString():'Starter US$29 · Standard US$49 · No automatic renewal';
