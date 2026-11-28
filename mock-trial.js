@@ -51,7 +51,7 @@ function createMockTrial(pool,{enabled=false,secret='',dailyLimit=100}={}){
     const account=(await pool.query('SELECT user_id FROM mock_trial_accounts WHERE user_id=$1',[userId])).rows[0];
     if(!account)return null;
     const used=Number((await pool.query("SELECT COUNT(*)::int AS used FROM mock_trial_usage WHERE user_id=$1 AND state<>'released'",[userId])).rows[0].used);
-    return {limit:2,used,remaining:Math.max(0,2-used)};
+    return {limit:1,used,remaining:Math.max(0,1-used)};
   }
   async function reserve(client,userId,token,mode){
     if(!enabled||mode!=='mock')throw fail(402,'Choose a paid plan to start this session. The free trial includes mock interviews only.');
@@ -63,7 +63,7 @@ function createMockTrial(pool,{enabled=false,secret='',dailyLimit=100}={}){
       return;
     }
     const used=Number((await client.query("SELECT COUNT(*)::int AS used FROM mock_trial_usage WHERE user_id=$1 AND state<>'released'",[userId])).rows[0].used);
-    if(used>=2)throw fail(402,'You have used your two free mock interviews. Choose a plan to keep practising.');
+    if(used>=1)throw fail(402,'You have used your free mock interview. Choose a plan to keep practising.');
     // Atomic global start budget survives account deletion and app restarts.
     // Failed starts still count toward this abuse budget, but release their personal allowance.
     await client.query("DELETE FROM mock_trial_daily WHERE day < (NOW() AT TIME ZONE 'UTC')::date-30");
